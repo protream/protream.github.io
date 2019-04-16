@@ -1,0 +1,829 @@
+<!DOCTYPE html>
+
+
+
+  
+
+
+<html class="theme-next muse use-motion" lang="zh-CN">
+<head><meta name="generator" content="Hexo 3.8.0">
+  <meta charset="UTF-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<meta name="theme-color" content="#222">
+
+
+
+
+
+
+  
+  
+  <link rel="stylesheet" media="all" href="/lib/Han/dist/han.min.css?v=3.3">
+
+
+
+
+<meta http-equiv="Cache-Control" content="no-transform">
+<meta http-equiv="Cache-Control" content="no-siteapp">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+  <link href="/lib/fancybox/source/jquery.fancybox.css?v=2.1.5" rel="stylesheet" type="text/css">
+
+
+
+
+  
+  
+  
+  
+
+  
+    
+    
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+    
+    
+    <link href="https://fonts.googleapis.com/css?family=Droid+Serif:400,700/css?family=Droid Serif:300,300italic,400,400italic,700,700italic&subset=latin,latin-ext" rel="stylesheet" type="text/css">
+  
+
+
+
+
+
+
+<link href="/lib/font-awesome/css/font-awesome.min.css?v=4.6.2" rel="stylesheet" type="text/css">
+
+<link href="/css/main.css?v=5.1.4" rel="stylesheet" type="text/css">
+
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png?v=5.1.4">
+
+
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png?v=5.1.4">
+
+
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png?v=5.1.4">
+
+
+  <link rel="mask-icon" href="/images/logo.svg?v=5.1.4" color="#222">
+
+
+
+
+
+  <meta name="keywords" content="python,">
+
+
+
+
+
+
+
+
+
+
+<meta name="keywords" content="python">
+<meta property="og:type" content="article">
+<meta property="og:title" content="用 Python 写一个命令行火车票查看器">
+<meta property="og:url" content="http://protream.com/2016/06/write-a-command-line-train-tickets-query-tool-with-python/index.html">
+<meta property="og:site_name" content="Protream&#39;s Notes">
+<meta property="og:locale" content="zh-CN">
+<meta property="og:image" content="http://upload-images.jianshu.io/upload_images/1722455-a9079bf9df532db4.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240">
+<meta property="og:updated_time" content="2019-04-16T11:49:21.485Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="用 Python 写一个命令行火车票查看器">
+<meta name="twitter:image" content="http://upload-images.jianshu.io/upload_images/1722455-a9079bf9df532db4.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240">
+
+
+
+<script type="text/javascript" id="hexo.configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Muse',
+    version: '5.1.4',
+    sidebar: {"position":"left","display":"post","offset":12,"b2t":false,"scrollpercent":false,"onmobile":false},
+    fancybox: true,
+    tabs: true,
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    duoshuo: {
+      userId: '0',
+      author: 'Author'
+    },
+    algolia: {
+      applicationID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    }
+  };
+</script>
+
+
+
+  <link rel="canonical" href="http://protream.com/2016/06/write-a-command-line-train-tickets-query-tool-with-python/">
+
+
+
+
+
+  <title>用 Python 写一个命令行火车票查看器 | Protream's Notes</title>
+  
+
+
+
+
+
+
+
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" lang="zh-CN">
+
+  
+  
+    
+  
+
+  <div class="container sidebar-position-left page-post-detail">
+    <div class="headband"></div>
+
+    <header id="header" class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-wrapper">
+  <div class="site-meta ">
+    
+
+    <div class="custom-logo-site-title">
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Protream's Notes</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+      
+        <p class="site-subtitle"></p>
+      
+  </div>
+
+  <div class="site-nav-toggle">
+    <button>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+    </button>
+  </div>
+</div>
+
+<nav class="site-nav">
+  
+
+  
+    <ul id="menu" class="menu">
+      
+        
+        <li class="menu-item menu-item-home">
+          <a href="/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-home"></i> <br>
+            
+            Home
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-archives">
+          <a href="/archives/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-archive"></i> <br>
+            
+            Archives
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-tags">
+          <a href="/tags/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-tags"></i> <br>
+            
+            Tags
+          </a>
+        </li>
+      
+
+      
+    </ul>
+  
+
+  
+</nav>
+
+
+
+ </div>
+    </header>
+
+    <main id="main" class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          <div id="content" class="content">
+            
+
+  <div id="posts" class="posts-expand">
+    
+
+  
+
+  
+  
+  
+
+  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="http://protream.com/2016/06/write-a-command-line-train-tickets-query-tool-with-python/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="protream">
+      <meta itemprop="description" content>
+      <meta itemprop="image" content="/images/avatar.gif">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Protream's Notes">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">用 Python 写一个命令行火车票查看器</h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">Posted on</span>
+              
+              <time title="Post created" itemprop="dateCreated datePublished" datetime="2016-06-20T00:00:00+08:00">
+                2016-06-20
+              </time>
+            
+
+            
+
+            
+          </span>
+
+          
+
+          
+            
+              <span class="post-comments-count">
+                <span class="post-meta-divider">|</span>
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-comment-o"></i>
+                </span>
+                <a href="/2016/06/write-a-command-line-train-tickets-query-tool-with-python/#comments" itemprop="discussionUrl">
+                  <span class="post-comments-count gitment-comments-count" data-xid="/2016/06/write-a-command-line-train-tickets-query-tool-with-python/" itemprop="commentsCount"></span>
+                </a>
+              </span>
+            
+          
+
+          
+          
+
+          
+
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body han-init-context" itemprop="articleBody">
+
+      
+      
+
+      
+        <p><img src="http://upload-images.jianshu.io/upload_images/1722455-a9079bf9df532db4.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="tickets"></p>
+<a id="more"></a>
+<p>当你想查询一下火车票信息的时候，你还在上12306官网吗？或是打开你手机里的APP？下面让我们来用Python写一个命令行版的火车票查看器, 只要在命令行敲一行命令就能获得你想要的火车票信息！如果你刚掌握了Python基础，这将是个不错的小练习。</p>
+<h2 id="接口设计"><a href="#接口设计" class="headerlink" title="接口设计"></a>接口设计</h2><p>一个应用写出来最终是要给人使用的，哪怕只是给你自己使用。所以，首先应该想想你希望怎么使用它？让我们先给这个小应用起个名字吧，既然及查询票务信息，那就叫它<code>tickets</code>好了。我们希望用户只要输入出发站，到达站以及日期就让就能获得想要的信息，所以<code>tickets</code>应该这样被使用：</p>
+<figure class="highlight sh"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">$ tickets from to date</span><br></pre></td></tr></table></figure>
+<p>另外，火车有各种类型，高铁、动车、特快、快速和直达，我们希望可以提供选项只查询特定的一种或几种的火车，所以，我们应该有下面这些选项：</p>
+<ul>
+<li>-g    高铁</li>
+<li>-d    动车</li>
+<li>-t    特快</li>
+<li>-k    快速</li>
+<li>-z    直达</li>
+</ul>
+<p>这几个选项应该能被组合使用，所以，最终我们的接口应该是这个样子的：</p>
+<figure class="highlight sh"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">$ tickets [-gdtkz] from to date</span><br></pre></td></tr></table></figure>
+<p>接口已经确定好了，剩下的就是实现它了。</p>
+<h2 id="开发环境"><a href="#开发环境" class="headerlink" title="开发环境"></a>开发环境</h2><p>写Python程序的一个良好实践是使用<code>virtualenv</code>这个工具建一个虚拟的环境。我们的程序使用Python3开发，下面在你的工作目录下建一个文件夹<code>tickets</code>，进去创建一个虚拟环境：</p>
+<figure class="highlight sh"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">$ virtualenv -p /usr/bin/python3 venv</span><br></pre></td></tr></table></figure>
+<p>通过下面的命令激活它：</p>
+<figure class="highlight sh"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">$ . venv/bin/activate</span><br></pre></td></tr></table></figure>
+<h2 id="解析参数"><a href="#解析参数" class="headerlink" title="解析参数"></a>解析参数</h2><p>Python有很多写命令行应用的工具，如argparse, docopt, options…这里，我们选用docopt这个简单易用的工具，我们先安装它：</p>
+<figure class="highlight sh"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">$ pip3 install docopt</span><br></pre></td></tr></table></figure>
+<p>docopt可以按我们在文档字符串中定义的格式来解析参数，在<code>tickets.py</code>中：</p>
+<figure class="highlight py"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># coding: utf-8</span></span><br><span class="line"></span><br><span class="line"><span class="string">"""Train tickets query via command-line.</span></span><br><span class="line"><span class="string"></span></span><br><span class="line"><span class="string">Usage:</span></span><br><span class="line"><span class="string">    tickets [-gdtkz] &lt;from&gt; &lt;to&gt; &lt;date&gt;</span></span><br><span class="line"><span class="string"></span></span><br><span class="line"><span class="string">Options:</span></span><br><span class="line"><span class="string">    -h,--help        显示帮助菜单</span></span><br><span class="line"><span class="string">    -g               高铁</span></span><br><span class="line"><span class="string">    -d               动车</span></span><br><span class="line"><span class="string">    -t               特快</span></span><br><span class="line"><span class="string">    -k               快速</span></span><br><span class="line"><span class="string">    -z               直达</span></span><br><span class="line"><span class="string"></span></span><br><span class="line"><span class="string">Example:</span></span><br><span class="line"><span class="string">    tickets 南京 北京 2016-07-01</span></span><br><span class="line"><span class="string">    tickets -dg 南京 北京 2016-07-01</span></span><br><span class="line"><span class="string">"""</span></span><br><span class="line"><span class="keyword">from</span> docopt <span class="keyword">import</span> docopt</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">cli</span><span class="params">()</span>:</span></span><br><span class="line">    <span class="string">"""command-line interface"""</span></span><br><span class="line">    arguments = docopt(__doc__)</span><br><span class="line">    print(arguments)</span><br><span class="line"></span><br><span class="line"><span class="keyword">if</span> __name__ == <span class="string">'__main__'</span>:</span><br><span class="line">    cli()</span><br></pre></td></tr></table></figure>
+<p>下面我们运行一下这个程序：</p>
+<figure class="highlight sh"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">$ python3 tickets.py 上海 北京 2016-07-01</span><br></pre></td></tr></table></figure>
+<p>我们得到下面的参数解析结果：</p>
+<figure class="highlight py"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">&#123;<span class="string">'-d'</span>: <span class="literal">False</span>, <span class="string">'-g'</span>: <span class="literal">False</span>, <span class="string">'-k'</span>: <span class="literal">False</span>, <span class="string">'-t'</span>: <span class="literal">False</span>, <span class="string">'-z'</span>: <span class="literal">False</span>, <span class="string">'&lt;date&gt;'</span>: <span class="string">'2016-07-01'</span>, <span class="string">'&lt;from&gt;'</span>: <span class="string">'上海'</span>, <span class="string">'&lt;to&gt;'</span>: <span class="string">'北京'</span>&#125;</span><br></pre></td></tr></table></figure>
+<h2 id="获取数据"><a href="#获取数据" class="headerlink" title="获取数据"></a>获取数据</h2><p>参数已经解析好了，下面就是如何获取数据了，这也是最主要的部分。首先我们打开<a href="www.12306.cn">12306</a>，进入余票查询页面，如果你使用chrome，那么按<code>F12</code>打开开发者工具，选中<code>Network</code>一栏，在查询框钟我们输入<code>上海</code>到<code>北京</code>，日期<code>2016-07-01</code>, 点击查询，我们在调试工具发现，查询系统实际上请求了这个URL</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">https://kyfw.12306.cn/otn/lcxxcx/query?purpose_codes=ADULT&amp;queryDate=2016-07-01&amp;from_station=SHH&amp;to_station=BJP</span><br></pre></td></tr></table></figure>
+<p>并且返回的是<code>JSON</code>格式的数据！接下来问题就简单了，我们只需要构建请求URL然后解析返回的JSON数据就可以了。但是我们发现，URL里面<code>from_station</code>和<code>to_station</code>并不是汉字，而是一个代号，而用户输入的是汉字，我们要如何获取代号呢？我们打开网页源码看看有没有什么发现。</p>
+<p>啊哈！果然，我们在网页里面找到了这个链接：<a href="https://kyfw.12306.cn/otn/resources/js/framework/station_name.js?station_version=1.8955" target="_blank" rel="noopener">点我</a>, 这里面貌似是包含了所有车站的中文名，拼音，简写和代号等信息, 我们在项目目录下将它保存为<code>stations.html</code>。但是这些信息挤在一起，而我们只想要中文名和大写字母的代号信息，怎么办呢？</p>
+<p>BINGO!正则表达式，我们写个小脚本来匹配提取出想要的信息吧, 在parse.py中：</p>
+<figure class="highlight py"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># coding: utf-8</span></span><br><span class="line"><span class="keyword">import</span> re</span><br><span class="line"><span class="keyword">from</span> pprint <span class="keyword">import</span> pprint</span><br><span class="line"></span><br><span class="line"><span class="keyword">with</span> open(<span class="string">'stations.html'</span>, <span class="string">'r'</span>) <span class="keyword">as</span> f:</span><br><span class="line">    text = f.read()</span><br><span class="line">    stations = re.findall(<span class="string">u'([\u4e00-\u9fa5]+)\|([A-Z]+)'</span>, text)</span><br><span class="line">    pprint(dict(stations), indent=<span class="number">4</span>)</span><br></pre></td></tr></table></figure>
+<p>我们运行这个脚本，它将以字典的形式返回所有车站和它的大写字母代号, 我们将结果重定向到<code>stations.py</code>中，</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">$ python3 parse.py &gt; stations.py</span><br></pre></td></tr></table></figure>
+<p>我们为这个字典加名字，<code>stations</code>, 最终，<code>stations.py</code>文件是这样的：</p>
+<figure class="highlight py"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">stations = &#123;</span><br><span class="line">    <span class="string">'一间堡'</span>: <span class="string">'YJT'</span>,</span><br><span class="line">    <span class="string">'一面坡'</span>: <span class="string">'YPB'</span>,</span><br><span class="line">     ...</span><br><span class="line">    <span class="string">'龙镇'</span>: <span class="string">'LZA'</span>,</span><br><span class="line">    <span class="string">'龙骨甸'</span>: <span class="string">'LGM'</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>现在，用户输入车站的中文名，我们就可以直接从这个字典中获取它的字母代码了：</p>
+<figure class="highlight py"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">...</span><br><span class="line"><span class="keyword">from</span> stations <span class="keyword">import</span> stations</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">cli</span><span class="params">()</span>:</span></span><br><span class="line">    arguments = docopt(__doc__)</span><br><span class="line">    from_staion = stations.get(arguments[<span class="string">'&lt;from&gt;'</span>])</span><br><span class="line">    to_station = stations.get(arguments[<span class="string">'&lt;to&gt;'</span>])</span><br><span class="line">    date = arguments[<span class="string">'&lt;date&gt;'</span>]</span><br><span class="line">    <span class="comment"># 构建URL</span></span><br><span class="line">    url = <span class="string">'https://kyfw.12306.cn/otn/lcxxcx/query?purpose_codes=ADULT&amp;queryDate=&#123;&#125;&amp;from_station=&#123;&#125;&amp;to_station=&#123;&#125;'</span>.format(</span><br><span class="line">        date, from_staion, to_station</span><br><span class="line">)</span><br></pre></td></tr></table></figure>
+<p>万事俱备，下面我们来请求这个URL获取数据吧！这里我们使用<code>requests</code>这个库, 先安装它：</p>
+<figure class="highlight sh"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">$ pip3 install requests</span><br></pre></td></tr></table></figure>
+<p>它提供了非常简单易用的接口，</p>
+<figure class="highlight py"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">...</span><br><span class="line"><span class="keyword">import</span> requests</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">cli</span><span class="params">()</span>:</span></span><br><span class="line">    ...</span><br><span class="line">    <span class="comment"># 添加verify=False参数, 不验证证书</span></span><br><span class="line">    r = requests.get(url, verify=<span class="literal">False</span>)</span><br><span class="line">    print(r.json())</span><br></pre></td></tr></table></figure>
+<p>从结果中，我们可以观察到，与车票有关的信息需要进一步提取：</p>
+<figure class="highlight py"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">cli</span><span class="params">()</span>:</span></span><br><span class="line">    ...</span><br><span class="line">    r = requsets.get(url);</span><br><span class="line">    rows = r.json()[<span class="string">'data'</span>][<span class="string">'datas'</span>]</span><br></pre></td></tr></table></figure>
+<h2 id="显示结果"><a href="#显示结果" class="headerlink" title="显示结果"></a>显示结果</h2><p>数据已经获取到了，剩下的就是提取我们要的信息并将它显示出来。<code>prettytable</code>这个库可以让我们它像MySQL数据库那样格式化显示数据。</p>
+<figure class="highlight sh"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">$ pip3 install prettytable</span><br></pre></td></tr></table></figure>
+<p>这样使用它：</p>
+<figure class="highlight py"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">...</span><br><span class="line"><span class="keyword">from</span> prettytable <span class="keyword">import</span> PrettyTable</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">cli</span><span class="params">()</span>:</span></span><br><span class="line">    ...</span><br><span class="line">    headers = <span class="string">'车次 车站 时间 历时 商务 一等 二等 软卧 硬卧 软座 硬座 无座'</span>.split()</span><br><span class="line">    pt = PrettyTable()</span><br><span class="line">    pt._set_field_names(headers)</span><br><span class="line">    <span class="keyword">for</span> row <span class="keyword">in</span> rows:</span><br><span class="line">    <span class="comment"># 从row中根据headers过滤信息, 然后调用pt.add_row()添加到表中</span></span><br><span class="line">        ...</span><br><span class="line">    print(pt)</span><br></pre></td></tr></table></figure>
+<h2 id="练习"><a href="#练习" class="headerlink" title="练习"></a>练习</h2><p>下面一些问题留给你做练习:</p>
+<ol>
+<li><p>从每一行<code>row</code>中按照<code>headers</code>过滤信息，将结果添加到prettytable中</p>
+</li>
+<li><p>像开始的图片中那样将出发站和到达站，出发时间和到达时间显示为一列</p>
+</li>
+<li><p>添加颜色（提示：使用colorama, termcorlor或ANSI转义字符）</p>
+</li>
+<li><p>添加异常处理，如果用户输入的车站或日期有错误怎么办？如果网络异常怎么办？</p>
+</li>
+<li><p>添加更多的日期格式支持: 比如用户输入20160701也可以查</p>
+</li>
+<li><p>添加参数支持，用户可以指定火车类型</p>
+</li>
+</ol>
+
+      
+    </div>
+    
+    
+    
+
+    
+
+    
+
+    
+      <div>
+        <ul class="post-copyright">
+  <li class="post-copyright-author">
+    <strong>Post author:</strong>
+    protream
+  </li>
+  <li class="post-copyright-link">
+    <strong>Post link:</strong>
+    <a href="http://protream.com/2016/06/write-a-command-line-train-tickets-query-tool-with-python/" title="用 Python 写一个命令行火车票查看器">http://protream.com/2016/06/write-a-command-line-train-tickets-query-tool-with-python/</a>
+  </li>
+  <li class="post-copyright-license">
+    <strong>Copyright Notice: </strong>
+    All articles in this blog are licensed under <a href="https://creativecommons.org/licenses/by-nc-sa/3.0/" rel="external nofollow" target="_blank">CC BY-NC-SA 3.0</a> unless stating additionally.
+  </li>
+</ul>
+
+      </div>
+    
+
+    <footer class="post-footer">
+      
+        <div class="post-tags">
+          
+            <a href="/tags/python/" rel="tag"># python</a>
+          
+        </div>
+      
+
+      
+      
+      
+
+      
+
+      
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+
+    <div class="post-spread">
+      
+    </div>
+  </div>
+
+
+          </div>
+          
+
+
+          
+
+  
+    <div class="comments" id="comments">
+      
+        <div id="gitment-container"></div>
+      
+    </div>
+
+  
+
+
+
+        </div>
+        
+          
+  
+  <div class="sidebar-toggle">
+    <div class="sidebar-toggle-line-wrap">
+      <span class="sidebar-toggle-line sidebar-toggle-line-first"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-middle"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-last"></span>
+    </div>
+  </div>
+
+  <aside id="sidebar" class="sidebar">
+    
+    <div class="sidebar-inner">
+
+      
+
+      
+        <ul class="sidebar-nav motion-element">
+          <li class="sidebar-nav-toc sidebar-nav-active" data-target="post-toc-wrap">
+            Table of Contents
+          </li>
+          <li class="sidebar-nav-overview" data-target="site-overview-wrap">
+            Overview
+          </li>
+        </ul>
+      
+
+      <section class="site-overview-wrap sidebar-panel">
+        <div class="site-overview">
+          <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+            
+              <p class="site-author-name" itemprop="name">protream</p>
+              <p class="site-description motion-element" itemprop="description"></p>
+          </div>
+
+          <nav class="site-state motion-element">
+
+            
+              <div class="site-state-item site-state-posts">
+              
+                <a href="/archives/">
+              
+                  <span class="site-state-item-count">1</span>
+                  <span class="site-state-item-name">posts</span>
+                </a>
+              </div>
+            
+
+            
+
+            
+              
+              
+              <div class="site-state-item site-state-tags">
+                <a href="/tags/index.html">
+                  <span class="site-state-item-count">1</span>
+                  <span class="site-state-item-name">tags</span>
+                </a>
+              </div>
+            
+
+          </nav>
+
+          
+
+          
+
+          
+          
+
+          
+          
+
+          
+
+        </div>
+      </section>
+
+      
+      <!--noindex-->
+        <section class="post-toc-wrap motion-element sidebar-panel sidebar-panel-active">
+          <div class="post-toc">
+
+            
+              
+            
+
+            
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#接口设计"><span class="nav-number">1.</span> <span class="nav-text">接口设计</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#开发环境"><span class="nav-number">2.</span> <span class="nav-text">开发环境</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#解析参数"><span class="nav-number">3.</span> <span class="nav-text">解析参数</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#获取数据"><span class="nav-number">4.</span> <span class="nav-text">获取数据</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#显示结果"><span class="nav-number">5.</span> <span class="nav-text">显示结果</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#练习"><span class="nav-number">6.</span> <span class="nav-text">练习</span></a></li></ol></div>
+            
+
+          </div>
+        </section>
+      <!--/noindex-->
+      
+
+      
+
+    </div>
+  </aside>
+
+
+        
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="footer-inner">
+        <div class="copyright">&copy; <span itemprop="copyrightYear">2019</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">protream</span>
+
+  
+</div>
+
+
+
+
+
+
+
+
+
+        
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+
+    
+      <div class="back-to-top">
+        <i class="fa fa-arrow-up"></i>
+        
+      </div>
+    
+
+    
+
+  </div>
+
+  
+
+<script type="text/javascript">
+  if (Object.prototype.toString.call(window.Promise) !== '[object Function]') {
+    window.Promise = null;
+  }
+</script>
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery/index.js?v=2.1.3"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/fastclick/lib/fastclick.min.js?v=1.0.6"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery_lazyload/jquery.lazyload.js?v=1.9.7"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.ui.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/fancybox/source/jquery.fancybox.pack.js?v=2.1.5"></script>
+  
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/utils.js?v=5.1.4"></script>
+
+  <script type="text/javascript" src="/js/src/motion.js?v=5.1.4"></script>
+
+
+
+  
+  
+
+  
+  <script type="text/javascript" src="/js/src/scrollspy.js?v=5.1.4"></script>
+<script type="text/javascript" src="/js/src/post-details.js?v=5.1.4"></script>
+
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/bootstrap.js?v=5.1.4"></script>
+
+
+
+  
+
+
+  
+
+
+
+
+	
+
+
+
+
+
+  
+
+
+
+
+
+  
+
+
+
+
+
+
+
+<!-- LOCAL: You can save these files to your site and update links -->
+    
+        
+        <link rel="stylesheet" href="https://aimingoo.github.io/gitmint/style/default.css">
+        <script src="https://aimingoo.github.io/gitmint/dist/gitmint.browser.js"></script>
+    
+<!-- END LOCAL -->
+
+    
+      <style>
+        a.gitment-editor-footer-tip { display: none; }
+        .gitment-container.gitment-footer-container { display: none; }
+      </style>
+    
+
+    
+      <script type="text/javascript">
+      function renderGitment(){
+        var gitment = new Gitmint({
+            id: window.location.pathname, 
+            owner: 'protream',
+            repo: 'protream.github.io',
+            
+            lang: "" || navigator.language || navigator.systemLanguage || navigator.userLanguage,
+            
+            oauth: {
+            
+            
+                client_secret: '94704d765736de364f53ed4729658416c08aae64',
+            
+                client_id: '6595aa4383cfeb1b038e'
+            }});
+        gitment.render('gitment-container');
+      }
+
+      
+      renderGitment();
+      
+      </script>
+    
+
+
+
+
+
+
+
+  
+
+
+
+
+
+  
+
+  
+
+  
+
+  
+  
+
+  
+
+  
+
+  
+
+</body>
+</html>
