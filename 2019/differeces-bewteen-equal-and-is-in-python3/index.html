@@ -98,7 +98,7 @@
 
 
 
-  <meta name="keywords" content="python,源码笔记,">
+  <meta name="keywords" content="深入python,源码笔记,">
 
 
 
@@ -109,14 +109,14 @@
 
 
 
-<meta name="keywords" content="python,源码笔记">
+<meta name="keywords" content="深入python,源码笔记">
 <meta property="og:type" content="article">
 <meta property="og:title" content="深入 Python —— == 和 is 的区别">
 <meta property="og:url" content="https://protream.github.io/2019/differeces-bewteen-equal-and-is-in-python3/index.html">
 <meta property="og:site_name" content="Protream&#39;s Blog">
 <meta property="og:locale" content="zh-CN">
 <meta property="og:image" content="https://cdn.pixabay.com/photo/2016/05/25/18/07/cow-1415553_960_720.jpg">
-<meta property="og:updated_time" content="2019-04-26T10:23:41.674Z">
+<meta property="og:updated_time" content="2019-04-26T10:33:13.036Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="深入 Python —— == 和 is 的区别">
 <meta name="twitter:image" content="https://cdn.pixabay.com/photo/2016/05/25/18/07/cow-1415553_960_720.jpg">
@@ -362,10 +362,7 @@
 <figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">static</span> PyObject *</span><br><span class="line">cmp_outcome(<span class="keyword">int</span> op, <span class="keyword">register</span> PyObject *v, <span class="keyword">register</span> PyObject *w) &#123;</span><br><span class="line">	  <span class="keyword">int</span> res = <span class="number">0</span>;</span><br><span class="line">	  <span class="keyword">switch</span> (op) &#123;</span><br><span class="line">	  <span class="keyword">case</span> PyCmp_IS:</span><br><span class="line">	    res = (v == w);</span><br><span class="line">	    <span class="keyword">break</span>;</span><br><span class="line">	  <span class="keyword">case</span> PyCmp_IS_NOT:</span><br><span class="line">	    res = (v != w);</span><br><span class="line">	    <span class="keyword">break</span>;</span><br><span class="line">	  ...</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
 <p>可以看出，is 和 is not 比较的就是 v 和 w 这俩个指针变量！而指针变量本质上是一个内存地址，它在 32 位系统中就是一个 32 整数，在 64 位系统中就是一个 64 位整数。由此我们可以得出一个结论：<em>is 比较的是俩个对象在内存中是否是同一个地址，换句话说，它们是否是同一个对象</em>。</p>
 <h2 id="richcompare"><a href="#richcompare" class="headerlink" title="richcompare"></a>richcompare</h2><p>继续往下之前，先来了解下 Python 中 richcompare 的概念。其实不单单是 Python，编程语言应该都会提供 &lt;，&lt;=，==，!=，&gt;，&gt;= 这六中比较，在 Python 源码中，它们统称为 richcompare。每一个比较，Python 都提供了一个重载方法和一个参数码，对应关系如下</p>
-<p>符号 | 重载方法 | 参数码<br>——— | :——- | :——-<br>&lt; | <strong>lt</strong> | 0|<br>&lt;= | <strong>le</strong> | 1<br>== | <strong>eq</strong> | 2<br>!= | <strong>le</strong> | 3</p>
-<blockquote>
-<p>| <strong>gt</strong> | 4<br>= | <strong>ge</strong> | 5</p>
-</blockquote>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">符号    重载方法    参数码</span><br><span class="line">&lt;       __lt__      0</span><br><span class="line">&lt;=      __le__      1</span><br><span class="line">==      __eq__      2</span><br><span class="line">!=      __le__      3</span><br><span class="line">&gt;       __gt__      4</span><br><span class="line">&gt;=      __ge__      5</span><br></pre></td></tr></table></figure>
 <p>可以通过重写上面任意一个或多个方法来重载对应的操作符号，</p>
 <p>Python 中每个对象都关联一个类型，类型中有一个 <code>tp_richcompare</code> 函数指针来决定对象之间做 rich compare 时的行为，所有对象的基类型提供了一个默认的实现，我们将在后面介绍。</p>
 <h2 id="比较的本质"><a href="#比较的本质" class="headerlink" title="== 比较的本质"></a>== 比较的本质</h2><p>== 比较只是 richcompare 的一种，所有 richcompare 的比较最终都是要交给这个对象关联类型的 <code>tp_richcompare</code>。大部分内置类型，如 int，list，dict 都重写了这个函数，对于用户自建的类型，会优先调用用户重载的方法，没有再调用默认的 <code>tp_richcompare</code>。这只是大概的逻辑，具体到细节，相同类型对象之间、不同类型对象之间、对象与其基类对象之间的比较又有所差异。</p>
@@ -374,7 +371,7 @@
 <p>richcompare 会进入到 <code>PyObject_RichCompare</code>：</p>
 <figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line">PyObject *</span><br><span class="line">PyObject_RichCompare(PyObject *v, PyObject *w, <span class="keyword">int</span> op)</span><br><span class="line">&#123;</span><br><span class="line">    PyObject *res;</span><br><span class="line"></span><br><span class="line">    assert(Py_LT &lt;= op &amp;&amp; op &lt;= Py_GE);</span><br><span class="line">    <span class="keyword">if</span> (v == <span class="literal">NULL</span> || w == <span class="literal">NULL</span>) &#123;</span><br><span class="line">        <span class="keyword">if</span> (!PyErr_Occurred())</span><br><span class="line">            PyErr_BadInternalCall();</span><br><span class="line">        <span class="keyword">return</span> <span class="literal">NULL</span>;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">if</span> (Py_EnterRecursiveCall(<span class="string">" in comparison"</span>))</span><br><span class="line">        <span class="keyword">return</span> <span class="literal">NULL</span>;</span><br><span class="line">    res = do_richcompare(v, w, op);</span><br><span class="line">    Py_LeaveRecursiveCall();</span><br><span class="line">    <span class="keyword">return</span> res;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
 <p>这个函数主要是对参数的检查，真正做事的是 <code>do_richcompare</code> ：</p>
-<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* Perform a rich comparison, raising TypeError when the requested comparison</span></span><br><span class="line"><span class="comment">     operator is not supported. */</span></span><br><span class="line">  <span class="keyword">static</span> PyObject *</span><br><span class="line">  do_richcompare(PyObject *v, PyObject *w, <span class="keyword">int</span> op)</span><br><span class="line">  &#123;</span><br><span class="line">      richcmpfunc f;</span><br><span class="line">      PyObject *res;</span><br><span class="line">      <span class="keyword">int</span> checked_reverse_op = <span class="number">0</span>;</span><br><span class="line"></span><br><span class="line">      <span class="comment">/* 第一种情况 */</span></span><br><span class="line">      ...</span><br><span class="line">		<span class="comment">/* 第二种情况 */</span></span><br><span class="line">      ...</span><br><span class="line">		<span class="comment">/* 第三种情况 */</span></span><br><span class="line">      ...</span><br><span class="line">		<span class="comment">/* 第四种情况 */</span></span><br><span class="line">      ...</span><br><span class="line"></span><br><span class="line">      Py_INCREF(res);</span><br><span class="line">      <span class="keyword">return</span> res;</span><br><span class="line">  &#125;</span><br></pre></td></tr></table></figure>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* Perform a rich comparison, raising TypeError when the requested comparison</span></span><br><span class="line"><span class="comment">     operator is not supported. */</span></span><br><span class="line">  <span class="keyword">static</span> PyObject *</span><br><span class="line">  do_richcompare(PyObject *v, PyObject *w, <span class="keyword">int</span> op)</span><br><span class="line">  &#123;</span><br><span class="line">      richcmpfunc f;</span><br><span class="line">      PyObject *res;</span><br><span class="line">      <span class="keyword">int</span> checked_reverse_op = <span class="number">0</span>;</span><br><span class="line"></span><br><span class="line">      <span class="comment">/* 第一种情况 */</span></span><br><span class="line">      ...</span><br><span class="line">      <span class="comment">/* 第二种情况 */</span></span><br><span class="line">      ...</span><br><span class="line">      <span class="comment">/* 第三种情况 */</span></span><br><span class="line">      ...</span><br><span class="line">      <span class="comment">/* 第四种情况 */</span></span><br><span class="line">      ...</span><br><span class="line"></span><br><span class="line">      Py_INCREF(res);</span><br><span class="line">      <span class="keyword">return</span> res;</span><br><span class="line">  &#125;</span><br></pre></td></tr></table></figure>
 <p>这里分为几种情况：</p>
 <ol>
 <li>v 和 w 类型不同，w 是 v 的子类，w 如果重载了某个 richcompare 方法，则调用 w 中的 richcompare 方法：</li>
@@ -451,7 +448,7 @@
       
         <div class="post-tags">
           
-            <a href="/tags/python/" rel="tag"># python</a>
+            <a href="/tags/深入python/" rel="tag"># 深入python</a>
           
             <a href="/tags/源码笔记/" rel="tag"># 源码笔记</a>
           
@@ -571,7 +568,7 @@
               
               <div class="site-state-item site-state-tags">
                 <a href="/tags/index.html">
-                  <span class="site-state-item-count">3</span>
+                  <span class="site-state-item-count">4</span>
                   <span class="site-state-item-name">tags</span>
                 </a>
               </div>
