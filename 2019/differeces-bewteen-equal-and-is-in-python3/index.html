@@ -117,7 +117,7 @@
 <meta property="og:site_name" content="Protream&#39;s Blog">
 <meta property="og:description" content="== 和 is 的区别，这是个简单而又不那么简单的问题。对应 Python 老鸟来说，应该都能说出个大概，但应该没几个能把具体的细节说清楚。本文将深入源码（Python3.6）， 剖析 == 和 is 的底层实现细节。">
 <meta property="og:locale" content="zh-CN">
-<meta property="og:updated_time" content="2019-04-26T11:06:46.714Z">
+<meta property="og:updated_time" content="2019-04-26T11:19:09.870Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="深入 Python —— == 和 is 的区别">
 <meta name="twitter:description" content="== 和 is 的区别，这是个简单而又不那么简单的问题。对应 Python 老鸟来说，应该都能说出个大概，但应该没几个能把具体的细节说清楚。本文将深入源码（Python3.6）， 剖析 == 和 is 的底层实现细节。">
@@ -409,10 +409,10 @@
 <h2 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h2><p>本文深入源码，剖析了 is 和 == 的区别和联系，总的来说就是：</p>
 <ul>
 <li>is 比较的是俩个对象内存地址是不是一样，即是否是同一个对象</li>
-<li>== 是 richcompare 的一种，比较的结果由 tp_richcompare 来决定及对象的之间的关系决定（是否继承）</li>
+<li>== 是 richcompare 的一种，除非对象的类型重写了 tp_richcompare，否则默认的 == 比较的也是俩个对象的内存地址，和 is 一致</li>
 </ul>
-<p>此外，也剖析了基类 object 中提供的默认 tp_richcompare，其他内置类型 Python 都有默认实现，这个再另写一篇文章介绍吧。</p>
-<p>与 Python2 相比，整个比较的逻辑是做了简化的，这里就不剖析 Python2 了，只提一点，Python2 中用户是可以通过重写 <strong>cmp</strong> 方法来决定对象之间的比较逻辑的，从 Python 3.0.1 版本后，这个方法被移除了。</p>
+<p>Python 的常用内置类型如 int，string，list，dict 都有默认实现的 tp_richcompare 实现，这个可以另写一篇文章介绍了。</p>
+<p>此外，与 Python2 相比，整个比较的逻辑是做了简化的，这里就不剖析 Python2 了，只提一点，Python2 中用户是可以通过重写 <strong>cmp</strong> 方法来决定对象之间的比较逻辑的，从 Python 3.0.1 版本后，这个方法被移除了。</p>
 
       
     </div>
