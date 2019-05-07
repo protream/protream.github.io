@@ -112,18 +112,19 @@
 <meta name="description" content="“Memory management is where the rubber meets the road – if we do the wrong thing at any level, the results will not be good. And if we don’t make the levels work well together, we are in serious trou">
 <meta name="keywords" content="深入python,源码笔记">
 <meta property="og:type" content="article">
-<meta property="og:title" content="深入 Python —— Python 是如何管理内存的">
+<meta property="og:title" content="深入 Python —— Python 是如何管理内存的（上）">
 <meta property="og:url" content="https://protream.com/2019/how-python-manage-memory/index.html">
 <meta property="og:site_name" content="Protream&#39;s Blog">
 <meta property="og:description" content="“Memory management is where the rubber meets the road – if we do the wrong thing at any level, the results will not be good. And if we don’t make the levels work well together, we are in serious trou">
 <meta property="og:locale" content="zh-Hans">
 <meta property="og:image" content="http://pq2571f3k.bkt.clouddn.com/python-mem-1.png">
+<meta property="og:image" content="http://pq2571f3k.bkt.clouddn.com/python-mem-5.png">
 <meta property="og:image" content="http://pq2571f3k.bkt.clouddn.com/python-mem-2.png">
 <meta property="og:image" content="http://pq2571f3k.bkt.clouddn.com/python-mem-3.png">
 <meta property="og:image" content="http://pq2571f3k.bkt.clouddn.com/python-mem-4.png">
-<meta property="og:updated_time" content="2019-05-07T09:54:32.370Z">
+<meta property="og:updated_time" content="2019-05-07T10:04:36.070Z">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:title" content="深入 Python —— Python 是如何管理内存的">
+<meta name="twitter:title" content="深入 Python —— Python 是如何管理内存的（上）">
 <meta name="twitter:description" content="“Memory management is where the rubber meets the road – if we do the wrong thing at any level, the results will not be good. And if we don’t make the levels work well together, we are in serious trou">
 <meta name="twitter:image" content="http://pq2571f3k.bkt.clouddn.com/python-mem-1.png">
 
@@ -161,7 +162,7 @@
 
 
 
-  <title>深入 Python —— Python 是如何管理内存的 | Protream's Blog</title>
+  <title>深入 Python —— Python 是如何管理内存的（上） | Protream's Blog</title>
   
 
 
@@ -295,7 +296,7 @@
 
         
         
-          <h1 class="post-title" itemprop="name headline">深入 Python —— Python 是如何管理内存的</h1>
+          <h1 class="post-title" itemprop="name headline">深入 Python —— Python 是如何管理内存的（上）</h1>
         
 
         <div class="post-meta">
@@ -393,10 +394,11 @@
 <figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* 回收 p 指向的 block */</span></span><br><span class="line">*(block **)p = lastfree = pool-&gt;freeblock;</span><br><span class="line">pool-&gt;freeblock = (block *)p;</span><br></pre></td></tr></table></figure>
 <p>这样 freeblock 就形成了一个特殊的链表结构。</p>
 <p>某一时刻一个处于 <em>used</em> 状态的 pool 的可能的内存分布图：</p>
-<p><img src="http://pq2571f3k.bkt.clouddn.com/python-mem-2.png" alt></p>
+<p><img src="http://pq2571f3k.bkt.clouddn.com/python-mem-5.png" alt></p>
 <h2 id="usedpools"><a href="#usedpools" class="headerlink" title="usedpools"></a>usedpools</h2><p>所有处于 <code>used</code> 状态的 pool 都是通过 <code>usedpools</code> —— 一个特殊的数组管理的，前面没有介绍的 <code>szidx</code> 在这里排上用场了。我们已经知道 <code>szidx</code> 的取值范围是 [0, 31]，Python 会初始化一个特殊的数组存放所有处于 used 状态的 pool，这个数组的定义如下：</p>
 <figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="meta-keyword">define</span> SMALL_REQUEST_THRESHOLD 256</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">define</span> NB_SMALL_SIZE_CLASSES   (SMALL_REQUEST_THRESHOLD / ALIGNMENT)  <span class="comment">/* 256 / 8 = 32 */</span></span></span><br><span class="line"></span><br><span class="line"><span class="meta">#<span class="meta-keyword">define</span> PTA(x)  ((poolp )((uchar *)&amp;(usedpools[2*(x)]) - 2*sizeof(block *)))</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">define</span> PT(x)   PTA(x), PTA(x)</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">static</span> poolp usedpools[<span class="number">2</span> * ((NB_SMALL_SIZE_CLASSES + <span class="number">7</span>) / <span class="number">8</span>) * <span class="number">8</span>] = &#123;</span><br><span class="line">    PT(<span class="number">0</span>), PT(<span class="number">1</span>), PT(<span class="number">2</span>), PT(<span class="number">3</span>), PT(<span class="number">4</span>), PT(<span class="number">5</span>), PT(<span class="number">6</span>), PT(<span class="number">7</span>)</span><br><span class="line">#<span class="keyword">if</span> NB_SMALL_SIZE_CLASSES &gt; <span class="number">8</span></span><br><span class="line">    , PT(<span class="number">8</span>), PT(<span class="number">9</span>), PT(<span class="number">10</span>), PT(<span class="number">11</span>), PT(<span class="number">12</span>), PT(<span class="number">13</span>), PT(<span class="number">14</span>), PT(<span class="number">15</span>)</span><br><span class="line">#<span class="keyword">if</span> NB_SMALL_SIZE_CLASSES &gt; <span class="number">16</span></span><br><span class="line">    , PT(<span class="number">16</span>), PT(<span class="number">17</span>), PT(<span class="number">18</span>), PT(<span class="number">19</span>), PT(<span class="number">20</span>), PT(<span class="number">21</span>), PT(<span class="number">22</span>), PT(<span class="number">23</span>)</span><br><span class="line">#<span class="keyword">if</span> NB_SMALL_SIZE_CLASSES &gt; <span class="number">24</span></span><br><span class="line">    , PT(<span class="number">24</span>), PT(<span class="number">25</span>), PT(<span class="number">26</span>), PT(<span class="number">27</span>), PT(<span class="number">28</span>), PT(<span class="number">29</span>), PT(<span class="number">30</span>), PT(<span class="number">31</span>)</span><br><span class="line">#endif <span class="comment">/* NB_SMALL_SIZE_CLASSES &gt; 24 */</span></span><br><span class="line">#endif <span class="comment">/* NB_SMALL_SIZE_CLASSES &gt; 16 */</span></span><br><span class="line">#endif <span class="comment">/* NB_SMALL_SIZE_CLASSES &gt;  8 */</span></span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
 <p>这个数组的设计很巧妙，我们结合图片来看，下面是 <code>usedpools</code> 初始化后的内存布局：</p>
+<p><img src="http://pq2571f3k.bkt.clouddn.com/python-mem-2.png" alt></p>
 <p>每个元素的初始化值为相应 szidx 在数组中的开始位置向前偏移 2 个 sizeof(block <em>) 的距离，也就是图中 2 个方块的距离。<br>如果需要检查是否有 szidx 为 1 处于 used 状态的 pool，我们来到  usedpools[1 + 1]，也就是图中的 p，如果把 p 当做 pool_head 指针，那么 nextpool 就是 szidx 为 2 的第一个内存块，因为 p 到 nextpool 之间间隔的俩块内存大小为 `2</em>sizeof(block *)`，正好抵消了</p>
 <figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">union</span> &#123; block *_padding; uint count; &#125; ref;</span><br><span class="line">block *freeblock;</span><br></pre></td></tr></table></figure>
 <p>占用的内存，这里存放的正是 p ！这时候 p-&gt;nextpool 与 usedpools[1 + 1] 是相等的，也就是说 szidx 为 1 还没有对应的处于 used 状态的 pool。</p>
@@ -482,7 +484,7 @@
   </li>
   <li class="post-copyright-link">
     <strong>本文链接：</strong>
-    <a href="https://protream.com/2019/how-python-manage-memory/" title="深入 Python —— Python 是如何管理内存的">https://protream.com/2019/how-python-manage-memory/</a>
+    <a href="https://protream.com/2019/how-python-manage-memory/" title="深入 Python —— Python 是如何管理内存的（上）">https://protream.com/2019/how-python-manage-memory/</a>
   </li>
   <li class="post-copyright-license">
     <strong>版权声明： </strong>
