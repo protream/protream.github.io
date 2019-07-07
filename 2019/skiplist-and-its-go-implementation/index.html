@@ -1,0 +1,852 @@
+<!DOCTYPE html>
+
+
+
+  
+
+
+<html class="theme-next pisces use-motion" lang="zh-Hans">
+<head><meta name="generator" content="Hexo 3.8.0">
+  <meta charset="UTF-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<meta name="theme-color" content="#222">
+
+
+
+
+
+
+  
+  
+  <link rel="stylesheet" media="all" href="/lib/Han/dist/han.min.css?v=3.3">
+
+
+
+
+<meta http-equiv="Cache-Control" content="no-transform">
+<meta http-equiv="Cache-Control" content="no-siteapp">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+  <link href="/lib/fancybox/source/jquery.fancybox.css?v=2.1.5" rel="stylesheet" type="text/css">
+
+
+
+
+  
+  
+  
+  
+
+  
+    
+    
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+    
+    
+    <link href="https://fonts.googleapis.com/css?family=Droid+Serif:400,700/css?family=Droid Serif:300,300italic,400,400italic,700,700italic&subset=latin,latin-ext" rel="stylesheet" type="text/css">
+  
+
+
+
+
+
+
+<link href="/lib/font-awesome/css/font-awesome.min.css?v=4.6.2" rel="stylesheet" type="text/css">
+
+<link href="/css/main.css?v=5.1.4" rel="stylesheet" type="text/css">
+
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png?v=5.1.4">
+
+
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png?v=5.1.4">
+
+
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png?v=5.1.4">
+
+
+  <link rel="mask-icon" href="/images/logo.svg?v=5.1.4" color="#222">
+
+
+
+
+
+  <meta name="keywords" content="数据结构,go,">
+
+
+
+
+
+
+
+
+
+
+<meta name="description" content="简介跳跃表是一种可以用来替代平衡树的数据结构，Redis 中的有序集合（zset）就是用跳跃表来做排序的，在 leveldb 中也能看到跳跃表的身影。本文介绍跳跃表的基本原理，然后用 Go 完成一个简单的实现。">
+<meta name="keywords" content="数据结构,go">
+<meta property="og:type" content="article">
+<meta property="og:title" content="跳跃表（skiplist）及其 Go 实现">
+<meta property="og:url" content="https://protream.com/2019/skiplist-and-its-go-implementation/index.html">
+<meta property="og:site_name" content="Protream&#39;s Blog">
+<meta property="og:description" content="简介跳跃表是一种可以用来替代平衡树的数据结构，Redis 中的有序集合（zset）就是用跳跃表来做排序的，在 leveldb 中也能看到跳跃表的身影。本文介绍跳跃表的基本原理，然后用 Go 完成一个简单的实现。">
+<meta property="og:locale" content="zh-Hans">
+<meta property="og:image" content="https://protream-blog.oss-cn-hangzhou.aliyuncs.com/skiplist/skiplist_1.jpg?Expires=1562474517&OSSAccessKeyId=TMP.hVkw6Gnhw8ZMtuosgXFXPvpMQVTrhHDL9cEs4B6kfkUTPY4WKk51pV34hiHjMP4SDFDA9c4mSaqQ9cctYengzE5Wx7Vwc7iAsK1UXC7NtoBbpps1i1nK7SuacuPj4F.tmp&Signature=F8Sgz8enlH%2Fl8Nf1s8SDN1Y7Nko%3D">
+<meta property="og:image" content="https://protream-blog.oss-cn-hangzhou.aliyuncs.com/skiplist/skiplist_2.jpg?Expires=1562474765&OSSAccessKeyId=TMP.hVkw6Gnhw8ZMtuosgXFXPvpMQVTrhHDL9cEs4B6kfkUTPY4WKk51pV34hiHjMP4SDFDA9c4mSaqQ9cctYengzE5Wx7Vwc7iAsK1UXC7NtoBbpps1i1nK7SuacuPj4F.tmp&Signature=Fo7dYjuWCdBVvZafysI%2BdIRVe%2Bc%3D">
+<meta property="og:image" content="https://protream-blog.oss-cn-hangzhou.aliyuncs.com/skiplist/skiplist_3.jpg?Expires=1562474830&OSSAccessKeyId=TMP.hVkw6Gnhw8ZMtuosgXFXPvpMQVTrhHDL9cEs4B6kfkUTPY4WKk51pV34hiHjMP4SDFDA9c4mSaqQ9cctYengzE5Wx7Vwc7iAsK1UXC7NtoBbpps1i1nK7SuacuPj4F.tmp&Signature=RXfpqCnwP6hzhJqunQNkJJgzJ6Q%3D">
+<meta property="og:image" content="https://protream-blog.oss-cn-hangzhou.aliyuncs.com/skiplist/skiplist_4.jpg?Expires=1562474878&OSSAccessKeyId=TMP.hVkw6Gnhw8ZMtuosgXFXPvpMQVTrhHDL9cEs4B6kfkUTPY4WKk51pV34hiHjMP4SDFDA9c4mSaqQ9cctYengzE5Wx7Vwc7iAsK1UXC7NtoBbpps1i1nK7SuacuPj4F.tmp&Signature=2UWnRAp2TzMDAvj7H3GWqvAAMnU%3D">
+<meta property="og:image" content="https://protream-blog.oss-cn-hangzhou.aliyuncs.com/skiplist/skiplist_5.jpg?Expires=1562474899&OSSAccessKeyId=TMP.hVkw6Gnhw8ZMtuosgXFXPvpMQVTrhHDL9cEs4B6kfkUTPY4WKk51pV34hiHjMP4SDFDA9c4mSaqQ9cctYengzE5Wx7Vwc7iAsK1UXC7NtoBbpps1i1nK7SuacuPj4F.tmp&Signature=gR%2Bu%2F8Bufwr1SOytVMd1ioHo4yQ%3D">
+<meta property="og:updated_time" content="2019-07-07T03:56:20.248Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="跳跃表（skiplist）及其 Go 实现">
+<meta name="twitter:description" content="简介跳跃表是一种可以用来替代平衡树的数据结构，Redis 中的有序集合（zset）就是用跳跃表来做排序的，在 leveldb 中也能看到跳跃表的身影。本文介绍跳跃表的基本原理，然后用 Go 完成一个简单的实现。">
+<meta name="twitter:image" content="https://protream-blog.oss-cn-hangzhou.aliyuncs.com/skiplist/skiplist_1.jpg?Expires=1562474517&OSSAccessKeyId=TMP.hVkw6Gnhw8ZMtuosgXFXPvpMQVTrhHDL9cEs4B6kfkUTPY4WKk51pV34hiHjMP4SDFDA9c4mSaqQ9cctYengzE5Wx7Vwc7iAsK1UXC7NtoBbpps1i1nK7SuacuPj4F.tmp&Signature=F8Sgz8enlH%2Fl8Nf1s8SDN1Y7Nko%3D">
+
+
+
+<script type="text/javascript" id="hexo.configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Pisces',
+    version: '5.1.4',
+    sidebar: {"position":"left","display":"post","offset":12,"b2t":false,"scrollpercent":false,"onmobile":false},
+    fancybox: true,
+    tabs: true,
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    duoshuo: {
+      userId: '0',
+      author: '博主'
+    },
+    algolia: {
+      applicationID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    }
+  };
+</script>
+
+
+
+  <link rel="canonical" href="https://protream.com/2019/skiplist-and-its-go-implementation/">
+
+
+
+
+
+  <title>跳跃表（skiplist）及其 Go 实现 | Protream's Blog</title>
+  
+
+
+
+
+
+
+
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" lang="zh-Hans">
+
+  
+  
+    
+  
+
+  <div class="container sidebar-position-left page-post-detail">
+    <div class="headband"></div>
+
+    <header id="header" class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-wrapper">
+  <div class="site-meta ">
+    
+
+    <div class="custom-logo-site-title">
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Protream's Blog</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+      
+        <p class="site-subtitle"></p>
+      
+  </div>
+
+  <div class="site-nav-toggle">
+    <button>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+    </button>
+  </div>
+</div>
+
+<nav class="site-nav">
+  
+
+  
+    <ul id="menu" class="menu">
+      
+        
+        <li class="menu-item menu-item-home">
+          <a href="/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-home"></i> <br>
+            
+            首页
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-archives">
+          <a href="/archives/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-archive"></i> <br>
+            
+            归档
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-tags">
+          <a href="/tags/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-tags"></i> <br>
+            
+            标签
+          </a>
+        </li>
+      
+
+      
+    </ul>
+  
+
+  
+</nav>
+
+
+
+ </div>
+    </header>
+
+    <main id="main" class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          <div id="content" class="content">
+            
+
+  <div id="posts" class="posts-expand">
+    
+
+  
+
+  
+  
+  
+
+  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="https://protream.com/2019/skiplist-and-its-go-implementation/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="protream">
+      <meta itemprop="description" content>
+      <meta itemprop="image" content="/images/avatar.gif">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Protream's Blog">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">跳跃表（skiplist）及其 Go 实现</h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+              <time title="创建于" itemprop="dateCreated datePublished" datetime="2019-05-01T11:49:51+08:00">
+                2019-05-01
+              </time>
+            
+
+            
+
+            
+          </span>
+
+          
+
+          
+            
+              <span class="post-comments-count">
+                <span class="post-meta-divider">|</span>
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-comment-o"></i>
+                </span>
+                <a href="/2019/skiplist-and-its-go-implementation/#comments" itemprop="discussionUrl">
+                  <span class="post-comments-count gitment-comments-count" data-xid="/2019/skiplist-and-its-go-implementation/" itemprop="commentsCount"></span>
+                </a>
+              </span>
+            
+          
+
+          
+          
+
+          
+
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body han-init-context" itemprop="articleBody">
+
+      
+      
+
+      
+        <h2 id="简介"><a href="#简介" class="headerlink" title="简介"></a>简介</h2><p>跳跃表是一种可以用来替代平衡树的数据结构，Redis 中的有序集合（zset）就是用跳跃表来做排序的，在 leveldb 中也能看到跳跃表的身影。本文介绍跳跃表的基本原理，然后用 Go 完成一个简单的实现。</p>
+<a id="more"></a>
+<p>下面的图片展示了一个典型的跳跃表：</p>
+<p><img src="https://protream-blog.oss-cn-hangzhou.aliyuncs.com/skiplist/skiplist_1.jpg?Expires=1562474517&amp;OSSAccessKeyId=TMP.hVkw6Gnhw8ZMtuosgXFXPvpMQVTrhHDL9cEs4B6kfkUTPY4WKk51pV34hiHjMP4SDFDA9c4mSaqQ9cctYengzE5Wx7Vwc7iAsK1UXC7NtoBbpps1i1nK7SuacuPj4F.tmp&amp;Signature=F8Sgz8enlH%2Fl8Nf1s8SDN1Y7Nko%3D" alt></p>
+<p>跳跃表通过每个节点多出来的随机个数的前进指针达到加快数据检索的目的。与平衡树严格是时间复杂度不同，跳跃表的这种加速是基于概率的，虽然最坏的情况要比平衡树略差，但总体的平均复杂度也能达到 O(logn)。下面是跳跃表在各个操作上与不同实现的平衡树的比较：</p>
+<p><img src="https://protream-blog.oss-cn-hangzhou.aliyuncs.com/skiplist/skiplist_2.jpg?Expires=1562474765&amp;OSSAccessKeyId=TMP.hVkw6Gnhw8ZMtuosgXFXPvpMQVTrhHDL9cEs4B6kfkUTPY4WKk51pV34hiHjMP4SDFDA9c4mSaqQ9cctYengzE5Wx7Vwc7iAsK1UXC7NtoBbpps1i1nK7SuacuPj4F.tmp&amp;Signature=Fo7dYjuWCdBVvZafysI%2BdIRVe%2Bc%3D" alt></p>
+<p>虽然检索效率比平衡树略差，但跳跃表具有以下优点：</p>
+<ul>
+<li>插入、删除要比平衡树块</li>
+<li>实现简单</li>
+<li>更节省空间</li>
+<li>更容易拓展</li>
+</ul>
+<p>以自平衡树红黑树为例，除了需要俩个子节点指针外还需要记录颜色，而跳跃表可以通过调整概率因子 p 使额外空间的使用小于红黑树。Redis 中的跳跃表实现就是做了拓展以支持双向检索等目的，类似的需求在红黑树中就不太好实现了。</p>
+<p>下面使用 Go 完成一个简单的实现。</p>
+<h2 id="接口设计"><a href="#接口设计" class="headerlink" title="接口设计"></a>接口设计</h2><p>下面是我这个跳跃表要有的特性和接口：</p>
+<ol>
+<li>键类型定义为 <code>float64</code>，值支持任意类型</li>
+<li>检索（Search）：存在返回包含键值的元素和 true，不存在返回 nil 和 false</li>
+<li>插入（Insert)</li>
+<li>删除（Delete）</li>
+<li>获取长度（Len）</li>
+<li>迭代（Front，Next)</li>
+</ol>
+<p>将这些写成 ExampleTest：</p>
+<figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">package</span> skiplist_test</span><br><span class="line"></span><br><span class="line"><span class="keyword">import</span> (</span><br><span class="line">	<span class="string">"fmt"</span></span><br><span class="line"></span><br><span class="line">	<span class="string">"github.com/protream/go-datastructures/skiplist"</span></span><br><span class="line">)</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">ExampleSkipList</span><span class="params">()</span></span> &#123;</span><br><span class="line">	sl := skiplist.New()</span><br><span class="line"></span><br><span class="line">	sl.Insert(<span class="keyword">float64</span>(<span class="number">100</span>), <span class="string">"foo"</span>)</span><br><span class="line"></span><br><span class="line">	e, ok := sl.Search(<span class="keyword">float64</span>(<span class="number">100</span>))</span><br><span class="line">	fmt.Println(ok)</span><br><span class="line">	fmt.Println(e.Value)</span><br><span class="line">	e, ok = sl.Search(<span class="keyword">float64</span>(<span class="number">200</span>))</span><br><span class="line">	fmt.Println(ok)</span><br><span class="line">	fmt.Println(e)</span><br><span class="line"></span><br><span class="line">	sl.Insert(<span class="keyword">float64</span>(<span class="number">20.5</span>), <span class="string">"bar"</span>)</span><br><span class="line">	sl.Insert(<span class="keyword">float64</span>(<span class="number">50</span>), <span class="string">"spam"</span>)</span><br><span class="line">	sl.Insert(<span class="keyword">float64</span>(<span class="number">20</span>), <span class="number">42</span>)</span><br><span class="line"></span><br><span class="line">	fmt.Println(sl.Len())</span><br><span class="line">	e = sl.Delete(<span class="keyword">float64</span>(<span class="number">50</span>))</span><br><span class="line">	fmt.Println(e.Value)</span><br><span class="line">	fmt.Println(sl.Len())</span><br><span class="line"></span><br><span class="line">	<span class="keyword">for</span> e := sl.Front(); e != <span class="literal">nil</span>; e = e.Next() &#123;</span><br><span class="line">		fmt.Println(e.Value)</span><br><span class="line">	&#125;</span><br><span class="line">	<span class="comment">// Output:</span></span><br><span class="line">	<span class="comment">// true</span></span><br><span class="line">	<span class="comment">// foo</span></span><br><span class="line">	<span class="comment">// false</span></span><br><span class="line">	<span class="comment">// &lt;nil&gt;</span></span><br><span class="line">	<span class="comment">// 4</span></span><br><span class="line">	<span class="comment">// spam</span></span><br><span class="line">	<span class="comment">// 3</span></span><br><span class="line">	<span class="comment">// 42</span></span><br><span class="line">	<span class="comment">// bar</span></span><br><span class="line">	<span class="comment">// foo</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h2 id="定义"><a href="#定义" class="headerlink" title="定义"></a>定义</h2><p>首先定义俩个常量，maxLevel 表示元素最多可以有多少个向前的指针，它决定了跳跃表的容量。p 是一个概率因子，它决定了随机生成 level 的大小分布。</p>
+<figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">const</span> (</span><br><span class="line">	maxLevel <span class="keyword">int</span>     = <span class="number">16</span>	<span class="comment">// Should be enough for 2^16 elements</span></span><br><span class="line">	p        <span class="keyword">float32</span> = <span class="number">0.25</span></span><br><span class="line">)</span><br></pre></td></tr></table></figure>
+<p>p 的取值对检索时间和节点向前指针个数影响如图：</p>
+<p><img src="https://protream-blog.oss-cn-hangzhou.aliyuncs.com/skiplist/skiplist_3.jpg?Expires=1562474830&amp;OSSAccessKeyId=TMP.hVkw6Gnhw8ZMtuosgXFXPvpMQVTrhHDL9cEs4B6kfkUTPY4WKk51pV34hiHjMP4SDFDA9c4mSaqQ9cctYengzE5Wx7Vwc7iAsK1UXC7NtoBbpps1i1nK7SuacuPj4F.tmp&amp;Signature=RXfpqCnwP6hzhJqunQNkJJgzJ6Q%3D" alt></p>
+<p>现在定义一下跳跃表的节点。Score 存放可排序键，Value 存放键对应的值，forward 存放向前的指针列表，forward 的长度是插入元素随机生成的长度。</p>
+<figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// Element is an Element of a skiplist.</span></span><br><span class="line"><span class="keyword">type</span> Element <span class="keyword">struct</span> &#123;</span><br><span class="line">	Score   <span class="keyword">float64</span></span><br><span class="line">	Value   <span class="keyword">interface</span>&#123;&#125;</span><br><span class="line">	forward []*Element</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">newElement</span><span class="params">(score <span class="keyword">float64</span>, value <span class="keyword">interface</span>&#123;&#125;, level <span class="keyword">int</span>)</span> *<span class="title">Element</span></span> &#123;</span><br><span class="line">	<span class="keyword">return</span> &amp;Element&#123;</span><br><span class="line">		Score:   score,</span><br><span class="line">		Value:   value,</span><br><span class="line">		forward: <span class="built_in">make</span>([]*Element, level),</span><br><span class="line">	&#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>再来定义跳跃表。header 是一个哑节点，作用和单链表的哑节点一样，方便操作，len 记录当前元素个数，level 记录当前所有元素最大 level。</p>
+<figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// SkipList represents a skiplist.</span></span><br><span class="line"><span class="comment">// The zero value from SkipList is an empty skiplist ready to use.</span></span><br><span class="line"><span class="keyword">type</span> SkipList <span class="keyword">struct</span> &#123;</span><br><span class="line">	header *Element <span class="comment">// header is a dummy element</span></span><br><span class="line">	<span class="built_in">len</span>    <span class="keyword">int</span>      <span class="comment">// current skiplist length，header not included</span></span><br><span class="line">	level  <span class="keyword">int</span>      <span class="comment">// current skiplist level，header not included</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// New returns a new empty SkipList.</span></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">New</span><span class="params">()</span> *<span class="title">SkipList</span></span> &#123;</span><br><span class="line">	<span class="keyword">return</span> &amp;SkipList&#123;</span><br><span class="line">		header: &amp;Element&#123;forward: <span class="built_in">make</span>([]*Element, maxLevel)&#125;,</span><br><span class="line">	&#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>需要一个生成随机 level 的函数：</p>
+<figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">randomLevel</span><span class="params">()</span> <span class="title">int</span></span> &#123;</span><br><span class="line">	level := <span class="number">1</span></span><br><span class="line">	<span class="keyword">for</span> rand.Float32() &lt; p &amp;&amp; level &lt; maxLevel &#123;</span><br><span class="line">		level++</span><br><span class="line">	&#125;</span><br><span class="line">	<span class="keyword">return</span> level</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h3 id="迭代"><a href="#迭代" class="headerlink" title="迭代"></a>迭代</h3><p>要支持这样的迭代访问需要实现 Front 和 Next 方法。</p>
+<figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">for</span> e := sl.Front(); e != <span class="literal">nil</span>; e = e.Next() &#123;</span><br><span class="line">    ...</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>如过只看 forward 的 0 层，相当于是在迭代一个单链表，很好写：</p>
+<figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// Front returns first element in the skiplist which maybe nil.</span></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="params">(sl *SkipList)</span> <span class="title">Front</span><span class="params">()</span> *<span class="title">Element</span></span> &#123;</span><br><span class="line">	<span class="keyword">return</span> sl.header.forward[<span class="number">0</span>]</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// Next returns first element after e.</span></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="params">(e *Element)</span> <span class="title">Next</span><span class="params">()</span> *<span class="title">Element</span></span> &#123;</span><br><span class="line">	<span class="keyword">if</span> e != <span class="literal">nil</span> &#123;</span><br><span class="line">		<span class="keyword">return</span> e.forward[<span class="number">0</span>]</span><br><span class="line">	&#125;</span><br><span class="line">	<span class="keyword">return</span> <span class="literal">nil</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h2 id="检索"><a href="#检索" class="headerlink" title="检索"></a>检索</h2><p>检索是从跳跃表当前最大 level 由高到低进行的。以检索 17 的过程为例：</p>
+<p><img src="https://protream-blog.oss-cn-hangzhou.aliyuncs.com/skiplist/skiplist_4.jpg?Expires=1562474878&amp;OSSAccessKeyId=TMP.hVkw6Gnhw8ZMtuosgXFXPvpMQVTrhHDL9cEs4B6kfkUTPY4WKk51pV34hiHjMP4SDFDA9c4mSaqQ9cctYengzE5Wx7Vwc7iAsK1UXC7NtoBbpps1i1nK7SuacuPj4F.tmp&amp;Signature=2UWnRAp2TzMDAvj7H3GWqvAAMnU%3D" alt></p>
+<ol>
+<li>从当前最高层也就是第 4 层开始，找到这一层最后一个小于 17 的元素，这里是 6</li>
+<li>来到 6 所在元素，层数减 1，找到这一层最后一个小于 17 的元素，这里是还是6</li>
+<li>层数减 1，重复上面的过程，找到第 0  层最后一个小于 17 的元素</li>
+</ol>
+<p>到这里显而易见，如果第 0  层最后一个小于 17 的元素的下一个元素就是我们要找的元素，当然，如果这个元素为 nil 或者 score 和要找的不相等，就说明要找的 score 不存在。</p>
+<figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line"><span class="comment">// Search the skiplist to findout element with the given score.</span></span><br><span class="line"><span class="comment">// Returns (*Element, true) if the given score present, otherwise returns (nil, false).</span></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="params">(sl *SkipList)</span> <span class="title">Search</span><span class="params">(score <span class="keyword">float64</span>)</span> <span class="params">(element *Element, ok <span class="keyword">bool</span>)</span></span> &#123;</span><br><span class="line">	x := sl.header</span><br><span class="line">	<span class="keyword">for</span> i := sl.level - <span class="number">1</span>; i &gt;= <span class="number">0</span>; i-- &#123;</span><br><span class="line">		<span class="keyword">for</span> x.forward[i] != <span class="literal">nil</span> &amp;&amp; x.forward[i].Score &lt; score &#123;</span><br><span class="line">			x = x.forward[i]</span><br><span class="line">		&#125;</span><br><span class="line">	&#125;</span><br><span class="line">	x = x.forward[<span class="number">0</span>]</span><br><span class="line">	<span class="keyword">if</span> x != <span class="literal">nil</span> &amp;&amp; x.Score == score &#123;</span><br><span class="line">		<span class="keyword">return</span> x, <span class="literal">true</span></span><br><span class="line">	&#125;</span><br><span class="line">	<span class="keyword">return</span> <span class="literal">nil</span>, <span class="literal">false</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h2 id="插入"><a href="#插入" class="headerlink" title="插入"></a>插入</h2><p>下面是插入 17 到跳跃表：</p>
+<p><img src="https://protream-blog.oss-cn-hangzhou.aliyuncs.com/skiplist/skiplist_5.jpg?Expires=1562474899&amp;OSSAccessKeyId=TMP.hVkw6Gnhw8ZMtuosgXFXPvpMQVTrhHDL9cEs4B6kfkUTPY4WKk51pV34hiHjMP4SDFDA9c4mSaqQ9cctYengzE5Wx7Vwc7iAsK1UXC7NtoBbpps1i1nK7SuacuPj4F.tmp&amp;Signature=gR%2Bu%2F8Bufwr1SOytVMd1ioHo4yQ%3D" alt></p>
+<p>插入首先要定位插入的点，这个过程和检索基本一样，不同的是，要记录每个 level 最后一个小于 17元素，因为插入点必然在这些元素后，它们 forward 需要更新，这里记录的地方就是 update，后面更新 update 里和待插入元素的指针就行了。这里的实现是不允许重复 score 的，如果 score 已经存在则替换为新的 value 值。</p>
+<figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// Insert (score, value) pair to the skiplist and returns pointer of element.</span></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="params">(sl *SkipList)</span> <span class="title">Insert</span><span class="params">(score <span class="keyword">float64</span>, value <span class="keyword">interface</span>&#123;&#125;)</span> *<span class="title">Element</span></span> &#123;</span><br><span class="line">	update := <span class="built_in">make</span>([]*Element, maxLevel)</span><br><span class="line">	x := sl.header</span><br><span class="line">	<span class="keyword">for</span> i := sl.level - <span class="number">1</span>; i &gt;= <span class="number">0</span>; i-- &#123;</span><br><span class="line">		<span class="keyword">for</span> x.forward[i] != <span class="literal">nil</span> &amp;&amp; x.forward[i].Score &lt; score &#123;</span><br><span class="line">			x = x.forward[i]</span><br><span class="line">		&#125;</span><br><span class="line">		update[i] = x</span><br><span class="line">	&#125;</span><br><span class="line">	x = x.forward[<span class="number">0</span>]</span><br><span class="line"></span><br><span class="line">	<span class="comment">// Score already presents, replace with new value then return</span></span><br><span class="line">	<span class="keyword">if</span> x != <span class="literal">nil</span> &amp;&amp; x.Score == score &#123;</span><br><span class="line">		x.Value = value</span><br><span class="line">		<span class="keyword">return</span> x</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	level := randomLevel()</span><br><span class="line">	<span class="keyword">if</span> level &gt; sl.level &#123;</span><br><span class="line">		level = sl.level + <span class="number">1</span></span><br><span class="line">		update[sl.level] = sl.header</span><br><span class="line">		sl.level = level</span><br><span class="line">	&#125;</span><br><span class="line">	e := newElement(score, value, level)</span><br><span class="line">	<span class="keyword">for</span> i := <span class="number">0</span>; i &lt; level; i++ &#123;</span><br><span class="line">		e.forward[i] = update[i].forward[i]</span><br><span class="line">		update[i].forward[i] = e</span><br><span class="line">	&#125;</span><br><span class="line">	sl.<span class="built_in">len</span>++</span><br><span class="line">	<span class="keyword">return</span> e</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h2 id="删除"><a href="#删除" class="headerlink" title="删除"></a>删除</h2><p>删除和插入非常相似并且还要简单一点。</p>
+<figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// Delete remove and return element with given score, return nil if element not present</span></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="params">(sl *SkipList)</span> <span class="title">Delete</span><span class="params">(score <span class="keyword">float64</span>)</span> *<span class="title">Element</span></span> &#123;</span><br><span class="line">	update := <span class="built_in">make</span>([]*Element, maxLevel)</span><br><span class="line">	x := sl.header</span><br><span class="line">	<span class="keyword">for</span> i := sl.level - <span class="number">1</span>; i &gt;= <span class="number">0</span>; i-- &#123;</span><br><span class="line">		<span class="keyword">for</span> x.forward[i] != <span class="literal">nil</span> &amp;&amp; x.forward[i].Score &lt; score &#123;</span><br><span class="line">			x = x.forward[i]</span><br><span class="line">		&#125;</span><br><span class="line">		update[i] = x</span><br><span class="line">	&#125;</span><br><span class="line">	x = x.forward[<span class="number">0</span>]</span><br><span class="line"></span><br><span class="line">	<span class="keyword">if</span> x != <span class="literal">nil</span> &amp;&amp; x.Score == score &#123;</span><br><span class="line">		<span class="keyword">for</span> i := <span class="number">0</span>; i &lt; sl.level; i++ &#123;</span><br><span class="line">			<span class="keyword">if</span> update[i].forward[i] != x &#123;</span><br><span class="line">				<span class="keyword">return</span> <span class="literal">nil</span></span><br><span class="line">			&#125;</span><br><span class="line">			update[i].forward[i] = x.forward[i]</span><br><span class="line">		&#125;</span><br><span class="line">		sl.<span class="built_in">len</span>--</span><br><span class="line">	&#125;</span><br><span class="line">	<span class="keyword">return</span> x</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h2 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h2><p>本文简单介绍了跳跃表并给出一个 Go 的实现。这个实现比较简单，也没有考虑并发安全，需要的话可以通过 <code>sync.RWLock</code> 来做。<br>更详细的介绍建议直接看 skiplist 的原论文：Skip Lists：A Probabilistic Alternative to Balanced Trees。</p>
+
+      
+    </div>
+    
+    
+    
+
+    
+
+    
+
+    
+      <div>
+        <ul class="post-copyright">
+  <li class="post-copyright-author">
+    <strong>本文作者：</strong>
+    protream
+  </li>
+  <li class="post-copyright-link">
+    <strong>本文链接：</strong>
+    <a href="https://protream.com/2019/skiplist-and-its-go-implementation/" title="跳跃表（skiplist）及其 Go 实现">https://protream.com/2019/skiplist-and-its-go-implementation/</a>
+  </li>
+  <li class="post-copyright-license">
+    <strong>版权声明： </strong>
+    本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/3.0/" rel="external nofollow" target="_blank">CC BY-NC-SA 3.0</a> 许可协议。转载请注明出处！
+  </li>
+</ul>
+
+      </div>
+    
+
+    <footer class="post-footer">
+      
+        <div class="post-tags">
+          
+            <a href="/tags/数据结构/" rel="tag"># 数据结构</a>
+          
+            <a href="/tags/go/" rel="tag"># go</a>
+          
+        </div>
+      
+
+      
+      
+      
+
+      
+        <div class="post-nav">
+          <div class="post-nav-next post-nav-item">
+            
+              <a href="/2019/differeces-bewteen-equal-and-is-in-python3/" rel="next" title="深入 Python —— == 和 is 的区别">
+                <i class="fa fa-chevron-left"></i> 深入 Python —— == 和 is 的区别
+              </a>
+            
+          </div>
+
+          <span class="post-nav-divider"></span>
+
+          <div class="post-nav-prev post-nav-item">
+            
+          </div>
+        </div>
+      
+
+      
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+
+    <div class="post-spread">
+      
+    </div>
+  </div>
+
+
+          </div>
+          
+
+
+          
+
+  
+    <div class="comments" id="comments">
+      
+        <div id="gitment-container"></div>
+      
+    </div>
+
+  
+
+
+
+        </div>
+        
+          
+  
+  <div class="sidebar-toggle">
+    <div class="sidebar-toggle-line-wrap">
+      <span class="sidebar-toggle-line sidebar-toggle-line-first"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-middle"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-last"></span>
+    </div>
+  </div>
+
+  <aside id="sidebar" class="sidebar">
+    
+    <div class="sidebar-inner">
+
+      
+
+      
+        <ul class="sidebar-nav motion-element">
+          <li class="sidebar-nav-toc sidebar-nav-active" data-target="post-toc-wrap">
+            文章目录
+          </li>
+          <li class="sidebar-nav-overview" data-target="site-overview-wrap">
+            站点概览
+          </li>
+        </ul>
+      
+
+      <section class="site-overview-wrap sidebar-panel">
+        <div class="site-overview">
+          <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+            
+              <p class="site-author-name" itemprop="name">protream</p>
+              <p class="site-description motion-element" itemprop="description"></p>
+          </div>
+
+          <nav class="site-state motion-element">
+
+            
+              <div class="site-state-item site-state-posts">
+              
+                <a href="/archives/">
+              
+                  <span class="site-state-item-count">6</span>
+                  <span class="site-state-item-name">日志</span>
+                </a>
+              </div>
+            
+
+            
+
+            
+              
+              
+              <div class="site-state-item site-state-tags">
+                <a href="/tags/index.html">
+                  <span class="site-state-item-count">6</span>
+                  <span class="site-state-item-name">标签</span>
+                </a>
+              </div>
+            
+
+          </nav>
+
+          
+
+          
+
+          
+          
+
+          
+          
+
+          
+
+        </div>
+      </section>
+
+      
+      <!--noindex-->
+        <section class="post-toc-wrap motion-element sidebar-panel sidebar-panel-active">
+          <div class="post-toc">
+
+            
+              
+            
+
+            
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#简介"><span class="nav-number">1.</span> <span class="nav-text">简介</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#接口设计"><span class="nav-number">2.</span> <span class="nav-text">接口设计</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#定义"><span class="nav-number">3.</span> <span class="nav-text">定义</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#迭代"><span class="nav-number">3.1.</span> <span class="nav-text">迭代</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#检索"><span class="nav-number">4.</span> <span class="nav-text">检索</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#插入"><span class="nav-number">5.</span> <span class="nav-text">插入</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#删除"><span class="nav-number">6.</span> <span class="nav-text">删除</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#总结"><span class="nav-number">7.</span> <span class="nav-text">总结</span></a></li></ol></div>
+            
+
+          </div>
+        </section>
+      <!--/noindex-->
+      
+
+      
+
+    </div>
+  </aside>
+
+
+        
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="footer-inner">
+        <div class="copyright">&copy; <span itemprop="copyrightYear">2019</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">protream</span>
+
+  
+</div>
+
+
+
+
+
+
+
+
+
+        
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+
+    
+      <div class="back-to-top">
+        <i class="fa fa-arrow-up"></i>
+        
+      </div>
+    
+
+    
+
+  </div>
+
+  
+
+<script type="text/javascript">
+  if (Object.prototype.toString.call(window.Promise) !== '[object Function]') {
+    window.Promise = null;
+  }
+</script>
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery/index.js?v=2.1.3"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/fastclick/lib/fastclick.min.js?v=1.0.6"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery_lazyload/jquery.lazyload.js?v=1.9.7"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.ui.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/fancybox/source/jquery.fancybox.pack.js?v=2.1.5"></script>
+  
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/utils.js?v=5.1.4"></script>
+
+  <script type="text/javascript" src="/js/src/motion.js?v=5.1.4"></script>
+
+
+
+  
+  
+
+
+  <script type="text/javascript" src="/js/src/affix.js?v=5.1.4"></script>
+
+  <script type="text/javascript" src="/js/src/schemes/pisces.js?v=5.1.4"></script>
+
+
+
+  
+  <script type="text/javascript" src="/js/src/scrollspy.js?v=5.1.4"></script>
+<script type="text/javascript" src="/js/src/post-details.js?v=5.1.4"></script>
+
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/bootstrap.js?v=5.1.4"></script>
+
+
+
+  
+
+
+  
+
+
+
+
+	
+
+
+
+
+
+  
+
+
+
+
+
+  
+
+
+
+
+
+
+
+<!-- LOCAL: You can save these files to your site and update links -->
+    
+        
+        <link rel="stylesheet" href="https://aimingoo.github.io/gitmint/style/default.css">
+        <script src="https://aimingoo.github.io/gitmint/dist/gitmint.browser.js"></script>
+    
+<!-- END LOCAL -->
+
+    
+      <style>
+        a.gitment-editor-footer-tip { display: none; }
+        .gitment-container.gitment-footer-container { display: none; }
+      </style>
+    
+
+    
+      <script type="text/javascript">
+      function renderGitment(){
+        var gitment = new Gitmint({
+            id: '1556682591000',
+            owner: 'protream',
+            repo: 'protream.github.io',
+            
+            lang: "zh-Hans" || navigator.language || navigator.systemLanguage || navigator.userLanguage,
+            
+            oauth: {
+            
+            
+                client_secret: '94704d765736de364f53ed4729658416c08aae64',
+            
+                client_id: '6595aa4383cfeb1b038e'
+            }});
+        gitment.render('gitment-container');
+      }
+
+      
+      renderGitment();
+      
+      </script>
+    
+
+
+
+
+
+
+
+  
+
+
+
+
+
+  
+
+  
+
+  
+
+  
+  
+
+  
+
+  
+
+  
+
+</body>
+</html>
