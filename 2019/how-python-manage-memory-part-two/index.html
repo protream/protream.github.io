@@ -117,13 +117,13 @@
 <meta property="og:site_name" content="Protream&#39;s Blog">
 <meta property="og:description" content="在上篇中，我介绍了 Python 运行时内存池的组织，创建一个对象需要的内存是如何从内存池这个大蛋糕中切出来的，以及对象被回收交还给内存池的一系列行为。上篇中提到的引用计数机制是 Python 垃圾回收机制的主要部分，Python 还引入了另外一套机制来解决引用计数解决不了的一个严重问题。本文详细剖析这套机制的工作原理和实现。">
 <meta property="og:locale" content="zh-Hans">
-<meta property="og:image" content="http://pq2571f3k.bkt.clouddn.com/gc_list.png">
-<meta property="og:image" content="http://pq2571f3k.bkt.clouddn.com/gc.png">
-<meta property="og:updated_time" content="2019-05-12T06:42:27.740Z">
+<meta property="og:image" content="https://protream-blog.oss-cn-hangzhou.aliyuncs.com/python_memery_manage/gc_list.png">
+<meta property="og:image" content="https://protream-blog.oss-cn-hangzhou.aliyuncs.com/python_memery_manage/gc.png">
+<meta property="og:updated_time" content="2019-09-04T07:58:54.128Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="深入 Python —— Python 是如何管理内存的 （下）">
 <meta name="twitter:description" content="在上篇中，我介绍了 Python 运行时内存池的组织，创建一个对象需要的内存是如何从内存池这个大蛋糕中切出来的，以及对象被回收交还给内存池的一系列行为。上篇中提到的引用计数机制是 Python 垃圾回收机制的主要部分，Python 还引入了另外一套机制来解决引用计数解决不了的一个严重问题。本文详细剖析这套机制的工作原理和实现。">
-<meta name="twitter:image" content="http://pq2571f3k.bkt.clouddn.com/gc_list.png">
+<meta name="twitter:image" content="https://protream-blog.oss-cn-hangzhou.aliyuncs.com/python_memery_manage/gc_list.png">
 
 
 
@@ -374,7 +374,7 @@
 <figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* GC 信息存放在每个容器对象的前面 */</span></span><br><span class="line"><span class="keyword">typedef</span> <span class="keyword">union</span> _gc_head &#123;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> &#123;</span></span><br><span class="line">        <span class="keyword">union</span> _gc_head *gc_next;</span><br><span class="line">        <span class="keyword">union</span> _gc_head *gc_prev;</span><br><span class="line">        Py_ssize_t gc_refs;</span><br><span class="line">    &#125; gc;</span><br><span class="line">    <span class="keyword">long</span> <span class="keyword">double</span> dummy;  <span class="comment">/* force worst-case alignment */</span></span><br><span class="line">&#125; PyGC_Head;</span><br></pre></td></tr></table></figure>
 <p>每个容器对象都带有这样一个头，Python 提供俩个宏用于容器对象指针和 PyGC_Head 之间进行切换：</p>
 <figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="meta-keyword">define</span> _Py_AS_GC(o) ((PyGC_Head *)(o)-1)</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">define</span> FROM_GC(g) ((PyObject *)(((PyGC_Head *)g)+1))</span></span><br></pre></td></tr></table></figure>
-<p><img src="http://pq2571f3k.bkt.clouddn.com/gc_list.png" alt></p>
+<p><img src="https://protream-blog.oss-cn-hangzhou.aliyuncs.com/python_memery_manage/gc_list.png" alt></p>
 <p>图中部分是原始的 PyObject，绿色部分是 PyGC_Head。</p>
 <p>下面是在这个容器对象组成的双链表上进行一次针对循环引用的垃圾回收的大致过程：</p>
 <ol>
@@ -385,7 +385,7 @@
 <li>现在所有不能被清除的对象移除后，剩下的这些对象可以认为只存在这些对象之间的相互引用（循环引用），我们可以清除这些对象了</li>
 </ol>
 <p>这套方法在垃圾回收领域的专业称呼叫标记清除（Mark and Sweep），它并不是 Python 创造的。其中标记指的是找出哪些对象是还在用的，哪些是垃圾，清除就是清除垃圾。还在用的对象被称为可达的（reachable），可回收的对象就是不可达的（unreachable）。<br>在 Python 的实现中 gc_refs 也充当了标记的角色。</p>
-<p><img src="http://pq2571f3k.bkt.clouddn.com/gc.png" alt></p>
+<p><img src="https://protream-blog.oss-cn-hangzhou.aliyuncs.com/python_memery_manage/gc.png" alt></p>
 <p>这个方案对于有析构方法（finalizers）的对象是存在一些问题的。定义了析构方法的的对象在 Python 中指的是对象定义了<code>__del__</code> 方法。在引用计数模式下，当对象应用计数变为零，在对象内存被释放前会先调用这个<code>__del__</code> 方法，这是没有问题的。但是在处理循环引用的 GC 模式下，析构方法就变得很难处理。考虑这样一种情况，如果俩个对象相互引用并且各自都有析构方法，那么在回收内存前我们要先调用哪一个呢？假设先调用了一个，第一个对象被释放，如果第二个对象的析构方法中还需要用到第一个对象怎么办？</p>
 <p>这又是一个不得不考虑的 Edge Case，这种情况理论上可能发生，实际上极少发生，原则上不应该发生。很遗憾 Python 也没有解决方法，目前的做法是包含析构方法的对象也不会被释放。在 Python 看来，如果发生这种情况那完全是程序员的锅，最好是通过修改代码解决。</p>
 <h2 id="解决方案的优化"><a href="#解决方案的优化" class="headerlink" title="解决方案的优化"></a>解决方案的优化</h2><p>上述的方案解决了循环引用的问题，但是带来了额外的时空开销，而且随着创建的容器对象越来越多，这个开销会越来越大。为了尽可能降低这套方案对 Python 整体性能的影响，Python 在此基础了做一些优化，总的策略是：</p>
