@@ -109,21 +109,21 @@
 
 
 
-<meta name="description" content="锁是用来使对共享资源的并发访问有序化的。 准备工作 创建测试数据  123CREATE TABLE users (id int, username text);INSERT INTO users (id, username) VALUES (1, &apos;igor&apos;), (2, &apos;bob&apos;), (3, &apos;john&apos;), (4, &apos;susan&apos;);SELECT * FROM users;   为了便于观察">
+<meta name="description" content="锁是用来使对共享资源的并发访问有序化的。">
 <meta name="keywords" content="postgres,技术笔记">
 <meta property="og:type" content="article">
 <meta property="og:title" content="PostgreSQL 锁机制浅析">
 <meta property="og:url" content="https://protream.com/2021/postgresql-locks/index.html">
 <meta property="og:site_name" content="Protream&#39;s Blog">
-<meta property="og:description" content="锁是用来使对共享资源的并发访问有序化的。 准备工作 创建测试数据  123CREATE TABLE users (id int, username text);INSERT INTO users (id, username) VALUES (1, &apos;igor&apos;), (2, &apos;bob&apos;), (3, &apos;john&apos;), (4, &apos;susan&apos;);SELECT * FROM users;   为了便于观察">
+<meta property="og:description" content="锁是用来使对共享资源的并发访问有序化的。">
 <meta property="og:locale" content="zh-Hans">
 <meta property="og:image" content="https://protream-blog.oss-cn-hangzhou.aliyuncs.com/postgres/example.png">
 <meta property="og:image" content="https://protream-blog.oss-cn-hangzhou.aliyuncs.com/postgres/table-locks.png">
 <meta property="og:image" content="https://protream-blog.oss-cn-hangzhou.aliyuncs.com/postgres/row-locks.png">
-<meta property="og:updated_time" content="2021-03-19T02:29:47.800Z">
+<meta property="og:updated_time" content="2021-03-19T02:34:29.362Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="PostgreSQL 锁机制浅析">
-<meta name="twitter:description" content="锁是用来使对共享资源的并发访问有序化的。 准备工作 创建测试数据  123CREATE TABLE users (id int, username text);INSERT INTO users (id, username) VALUES (1, &apos;igor&apos;), (2, &apos;bob&apos;), (3, &apos;john&apos;), (4, &apos;susan&apos;);SELECT * FROM users;   为了便于观察">
+<meta name="twitter:description" content="锁是用来使对共享资源的并发访问有序化的。">
 <meta name="twitter:image" content="https://protream-blog.oss-cn-hangzhou.aliyuncs.com/postgres/example.png">
 
 
@@ -355,6 +355,7 @@
 
       
         <p>锁是用来使对共享资源的并发访问有序化的。</p>
+<a id="more"></a>
 <h2 id="准备工作"><a href="#准备工作" class="headerlink" title="准备工作"></a>准备工作</h2><ol>
 <li>创建测试数据</li>
 </ol>
@@ -641,15 +642,13 @@
 <p>MVCC 采用的就是类似 CopyOnWrite 的策略，每个事务修改记录之前，都会先把该记录拷贝一份出来，在拷贝上做需改，再用修改完的记录替代原来的记录。原来的记录并没有被删除，只是变成了旧的版本。</p>
 <p>正因为有了 MVCC 这种特性，通常的select语句都是不加锁的或者级别，读取的全部是数据的历史版本，从而支撑高并发的查询。这种读，专业术语叫做“快照读”，与之相对应的是“当前写”。</p>
 <p>MVCC 解决了快照读和写之间的并发问题，但对于写和写之间、当前读和写之间的并发，MVCC无能为力，这时需要用到锁。</p>
-<h2 id="参考"><a href="#参考" class="headerlink" title="参考"></a>参考</h2><p>[1] <a href="https://www.postgresql.org/docs/10/explicit-locking.html" target="_blank" rel="noopener">https://www.postgresql.org/docs/10/explicit-locking.html</a></p>
-<p>[2] <a href="https://www.postgresql.org/docs/9.4/sql-select.html" target="_blank" rel="noopener">https://www.postgresql.org/docs/9.4/sql-select.html</a></p>
-<p>[3] <a href="https://www.postgresql.org/docs/10/view-pg-locks.html" target="_blank" rel="noopener">https://www.postgresql.org/docs/10/view-pg-locks.html</a></p>
-<p>[4] <a href="https://www.highgo.ca/2020/02/21/have-an-eye-on-locks-of-postgresql/" target="_blank" rel="noopener">https://www.highgo.ca/2020/02/21/have-an-eye-on-locks-of-postgresql/</a></p>
-<p>[5] <a href="https://habr.com/en/company/postgrespro/blog/500714/" target="_blank" rel="noopener">https://habr.com/en/company/postgrespro/blog/500714/</a></p>
-<p>[6] <a href="https://habr.com/en/company/postgrespro/blog/503008/" target="_blank" rel="noopener">https://habr.com/en/company/postgrespro/blog/503008/</a></p>
-<p>[7] <a href="https://docs.sqlalchemy.org/en/13/orm/session_api.html" target="_blank" rel="noopener">https://docs.sqlalchemy.org/en/13/orm/session_api.html</a></p>
-<p>[8] <a href="https://docs.sqlalchemy.org/en/13/orm/session_transaction.html#session-autocommit" target="_blank" rel="noopener">https://docs.sqlalchemy.org/en/13/orm/session_transaction.html#session-autocommit</a></p>
-<p>[9] <a href="https://www.postgresql.org/docs/10/functions-admin.html#FUNCTIONS-ADVISORY-LOCKS" target="_blank" rel="noopener">https://www.postgresql.org/docs/10/functions-admin.html#FUNCTIONS-ADVISORY-LOCKS</a></p>
+<h2 id="参考"><a href="#参考" class="headerlink" title="参考"></a>参考</h2><p>[1] <a href="https://www.postgresql.org/docs/10/explicit-locking.html" target="_blank" rel="noopener">explicit-locking</a></p>
+<p>[2] <a href="https://www.postgresql.org/docs/9.4/sql-select.html" target="_blank" rel="noopener">sql-select</a></p>
+<p>[3] <a href="https://www.postgresql.org/docs/10/view-pg-locks.html" target="_blank" rel="noopener">view-pg-locks</a></p>
+<p>[4] <a href="https://www.highgo.ca/2020/02/21/have-an-eye-on-locks-of-postgresql/" target="_blank" rel="noopener">have-an-eye-on-locks-of-postgresql</a></p>
+<p>[5] <a href="https://habr.com/en/company/postgrespro/blog/500714/" target="_blank" rel="noopener">Locks in PostgreSQL: 1. Relation-level locks</a></p>
+<p>[6] <a href="https://habr.com/en/company/postgrespro/blog/503008/" target="_blank" rel="noopener">Locks in PostgreSQL: 2. Row-level locks</a></p>
+<p>[7] <a href="https://www.postgresql.org/docs/10/functions-admin.html#FUNCTIONS-ADVISORY-LOCKS" target="_blank" rel="noopener">UNCTIONS-ADVISORY-LOCKS</a></p>
 
       
     </div>
