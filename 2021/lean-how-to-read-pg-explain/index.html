@@ -1,0 +1,809 @@
+<!DOCTYPE html>
+
+
+
+  
+
+
+<html class="theme-next pisces use-motion" lang="zh-Hans">
+<head><meta name="generator" content="Hexo 3.9.0">
+  <meta charset="UTF-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<meta name="theme-color" content="#222">
+
+
+
+
+
+
+  
+  
+  <link rel="stylesheet" media="all" href="/lib/Han/dist/han.min.css?v=3.3">
+
+
+
+
+<meta http-equiv="Cache-Control" content="no-transform">
+<meta http-equiv="Cache-Control" content="no-siteapp">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+  <link href="/lib/fancybox/source/jquery.fancybox.css?v=2.1.5" rel="stylesheet" type="text/css">
+
+
+
+
+  
+  
+  
+  
+
+  
+    
+    
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+    
+    
+    <link href="https://fonts.googleapis.com/css?family=Droid+Serif:400,700/css?family=Droid Serif:300,300italic,400,400italic,700,700italic&subset=latin,latin-ext" rel="stylesheet" type="text/css">
+  
+
+
+
+
+
+
+<link href="/lib/font-awesome/css/font-awesome.min.css?v=4.6.2" rel="stylesheet" type="text/css">
+
+<link href="/css/main.css?v=5.1.4" rel="stylesheet" type="text/css">
+
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png?v=5.1.4">
+
+
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png?v=5.1.4">
+
+
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png?v=5.1.4">
+
+
+  <link rel="mask-icon" href="/images/logo.svg?v=5.1.4" color="#222">
+
+
+
+
+
+  <meta name="keywords" content="postgres,技术笔记,">
+
+
+
+
+
+
+
+
+
+
+<meta name="description" content="查询优化的第一步是要读懂 PG 是如何执行查询的，而要用到的工具就是 EXPLAIN。">
+<meta name="keywords" content="postgres,技术笔记">
+<meta property="og:type" content="article">
+<meta property="og:title" content="读懂 PostgreSQL 的 Explain">
+<meta property="og:url" content="https://protream.com/2021/lean-how-to-read-pg-explain/index.html">
+<meta property="og:site_name" content="Protream&#39;s Blog">
+<meta property="og:description" content="查询优化的第一步是要读懂 PG 是如何执行查询的，而要用到的工具就是 EXPLAIN。">
+<meta property="og:locale" content="zh-Hans">
+<meta property="og:updated_time" content="2021-03-24T07:34:37.318Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="读懂 PostgreSQL 的 Explain">
+<meta name="twitter:description" content="查询优化的第一步是要读懂 PG 是如何执行查询的，而要用到的工具就是 EXPLAIN。">
+
+
+
+<script type="text/javascript" id="hexo.configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Pisces',
+    version: '5.1.4',
+    sidebar: {"position":"left","display":"post","offset":12,"b2t":false,"scrollpercent":false,"onmobile":false},
+    fancybox: true,
+    tabs: true,
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    duoshuo: {
+      userId: '0',
+      author: '博主'
+    },
+    algolia: {
+      applicationID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    }
+  };
+</script>
+
+
+
+  <link rel="canonical" href="https://protream.com/2021/lean-how-to-read-pg-explain/">
+
+
+
+
+
+  <title>读懂 PostgreSQL 的 Explain | Protream's Blog</title>
+  
+
+
+
+
+
+
+
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" lang="zh-Hans">
+
+  
+  
+    
+  
+
+  <div class="container sidebar-position-left page-post-detail">
+    <div class="headband"></div>
+
+    <header id="header" class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-wrapper">
+  <div class="site-meta ">
+    
+
+    <div class="custom-logo-site-title">
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Protream's Blog</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+      
+        <p class="site-subtitle"></p>
+      
+  </div>
+
+  <div class="site-nav-toggle">
+    <button>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+    </button>
+  </div>
+</div>
+
+<nav class="site-nav">
+  
+
+  
+    <ul id="menu" class="menu">
+      
+        
+        <li class="menu-item menu-item-home">
+          <a href="/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-home"></i> <br>
+            
+            首页
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-archives">
+          <a href="/archives/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-archive"></i> <br>
+            
+            归档
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-tags">
+          <a href="/tags/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-tags"></i> <br>
+            
+            标签
+          </a>
+        </li>
+      
+
+      
+    </ul>
+  
+
+  
+</nav>
+
+
+
+ </div>
+    </header>
+
+    <main id="main" class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          <div id="content" class="content">
+            
+
+  <div id="posts" class="posts-expand">
+    
+
+  
+
+  
+  
+  
+
+  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="https://protream.com/2021/lean-how-to-read-pg-explain/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="protream">
+      <meta itemprop="description" content>
+      <meta itemprop="image" content="/images/avatar.gif">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Protream's Blog">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">读懂 PostgreSQL 的 Explain</h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+              <time title="创建于" itemprop="dateCreated datePublished" datetime="2021-03-24T15:30:00+08:00">
+                2021-03-24
+              </time>
+            
+
+            
+
+            
+          </span>
+
+          
+
+          
+            
+              <span class="post-comments-count">
+                <span class="post-meta-divider">|</span>
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-comment-o"></i>
+                </span>
+                <a href="/2021/lean-how-to-read-pg-explain/#comments" itemprop="discussionUrl">
+                  <span class="post-comments-count disqus-comment-count" data-disqus-identifier="2021/lean-how-to-read-pg-explain/" itemprop="commentCount"></span>
+                </a>
+              </span>
+            
+          
+
+          
+          
+
+          
+
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body han-init-context" itemprop="articleBody">
+
+      
+      
+
+      
+        <p>查询优化的第一步是要读懂 PG 是如何执行查询的，而要用到的工具就是 EXPLAIN。</p>
+<a id="more"></a>
+<h2 id="Explain"><a href="#Explain" class="headerlink" title="Explain"></a>Explain</h2><p>使用 <code>EXPLAIN</code> 命令可以查询 Planner 为查询创建的执行计划。</p>
+<p>查询计划是用树结构表示的，每一个树的节点都是一个子计划。树结构的最底层节点一般是扫描节点，负责从表中读取数据行。不同的扫描节点对应不同的表数据获取方法：</p>
+<ul>
+<li>顺序扫描（sequential scans）</li>
+<li>索引扫描（index scans）</li>
+<li>位图扫描（bitmap index scans）</li>
+</ul>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">pagila=<span class="comment"># explain select * from film;</span></span><br><span class="line">                        QUERY PLAN</span><br><span class="line"><span class="comment">----------------------------------------------------------</span></span><br><span class="line"> Seq Scan on film  (cost=0.00..65.00 rows=1000 width=390)</span><br><span class="line">(1 row)</span><br></pre></td></tr></table></figure>
+<p>没有 where 条件，所以需要扫描整张表，对应的扫描计划是 Seq Scan。括号里面从左到右4个数据的含义依次是：</p>
+<ul>
+<li>估计的启动开销，指输出阶段开始之前所花费的时间，同样的，在 sort 节点中指排序的时间。</li>
+<li>估计的总的开销。</li>
+<li>此计划节点输出的估计行数。</li>
+<li>此计划节点输出的行的估计平均宽度（单位：bytes）。</li>
+</ul>
+<p>代价的计算公式： (disk pages read <em> <a href="https://www.postgresql.org/docs/10/runtime-config-query.html#GUC-SEQ-PAGE-COST" target="_blank" rel="noopener">seq_page_cost</a>) + (rows scanned </em> <a href="https://www.postgresql.org/docs/10/runtime-config-query.html#GUC-CPU-TUPLE-COST" target="_blank" rel="noopener">cpu_tuple_cost</a>)</p>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">pagila=<span class="comment"># SELECT relpages, reltuples FROM pg_class WHERE relname = 'film';</span></span><br><span class="line"> relpages | reltuples</span><br><span class="line"><span class="comment">----------+-----------</span></span><br><span class="line">       55 |      1000</span><br><span class="line">(1 row)</span><br></pre></td></tr></table></figure>
+<p>默认的, <code>seq_page_cost</code> 是 1.0 and <code>cpu_tuple_cost</code> 是 0.01，(55 <em> 1.0) + (0.01 </em> 1000) = 65。</p>
+<p>记住：</p>
+<ul>
+<li><strong>上层节点的开销包括其所有子节点的开销</strong>。</li>
+<li>开销只反映了计划器关心的东西。</li>
+<li>开销不考虑将结果行传输到客户端花费的时间，这个在实际的时间花费中可能占很大一部分，计划器不考虑是因为，计划器改变计划也改不不了这个时间。</li>
+</ul>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">pagila=<span class="comment"># explain select * from film where length &gt; 100;</span></span><br><span class="line">                       QUERY PLAN</span><br><span class="line"><span class="comment">---------------------------------------------------------</span></span><br><span class="line"> Seq Scan on film  (cost=0.00..67.50 rows=611 width=390)</span><br><span class="line">   Filter: (length &gt; 100)</span><br><span class="line">(2 rows)</span><br></pre></td></tr></table></figure>
+<p>rows 因为过滤条件减少了，但是总的开销并没有减少，还增加了，因为还是要扫描 1000 行，每行还要判断是否满足过滤条件。增加的开销：1000 <em> <a href="https://www.postgresql.org/docs/10/runtime-config-query.html#GUC-CPU-OPERATOR-COST" target="_blank" rel="noopener">cpu_operator_cost</a>，该参数默认值是 0.0025，所以 65 + 1000 </em> 0.0025 得到 67.5。</p>
+<h2 id="Explain-Analyze"><a href="#Explain-Analyze" class="headerlink" title="Explain Analyze"></a>Explain Analyze</h2><p>加上 Analyze 参数后，查询会被执行，explain 会在原来的基础上显示每个节点真实的时间花费。</p>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">pagila=<span class="comment"># explain analyze select f.title, l.name from film f inner join language l on f.language_id = l.language_id;</span></span><br><span class="line">                                                     QUERY PLAN</span><br><span class="line"><span class="comment">----------------------------------------------------------------------------------------------------------------</span></span><br><span class="line"> Hash Join  (cost=24.62..92.27 rows=1000 width=99) (actual time=0.408..22.136 rows=1000 loops=1)</span><br><span class="line">   Hash Cond: (f.language_id = l.language_id)</span><br><span class="line">   -&gt;  Seq Scan on film f  (cost=0.00..65.00 rows=1000 width=19) (actual time=0.029..7.197 rows=1000 loops=1)</span><br><span class="line">   -&gt;  Hash  (cost=16.50..16.50 rows=650 width=88) (actual time=0.253..0.270 rows=6 loops=1)</span><br><span class="line">         Buckets: 1024  Batches: 1  Memory Usage: 9kB</span><br><span class="line">         -&gt;  Seq Scan on language l  (cost=0.00..16.50 rows=650 width=88) (actual time=0.055..0.131 rows=6 loops=1)</span><br><span class="line"> Planning time: 0.594 ms</span><br><span class="line"> Execution time: 29.335 ms</span><br><span class="line">(8 rows)</span><br></pre></td></tr></table></figure>
+<p><code>actual_time</code> 的单位是毫秒，而开销的估算单位是随意的，两者不可相提并论。</p>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">pagila=<span class="comment"># explain analyze select * from film where length &gt; 100;</span></span><br><span class="line">                                             QUERY PLAN</span><br><span class="line"><span class="comment">-----------------------------------------------------------------------------------------------------</span></span><br><span class="line"> Seq Scan on film  (cost=0.00..67.50 rows=611 width=390) (actual time=0.046..6.862 rows=610 loops=1)</span><br><span class="line">   Filter: (length &gt; 100)</span><br><span class="line">   Rows Removed by Filter: 390</span><br><span class="line"> Planning time: 0.195 ms</span><br><span class="line"> Execution time: 13.014 ms</span><br><span class="line">(5 rows)</span><br></pre></td></tr></table></figure>
+<p><code>Rows Removed</code> 显示 where 条件过滤掉了多少行。</p>
+<h2 id="Explain-Buffers"><a href="#Explain-Buffers" class="headerlink" title="Explain Buffers"></a>Explain Buffers</h2><p>explain 有个 buffers 参数可以和 analyze 一起使用获取更多的统计信息。buffers 提供的数据可以帮我们识别出哪部分查询时最 IO 密集的。</p>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">pagila=<span class="comment"># explain (analyze, buffers) select * from film where length &gt; 100;</span></span><br><span class="line">                                             QUERY PLAN</span><br><span class="line"><span class="comment">-----------------------------------------------------------------------------------------------------</span></span><br><span class="line"> Seq Scan on film  (cost=0.00..67.50 rows=611 width=390) (actual time=0.020..7.365 rows=610 loops=1)</span><br><span class="line">   Filter: (length &gt; 100)</span><br><span class="line">   Rows Removed by Filter: 390</span><br><span class="line">   Buffers: shared hit=55</span><br><span class="line"> Planning time: 0.110 ms</span><br><span class="line"> Execution time: 14.068 ms</span><br><span class="line">(6 rows)</span><br></pre></td></tr></table></figure>
+<p>hit 的意思是数据块已经在缓存中了，避免了读操作。</p>
+<p><code>shared block</code>：包含从表和索引来的数据。</p>
+<p><code>local block</code>：包含从临时表和索引来的数据。</p>
+<p><code>temp block</code>：sort、hash、materialize 节点用到的临时数据。</p>
+<h2 id="EXPLAIN-Verbose"><a href="#EXPLAIN-Verbose" class="headerlink" title="EXPLAIN Verbose"></a>EXPLAIN Verbose</h2><p>显示有关计划的其他信息。具体来说，包括计划树中每个节点的输出列列表、模式限定表和函数名，始终使用范围表别名标记表达式中的变量，并始终打印显示统计信息的每个触发器的名称。</p>
+<h2 id="参考"><a href="#参考" class="headerlink" title="参考"></a>参考</h2><p>[1] <a href="https://www.postgresql.org/docs/10/sql-explain.html" target="_blank" rel="noopener">EXPLAIN</a></p>
+<p>[1] <a href="https://www.postgresql.org/docs/10/using-explain.html" target="_blank" rel="noopener">Using EXPLAIN</a></p>
+
+      
+    </div>
+    
+    
+    
+
+    
+
+    
+
+    
+      <div>
+        <ul class="post-copyright">
+  <li class="post-copyright-author">
+    <strong>本文作者：</strong>
+    protream
+  </li>
+  <li class="post-copyright-link">
+    <strong>本文链接：</strong>
+    <a href="https://protream.com/2021/lean-how-to-read-pg-explain/" title="读懂 PostgreSQL 的 Explain">https://protream.com/2021/lean-how-to-read-pg-explain/</a>
+  </li>
+  <li class="post-copyright-license">
+    <strong>版权声明： </strong>
+    本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/3.0/" rel="external nofollow" target="_blank">CC BY-NC-SA 3.0</a> 许可协议。转载请注明出处！
+  </li>
+</ul>
+
+      </div>
+    
+
+    <footer class="post-footer">
+      
+        <div class="post-tags">
+          
+            <a href="/tags/postgres/" rel="tag"># postgres</a>
+          
+            <a href="/tags/技术笔记/" rel="tag"># 技术笔记</a>
+          
+        </div>
+      
+
+      
+      
+      
+
+      
+        <div class="post-nav">
+          <div class="post-nav-next post-nav-item">
+            
+              <a href="/2021/postgresql-locks/" rel="next" title="PostgreSQL 锁机制浅析">
+                <i class="fa fa-chevron-left"></i> PostgreSQL 锁机制浅析
+              </a>
+            
+          </div>
+
+          <span class="post-nav-divider"></span>
+
+          <div class="post-nav-prev post-nav-item">
+            
+          </div>
+        </div>
+      
+
+      
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+
+    <div class="post-spread">
+      
+    </div>
+  </div>
+
+
+          </div>
+          
+
+
+          
+
+  
+    <div class="comments" id="comments">
+      <div id="disqus_thread">
+        <noscript>
+          Please enable JavaScript to view the
+          <a href="https://disqus.com/?ref_noscript">comments powered by Disqus.</a>
+        </noscript>
+      </div>
+    </div>
+
+  
+
+
+
+        </div>
+        
+          
+  
+  <div class="sidebar-toggle">
+    <div class="sidebar-toggle-line-wrap">
+      <span class="sidebar-toggle-line sidebar-toggle-line-first"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-middle"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-last"></span>
+    </div>
+  </div>
+
+  <aside id="sidebar" class="sidebar">
+    
+    <div class="sidebar-inner">
+
+      
+
+      
+        <ul class="sidebar-nav motion-element">
+          <li class="sidebar-nav-toc sidebar-nav-active" data-target="post-toc-wrap">
+            文章目录
+          </li>
+          <li class="sidebar-nav-overview" data-target="site-overview-wrap">
+            站点概览
+          </li>
+        </ul>
+      
+
+      <section class="site-overview-wrap sidebar-panel">
+        <div class="site-overview">
+          <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+            
+              <p class="site-author-name" itemprop="name">protream</p>
+              <p class="site-description motion-element" itemprop="description"></p>
+          </div>
+
+          <nav class="site-state motion-element">
+
+            
+              <div class="site-state-item site-state-posts">
+              
+                <a href="/archives/">
+              
+                  <span class="site-state-item-count">8</span>
+                  <span class="site-state-item-name">日志</span>
+                </a>
+              </div>
+            
+
+            
+
+            
+              
+              
+              <div class="site-state-item site-state-tags">
+                <a href="/tags/index.html">
+                  <span class="site-state-item-count">8</span>
+                  <span class="site-state-item-name">标签</span>
+                </a>
+              </div>
+            
+
+          </nav>
+
+          
+
+          
+
+          
+          
+
+          
+          
+
+          
+
+        </div>
+      </section>
+
+      
+      <!--noindex-->
+        <section class="post-toc-wrap motion-element sidebar-panel sidebar-panel-active">
+          <div class="post-toc">
+
+            
+              
+            
+
+            
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#Explain"><span class="nav-number">1.</span> <span class="nav-text">Explain</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Explain-Analyze"><span class="nav-number">2.</span> <span class="nav-text">Explain Analyze</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Explain-Buffers"><span class="nav-number">3.</span> <span class="nav-text">Explain Buffers</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#EXPLAIN-Verbose"><span class="nav-number">4.</span> <span class="nav-text">EXPLAIN Verbose</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#参考"><span class="nav-number">5.</span> <span class="nav-text">参考</span></a></li></ol></div>
+            
+
+          </div>
+        </section>
+      <!--/noindex-->
+      
+
+      
+
+    </div>
+  </aside>
+
+
+        
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="footer-inner">
+        <div class="copyright">&copy; <span itemprop="copyrightYear">2021</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">protream</span>
+
+  
+</div>
+
+
+
+
+
+
+
+
+
+        
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+
+    
+      <div class="back-to-top">
+        <i class="fa fa-arrow-up"></i>
+        
+      </div>
+    
+
+    
+
+  </div>
+
+  
+
+<script type="text/javascript">
+  if (Object.prototype.toString.call(window.Promise) !== '[object Function]') {
+    window.Promise = null;
+  }
+</script>
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery/index.js?v=2.1.3"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/fastclick/lib/fastclick.min.js?v=1.0.6"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery_lazyload/jquery.lazyload.js?v=1.9.7"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.ui.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/fancybox/source/jquery.fancybox.pack.js?v=2.1.5"></script>
+  
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/utils.js?v=5.1.4"></script>
+
+  <script type="text/javascript" src="/js/src/motion.js?v=5.1.4"></script>
+
+
+
+  
+  
+
+
+  <script type="text/javascript" src="/js/src/affix.js?v=5.1.4"></script>
+
+  <script type="text/javascript" src="/js/src/schemes/pisces.js?v=5.1.4"></script>
+
+
+
+  
+  <script type="text/javascript" src="/js/src/scrollspy.js?v=5.1.4"></script>
+<script type="text/javascript" src="/js/src/post-details.js?v=5.1.4"></script>
+
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/bootstrap.js?v=5.1.4"></script>
+
+
+
+  
+
+
+  
+
+    
+      <script id="dsq-count-scr" src="https://protream.disqus.com/count.js" async></script>
+    
+
+    
+      <script type="text/javascript">
+        var disqus_config = function () {
+          this.page.url = 'https://protream.com/2021/lean-how-to-read-pg-explain/';
+          this.page.identifier = '2021/lean-how-to-read-pg-explain/';
+          this.page.title = '读懂 PostgreSQL 的 Explain';
+        };
+        var d = document, s = d.createElement('script');
+        s.src = 'https://protream.disqus.com/embed.js';
+        s.setAttribute('data-timestamp', '' + +new Date());
+        (d.head || d.body).appendChild(s);
+      </script>
+    
+
+  
+
+
+
+
+	
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+  
+
+  
+
+  
+
+  
+  
+
+  
+
+  
+
+  
+
+</body>
+</html>
