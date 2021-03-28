@@ -1,0 +1,815 @@
+<!DOCTYPE html>
+
+
+
+  
+
+
+<html class="theme-next pisces use-motion" lang="zh-Hans">
+<head><meta name="generator" content="Hexo 3.9.0">
+  <meta charset="UTF-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<meta name="theme-color" content="#222">
+
+
+
+
+
+
+  
+  
+  <link rel="stylesheet" media="all" href="/lib/Han/dist/han.min.css?v=3.3">
+
+
+
+
+<meta http-equiv="Cache-Control" content="no-transform">
+<meta http-equiv="Cache-Control" content="no-siteapp">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+  <link href="/lib/fancybox/source/jquery.fancybox.css?v=2.1.5" rel="stylesheet" type="text/css">
+
+
+
+
+  
+  
+  
+  
+
+  
+    
+    
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+    
+    
+    <link href="https://fonts.googleapis.com/css?family=Droid+Serif:400,700/css?family=Droid Serif:300,300italic,400,400italic,700,700italic&subset=latin,latin-ext" rel="stylesheet" type="text/css">
+  
+
+
+
+
+
+
+<link href="/lib/font-awesome/css/font-awesome.min.css?v=4.6.2" rel="stylesheet" type="text/css">
+
+<link href="/css/main.css?v=5.1.4" rel="stylesheet" type="text/css">
+
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png?v=5.1.4">
+
+
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png?v=5.1.4">
+
+
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png?v=5.1.4">
+
+
+  <link rel="mask-icon" href="/images/logo.svg?v=5.1.4" color="#222">
+
+
+
+
+
+  <meta name="keywords" content="postgres,sqlalchemy,问题排查,">
+
+
+
+
+
+
+
+
+
+
+<meta name="description" content="最近遇到一个因应用端查询事务未提交导致数仓跑书脚本阻塞的问题。">
+<meta name="keywords" content="postgres,sqlalchemy,问题排查">
+<meta property="og:type" content="article">
+<meta property="og:title" content="记一个 PostgreSQL 事务未提交问题">
+<meta property="og:url" content="https://protream.com/2021/a-postgresql-transaction-uncommit-problem/index.html">
+<meta property="og:site_name" content="Protream&#39;s Blog">
+<meta property="og:description" content="最近遇到一个因应用端查询事务未提交导致数仓跑书脚本阻塞的问题。">
+<meta property="og:locale" content="zh-Hans">
+<meta property="og:updated_time" content="2021-03-28T03:43:38.890Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="记一个 PostgreSQL 事务未提交问题">
+<meta name="twitter:description" content="最近遇到一个因应用端查询事务未提交导致数仓跑书脚本阻塞的问题。">
+
+
+
+<script type="text/javascript" id="hexo.configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Pisces',
+    version: '5.1.4',
+    sidebar: {"position":"left","display":"post","offset":12,"b2t":false,"scrollpercent":false,"onmobile":false},
+    fancybox: true,
+    tabs: true,
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    duoshuo: {
+      userId: '0',
+      author: '博主'
+    },
+    algolia: {
+      applicationID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    }
+  };
+</script>
+
+
+
+  <link rel="canonical" href="https://protream.com/2021/a-postgresql-transaction-uncommit-problem/">
+
+
+
+
+
+  <title>记一个 PostgreSQL 事务未提交问题 | Protream's Blog</title>
+  
+
+
+
+
+
+
+
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" lang="zh-Hans">
+
+  
+  
+    
+  
+
+  <div class="container sidebar-position-left page-post-detail">
+    <div class="headband"></div>
+
+    <header id="header" class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-wrapper">
+  <div class="site-meta ">
+    
+
+    <div class="custom-logo-site-title">
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Protream's Blog</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+      
+        <p class="site-subtitle"></p>
+      
+  </div>
+
+  <div class="site-nav-toggle">
+    <button>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+    </button>
+  </div>
+</div>
+
+<nav class="site-nav">
+  
+
+  
+    <ul id="menu" class="menu">
+      
+        
+        <li class="menu-item menu-item-home">
+          <a href="/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-home"></i> <br>
+            
+            首页
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-archives">
+          <a href="/archives/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-archive"></i> <br>
+            
+            归档
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-tags">
+          <a href="/tags/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-tags"></i> <br>
+            
+            标签
+          </a>
+        </li>
+      
+
+      
+    </ul>
+  
+
+  
+</nav>
+
+
+
+ </div>
+    </header>
+
+    <main id="main" class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          <div id="content" class="content">
+            
+
+  <div id="posts" class="posts-expand">
+    
+
+  
+
+  
+  
+  
+
+  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="https://protream.com/2021/a-postgresql-transaction-uncommit-problem/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="protream">
+      <meta itemprop="description" content>
+      <meta itemprop="image" content="/images/avatar.gif">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Protream's Blog">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">记一个 PostgreSQL 事务未提交问题</h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+              <time title="创建于" itemprop="dateCreated datePublished" datetime="2021-03-28T11:40:00+08:00">
+                2021-03-28
+              </time>
+            
+
+            
+
+            
+          </span>
+
+          
+
+          
+            
+              <span class="post-comments-count">
+                <span class="post-meta-divider">|</span>
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-comment-o"></i>
+                </span>
+                <a href="/2021/a-postgresql-transaction-uncommit-problem/#comments" itemprop="discussionUrl">
+                  <span class="post-comments-count disqus-comment-count" data-disqus-identifier="2021/a-postgresql-transaction-uncommit-problem/" itemprop="commentCount"></span>
+                </a>
+              </span>
+            
+          
+
+          
+          
+
+          
+
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body han-init-context" itemprop="articleBody">
+
+      
+      
+
+      
+        <p>最近遇到一个因应用端查询事务未提交导致数仓跑书脚本阻塞的问题。</p>
+<a id="more"></a>
+<p>通过查看数据库的状态信息，定位到原因是：查询对表持有 <code>Access Share</code> 锁，而跑数脚本要先清空这张表，调用了 truncate 命令，而 truncate 命令会请求 <code>Access Exclusive</code> 锁。这两个锁是互斥的，一个事务持有了其中一个锁，只要事务未提交，另一个请求互斥锁的事务必须等待。</p>
+<p>但是什么导致事务未提交呢？</p>
+<h2 id="初步分析"><a href="#初步分析" class="headerlink" title="初步分析"></a>初步分析</h2><p>应用的代码是基于 Flask，使用了 SQLAclhemy 这个 ORM，并在查询的地方做了一层封装</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">@staticmethod</span></span><br><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">fetch_data_sql</span><span class="params">(sql, params, bind_key=None)</span>:</span></span><br><span class="line">    result = []</span><br><span class="line">    render_sql(sql=sql, params=params)</span><br><span class="line">    <span class="keyword">try</span>:</span><br><span class="line">        sql = text(sql)</span><br><span class="line">        con = db.session.execute(sql, params, bind=db.get_engine(current_app, bind=bind_key))</span><br><span class="line">        <span class="keyword">if</span> con.returns_rows:</span><br><span class="line">            result = con.fetchall()</span><br><span class="line">    <span class="keyword">except</span> Exception <span class="keyword">as</span> er:</span><br><span class="line">        LOG.error(<span class="string">"fetch data error: &#123;0&#125;, sql is: &#123;1&#125;"</span>.format(er, sql))</span><br><span class="line">        <span class="keyword">raise</span> DBError()</span><br><span class="line">    <span class="keyword">else</span>:</span><br><span class="line">        <span class="keyword">return</span> result</span><br></pre></td></tr></table></figure>
+<p>注意到这里 <code>db.session.exuecute()</code> 发起了一个查询，而 db.session 在默认 <code>autocommit=False</code> 的情况下是会自动开启事务的（参见：<a href>Flask-SQLAlchmey 是如何执行查询的</a>），问题似乎是开启了事务，而没有调用 <code>db.session.commit()</code> 提交事务。</p>
+<p>但仔细一想，有两个疑问：</p>
+<ol>
+<li>如果是因为没有调用 <code>db.session.commit()</code>，那这个问题应该存在已久，数据库应该存在大量未提交的事务；</li>
+<li>既然自动开启了事务，为什么没有自动关闭事务呢？按理说事务的生命周期应该和请求保持一致的。</li>
+</ol>
+<p>第一个疑问很好验证，从应用发起一个查询，通过 <code>pg_stat_activity</code>  和 <code>pg_locks</code> 查看事务和锁的状态，结果是，查询结束后，事务自动提交了，持有的锁也自动释放了。</p>
+<p>可以得到初步结论，即使没有调用 <code>db.session.commit()</code> ，事务也是会自动提交的。</p>
+<p>那是在什么地方提交的呢？SQLAlchemy 虽然帮我们自动开启了事务，但是它是不知道我们要在事务里提交几个查询的，所以它应该不会帮我们去提交，那应该就是在 flask-sqlalchemy 里处理的了。一个请求结束了，事务也应该提交，可以猜想，flask-sqlalchemy 里应该是注册了 flask 的 <code>request hook</code>，在请求结束时去自动去提交事务。</p>
+<h2 id="源码验证"><a href="#源码验证" class="headerlink" title="源码验证"></a>源码验证</h2><p>去源码里验证一下，相关软件版本：flask 1.1.1，SQLAlchemy 1.3.10，flask-sqlalchmey 2.4.1。</p>
+<p>发现，flask-sqlalchmey 的确是注册是一个关闭 session 的 hook 函数，和预想的不太一样的是，它是在 <code>app context</code> 而不是  <code>reqest context</code>。</p>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">@app.teardown_appcontext</span><br><span class="line">def shutdown_session(response_or_exc):</span><br><span class="line">    if app.config['SQLALCHEMY_COMMIT_ON_TEARDOWN']:</span><br><span class="line">        if response_or_exc is None:</span><br><span class="line">            self.session.commit()</span><br><span class="line"></span><br><span class="line">    self.session.remove()</span><br><span class="line">    <span class="keyword">return</span> response_or_exc</span><br></pre></td></tr></table></figure>
+<p><code>SQLALCHEMY_COMMIT_ON_TEARDOWN</code> 模式是 <code>False</code>，这里会进入到 <code>self.session.remove()</code>，触发的是 <code>scope_session</code> 的 <code>remove</code> 方法，这里面调用的 <code>close()</code> 方法正是去关闭事务的。</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">scoped_session</span><span class="params">(object)</span>:</span></span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">def</span> <span class="title">remove</span><span class="params">(self)</span>:</span></span><br><span class="line">        <span class="keyword">if</span> self.registry.has():</span><br><span class="line">            self.registry().close()</span><br><span class="line">        self.registry.clear()</span><br></pre></td></tr></table></figure>
+<p>再去 flask 里面看一下，</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">Flask</span><span class="params">(_PackageBoundObject)</span>:</span></span><br><span class="line">    <span class="comment"># ...</span></span><br><span class="line">    self.teardown_appcontext_funcs = []</span><br><span class="line"></span><br><span class="line"><span class="meta">    @setupmethod</span></span><br><span class="line">    <span class="function"><span class="keyword">def</span> <span class="title">teardown_appcontext</span><span class="params">(self, f)</span>:</span></span><br><span class="line">        <span class="string">"""Registers a function to be called when the application context</span></span><br><span class="line"><span class="string">        ends.  These functions are typically also called when the request</span></span><br><span class="line"><span class="string">        context is popped.</span></span><br><span class="line"><span class="string">        """</span></span><br><span class="line">        self.teardown_appcontext_funcs.append(f)</span><br><span class="line">        <span class="keyword">return</span> f</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">def</span> <span class="title">do_teardown_appcontext</span><span class="params">(self, exc=_sentinel)</span>:</span></span><br><span class="line">        <span class="string">"""Called right before the application context is popped.</span></span><br><span class="line"><span class="string">        When handling a request, the application context is popped</span></span><br><span class="line"><span class="string">        after the request context.</span></span><br><span class="line"><span class="string">        """</span></span><br><span class="line">        <span class="keyword">if</span> exc <span class="keyword">is</span> _sentinel:</span><br><span class="line">            exc = sys.exc_info()[<span class="number">1</span>]</span><br><span class="line">        <span class="keyword">for</span> func <span class="keyword">in</span> reversed(self.teardown_appcontext_funcs):</span><br><span class="line">            func(exc)</span><br><span class="line">        appcontext_tearing_down.send(self, exc=exc)</span><br></pre></td></tr></table></figure>
+<p><code>teardown_appcontext</code> 装饰器将 hook 函数保存在了 <code>teardown_appcontext_funcs</code> 列表里，在某一个时刻，会通过 <code>do_teardown_appcontext</code> 调用这些函数。从  <code>do_teardown_appcontext</code> 的注释可以得知，这些函数一般是请求上下文被删除时调用的，而请求上下文正是在一个请求处理结束时被删除。</p>
+<p>看来猜想是没错的，只是实现上的一点差异，继续看在哪触发的调用。</p>
+<p>flask 通过 <code>RequestContxt</code> 管理请求上下文，</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">RequestContext</span><span class="params">(object)</span>:</span></span><br><span class="line">    <span class="comment"># ...</span></span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">def</span> <span class="title">pop</span><span class="params">(self, exc=_sentinel)</span>:</span></span><br><span class="line">        app_ctx = self._implicit_app_ctx_stack.pop()</span><br><span class="line"></span><br><span class="line">        <span class="keyword">try</span>:</span><br><span class="line">            clear_request = <span class="literal">False</span></span><br><span class="line">            <span class="keyword">if</span> <span class="keyword">not</span> self._implicit_app_ctx_stack:</span><br><span class="line">                self.preserved = <span class="literal">False</span></span><br><span class="line">                self._preserved_exc = <span class="literal">None</span></span><br><span class="line">                <span class="keyword">if</span> exc <span class="keyword">is</span> _sentinel:</span><br><span class="line">                    exc = sys.exc_info()[<span class="number">1</span>]</span><br><span class="line">                self.app.do_teardown_request(exc)</span><br><span class="line"></span><br><span class="line">                <span class="keyword">if</span> hasattr(sys, <span class="string">"exc_clear"</span>):</span><br><span class="line">                    sys.exc_clear()</span><br><span class="line"></span><br><span class="line">                request_close = getattr(self.request, <span class="string">"close"</span>, <span class="literal">None</span>)</span><br><span class="line">                <span class="keyword">if</span> request_close <span class="keyword">is</span> <span class="keyword">not</span> <span class="literal">None</span>:</span><br><span class="line">                    request_close()</span><br><span class="line">                clear_request = <span class="literal">True</span></span><br><span class="line">        <span class="keyword">finally</span>:</span><br><span class="line">            rv = _request_ctx_stack.pop()</span><br><span class="line"></span><br><span class="line">            <span class="keyword">if</span> clear_request:</span><br><span class="line">                rv.request.environ[<span class="string">"werkzeug.request"</span>] = <span class="literal">None</span></span><br><span class="line"></span><br><span class="line">            <span class="comment"># Get rid of the app as well if necessary.</span></span><br><span class="line">            <span class="keyword">if</span> app_ctx <span class="keyword">is</span> <span class="keyword">not</span> <span class="literal">None</span>:</span><br><span class="line">                app_ctx.pop(exc)</span><br><span class="line"></span><br><span class="line">            <span class="keyword">assert</span> rv <span class="keyword">is</span> self, <span class="string">"Popped wrong request context. (%r instead of %r)"</span> % (</span><br><span class="line">                rv,</span><br><span class="line">                self,</span><br><span class="line">            )</span><br></pre></td></tr></table></figure>
+<p>在请求处理结束时，会调用  <code>pop</code> 清除请求上下文，在这一行：</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">self.app.do_teardown_request(exc)</span><br></pre></td></tr></table></figure>
+<p>调用了注册的请求结束时需要执行的 hook 函数。继续往下，在 finally 里面调用了 <code>app context</code> 的 <code>pop</code> 方法：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">if app_ctx is not None:</span><br><span class="line">    app_ctx.pop(exc)</span><br></pre></td></tr></table></figure>
+<p>在 <code>app context</code> 的 <code>pop</code> 方法里，触发了 <code>self.app.do_teardown_appcontext(exc)</code> 。</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">AppContext</span><span class="params">(object)</span>:</span></span><br><span class="line">    <span class="comment">#...</span></span><br><span class="line">    <span class="function"><span class="keyword">def</span> <span class="title">pop</span><span class="params">(self, exc=_sentinel)</span>:</span></span><br><span class="line">        <span class="string">"""Pops the app context."""</span></span><br><span class="line">        <span class="keyword">try</span>:</span><br><span class="line">            self._refcnt -= <span class="number">1</span></span><br><span class="line">            <span class="keyword">if</span> self._refcnt &lt;= <span class="number">0</span>:</span><br><span class="line">                <span class="keyword">if</span> exc <span class="keyword">is</span> _sentinel:</span><br><span class="line">                    exc = sys.exc_info()[<span class="number">1</span>]</span><br><span class="line">                self.app.do_teardown_appcontext(exc)</span><br><span class="line">        <span class="keyword">finally</span>:</span><br><span class="line">            rv = _app_ctx_stack.pop()</span><br><span class="line">        <span class="keyword">assert</span> rv <span class="keyword">is</span> self, <span class="string">"Popped wrong app context.  (%r instead of %r)"</span> % (rv, self)</span><br><span class="line">        appcontext_popped.send(self.app)</span><br></pre></td></tr></table></figure>
+<h2 id="再次分析"><a href="#再次分析" class="headerlink" title="再次分析"></a>再次分析</h2><p>现在已经清晰了，即使没有主动调用 <code>db.session.commit()</code>，只要请求正常处理结束，flask-sqlalchemy 会自动帮我们清理事务的。</p>
+<p>看来导致查询事务未提交的根本原因是：<strong>请求非正常结束</strong>，也就是说 <code>db.session.execute</code> 提交了查询，数据库开启了事务，执行查询，但是还没等到触发 hook 函数，请求非正常终止了。</p>
+<p>经实验验证了一种情况：Flask App 是跑在 Docker 里的，在一个查询请求提交后，hook 函数执行前通过 <code>docker restart</code> 重启服务，就会导致事务不会被提交。</p>
+<p>当然，也不能完全排除有人从一些客户端、命令行开启事务没有提交，但这种可能性非常低。</p>
+<h2 id="解决方案"><a href="#解决方案" class="headerlink" title="解决方案"></a>解决方案</h2><ol>
+<li>还是要确保 <code>db.session.execute()/db.session.commit()</code> 成对出现，虽然 <code>flask-sqlalchemy</code> 会帮我们在自动清理，但是在发起请求和自动清理之间有很多其他指令要执行，这增加了触发问题的概率。</li>
+</ol>
+<ol start="2">
+<li>设置 <strong>idle_in_transaction_session_timeout</strong> 参数，如果一个事务长期处于 <code>idle in transaction</code> 状态，超过设置的时长（单位毫秒）时，数据库会自动清理掉这些事务。</li>
+</ol>
+<p>对于 1：</p>
+<p>可以最好是统一使用上下文管理器：</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">SQLAlchemy</span><span class="params">(_SQLAlchemy)</span>:</span></span><br><span class="line"></span><br><span class="line"><span class="meta">    @contextmanager</span></span><br><span class="line">    <span class="function"><span class="keyword">def</span> <span class="title">auto_commit</span><span class="params">(self)</span>:</span></span><br><span class="line">        <span class="keyword">try</span>:</span><br><span class="line">            <span class="keyword">yield</span></span><br><span class="line">            self.session.commit()</span><br><span class="line">        <span class="keyword">except</span> Exception <span class="keyword">as</span> e:</span><br><span class="line">            logger.exception(e)</span><br><span class="line">            db.session.rollback()</span><br><span class="line">            <span class="keyword">raise</span></span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="keyword">with</span> db.auto_commit():</span><br><span class="line">  	<span class="comment"># some query</span></span><br></pre></td></tr></table></figure>
+<h2 id="参考"><a href="#参考" class="headerlink" title="参考"></a>参考</h2><p>[1] <a href="https://www.postgresql.org/docs/10/runtime-config-client.html" target="_blank" rel="noopener"> Server Configuration</a></p>
+
+      
+    </div>
+    
+    
+    
+
+    
+
+    
+
+    
+      <div>
+        <ul class="post-copyright">
+  <li class="post-copyright-author">
+    <strong>本文作者：</strong>
+    protream
+  </li>
+  <li class="post-copyright-link">
+    <strong>本文链接：</strong>
+    <a href="https://protream.com/2021/a-postgresql-transaction-uncommit-problem/" title="记一个 PostgreSQL 事务未提交问题">https://protream.com/2021/a-postgresql-transaction-uncommit-problem/</a>
+  </li>
+  <li class="post-copyright-license">
+    <strong>版权声明： </strong>
+    本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/3.0/" rel="external nofollow" target="_blank">CC BY-NC-SA 3.0</a> 许可协议。转载请注明出处！
+  </li>
+</ul>
+
+      </div>
+    
+
+    <footer class="post-footer">
+      
+        <div class="post-tags">
+          
+            <a href="/tags/postgres/" rel="tag"># postgres</a>
+          
+            <a href="/tags/sqlalchemy/" rel="tag"># sqlalchemy</a>
+          
+            <a href="/tags/问题排查/" rel="tag"># 问题排查</a>
+          
+        </div>
+      
+
+      
+      
+      
+
+      
+        <div class="post-nav">
+          <div class="post-nav-next post-nav-item">
+            
+              <a href="/2021/lean-how-to-read-pg-explain/" rel="next" title="读懂 PostgreSQL 的 Explain">
+                <i class="fa fa-chevron-left"></i> 读懂 PostgreSQL 的 Explain
+              </a>
+            
+          </div>
+
+          <span class="post-nav-divider"></span>
+
+          <div class="post-nav-prev post-nav-item">
+            
+          </div>
+        </div>
+      
+
+      
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+
+    <div class="post-spread">
+      
+    </div>
+  </div>
+
+
+          </div>
+          
+
+
+          
+
+  
+    <div class="comments" id="comments">
+      <div id="disqus_thread">
+        <noscript>
+          Please enable JavaScript to view the
+          <a href="https://disqus.com/?ref_noscript">comments powered by Disqus.</a>
+        </noscript>
+      </div>
+    </div>
+
+  
+
+
+
+        </div>
+        
+          
+  
+  <div class="sidebar-toggle">
+    <div class="sidebar-toggle-line-wrap">
+      <span class="sidebar-toggle-line sidebar-toggle-line-first"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-middle"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-last"></span>
+    </div>
+  </div>
+
+  <aside id="sidebar" class="sidebar">
+    
+    <div class="sidebar-inner">
+
+      
+
+      
+        <ul class="sidebar-nav motion-element">
+          <li class="sidebar-nav-toc sidebar-nav-active" data-target="post-toc-wrap">
+            文章目录
+          </li>
+          <li class="sidebar-nav-overview" data-target="site-overview-wrap">
+            站点概览
+          </li>
+        </ul>
+      
+
+      <section class="site-overview-wrap sidebar-panel">
+        <div class="site-overview">
+          <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+            
+              <p class="site-author-name" itemprop="name">protream</p>
+              <p class="site-description motion-element" itemprop="description"></p>
+          </div>
+
+          <nav class="site-state motion-element">
+
+            
+              <div class="site-state-item site-state-posts">
+              
+                <a href="/archives/">
+              
+                  <span class="site-state-item-count">9</span>
+                  <span class="site-state-item-name">日志</span>
+                </a>
+              </div>
+            
+
+            
+
+            
+              
+              
+              <div class="site-state-item site-state-tags">
+                <a href="/tags/index.html">
+                  <span class="site-state-item-count">10</span>
+                  <span class="site-state-item-name">标签</span>
+                </a>
+              </div>
+            
+
+          </nav>
+
+          
+
+          
+
+          
+          
+
+          
+          
+
+          
+
+        </div>
+      </section>
+
+      
+      <!--noindex-->
+        <section class="post-toc-wrap motion-element sidebar-panel sidebar-panel-active">
+          <div class="post-toc">
+
+            
+              
+            
+
+            
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#初步分析"><span class="nav-number">1.</span> <span class="nav-text">初步分析</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#源码验证"><span class="nav-number">2.</span> <span class="nav-text">源码验证</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#再次分析"><span class="nav-number">3.</span> <span class="nav-text">再次分析</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#解决方案"><span class="nav-number">4.</span> <span class="nav-text">解决方案</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#参考"><span class="nav-number">5.</span> <span class="nav-text">参考</span></a></li></ol></div>
+            
+
+          </div>
+        </section>
+      <!--/noindex-->
+      
+
+      
+
+    </div>
+  </aside>
+
+
+        
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="footer-inner">
+        <div class="copyright">&copy; <span itemprop="copyrightYear">2021</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">protream</span>
+
+  
+</div>
+
+
+
+
+
+
+
+
+
+        
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+
+    
+      <div class="back-to-top">
+        <i class="fa fa-arrow-up"></i>
+        
+      </div>
+    
+
+    
+
+  </div>
+
+  
+
+<script type="text/javascript">
+  if (Object.prototype.toString.call(window.Promise) !== '[object Function]') {
+    window.Promise = null;
+  }
+</script>
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery/index.js?v=2.1.3"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/fastclick/lib/fastclick.min.js?v=1.0.6"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery_lazyload/jquery.lazyload.js?v=1.9.7"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.ui.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/fancybox/source/jquery.fancybox.pack.js?v=2.1.5"></script>
+  
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/utils.js?v=5.1.4"></script>
+
+  <script type="text/javascript" src="/js/src/motion.js?v=5.1.4"></script>
+
+
+
+  
+  
+
+
+  <script type="text/javascript" src="/js/src/affix.js?v=5.1.4"></script>
+
+  <script type="text/javascript" src="/js/src/schemes/pisces.js?v=5.1.4"></script>
+
+
+
+  
+  <script type="text/javascript" src="/js/src/scrollspy.js?v=5.1.4"></script>
+<script type="text/javascript" src="/js/src/post-details.js?v=5.1.4"></script>
+
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/bootstrap.js?v=5.1.4"></script>
+
+
+
+  
+
+
+  
+
+    
+      <script id="dsq-count-scr" src="https://protream.disqus.com/count.js" async></script>
+    
+
+    
+      <script type="text/javascript">
+        var disqus_config = function () {
+          this.page.url = 'https://protream.com/2021/a-postgresql-transaction-uncommit-problem/';
+          this.page.identifier = '2021/a-postgresql-transaction-uncommit-problem/';
+          this.page.title = '记一个 PostgreSQL 事务未提交问题';
+        };
+        var d = document, s = d.createElement('script');
+        s.src = 'https://protream.disqus.com/embed.js';
+        s.setAttribute('data-timestamp', '' + +new Date());
+        (d.head || d.body).appendChild(s);
+      </script>
+    
+
+  
+
+
+
+
+	
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+  
+
+  
+
+  
+
+  
+  
+
+  
+
+  
+
+  
+
+</body>
+</html>
