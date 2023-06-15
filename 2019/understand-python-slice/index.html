@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="zh-Hans">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: dark)"><meta name="generator" content="Hexo 6.3.0">
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha256-HtsXJanqjKTc8vVQjO4YMhiqFoXkfBsjBWcX91T1jr8=" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/3.1.1/animate.min.css" integrity="sha256-PR7ttpcvz8qrF57fur/yAx1qXMFJeJFiA6pSzWi0OIE=" crossorigin="anonymous">
+
+<script class="next-config" data-name="main" type="application/json">{"hostname":"protream.github.io","root":"/","images":"/images","scheme":"Pisces","darkmode":true,"version":"8.17.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12},"copycode":{"enable":false,"style":null},"bookmark":{"enable":false,"color":"#222","save":"auto"},"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"stickytabs":false,"motion":{"enable":true,"async":false,"transition":{"menu_item":"fadeInDown","post_block":"fadeIn","post_header":"fadeInDown","post_body":"fadeInDown","coll_header":"fadeInLeft","sidebar":"fadeInUp"}},"prism":false,"i18n":{"placeholder":"Searching...","empty":"We didn't find any results for the search: ${query}","hits_time":"${hits} results found in ${time} ms","hits":"${hits} results found"}}</script><script src="/js/config.js"></script>
+
+    <meta name="description" content="在阅读本文前，先来测试一下对切片的掌握情况吧，尝试回答下面几个问题: 1a &#x3D; [1, 2, 3, 4, 5]   获取 [2, 3, 4] 获取 [2, 4] 获取 [5, 3, 1] a[:-1] &#x3D; ? a[::-1] &#x3D; ? a[-1:-2] &#x3D; ? a[6:-1] &#x3D; ? a[:-1:-1] &#x3D; ? a[1:-1:0] &#x3D; ?">
+<meta property="og:type" content="article">
+<meta property="og:title" content="深入 Python —— 切片（Slice）原理">
+<meta property="og:url" content="https://protream.github.io/2019/understand-python-slice/index.html">
+<meta property="og:site_name" content="Protream&#39;s Blog">
+<meta property="og:description" content="在阅读本文前，先来测试一下对切片的掌握情况吧，尝试回答下面几个问题: 1a &#x3D; [1, 2, 3, 4, 5]   获取 [2, 3, 4] 获取 [2, 4] 获取 [5, 3, 1] a[:-1] &#x3D; ? a[::-1] &#x3D; ? a[-1:-2] &#x3D; ? a[6:-1] &#x3D; ? a[:-1:-1] &#x3D; ? a[1:-1:0] &#x3D; ?">
+<meta property="og:locale">
+<meta property="article:published_time" content="2019-04-03T15:17:03.000Z">
+<meta property="article:modified_time" content="2023-06-15T03:40:47.808Z">
+<meta property="article:author" content="protream">
+<meta property="article:tag" content="源码笔记">
+<meta property="article:tag" content="深入python">
+<meta name="twitter:card" content="summary">
+
+
+<link rel="canonical" href="https://protream.github.io/2019/understand-python-slice/">
+
+
+
+<script class="next-config" data-name="page" type="application/json">{"sidebar":"","isHome":false,"isPost":true,"lang":"zh-Hans","comments":true,"permalink":"https://protream.github.io/2019/understand-python-slice/","path":"2019/understand-python-slice/","title":"深入 Python —— 切片（Slice）原理"}</script>
+
+<script class="next-config" data-name="calendar" type="application/json">""</script>
+<title>深入 Python —— 切片（Slice）原理 | Protream's Blog</title>
+  
+
+
+
+
+
+
+
+
+  <noscript>
+    <link rel="stylesheet" href="/css/noscript.css">
+  </noscript>
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" class="use-motion">
+  <div class="headband"></div>
+
+  <main class="main">
+    <div class="column">
+      <header class="header" itemscope itemtype="http://schema.org/WPHeader"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="Toggle navigation bar" role="button">
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <i class="logo-line"></i>
+      <p class="site-title">Protream's Blog</p>
+      <i class="logo-line"></i>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger" aria-label="Search" role="button">
+    </div>
+  </div>
+</div>
+
+
+
+
+
+
+
+</header>
+        
+  
+  <aside class="sidebar">
+
+    <div class="sidebar-inner sidebar-nav-active sidebar-toc-active">
+      <ul class="sidebar-nav">
+        <li class="sidebar-nav-toc">
+          Table of Contents
+        </li>
+        <li class="sidebar-nav-overview">
+          Overview
+        </li>
+      </ul>
+
+      <div class="sidebar-panel-container">
+        <!--noindex-->
+        <div class="post-toc-wrap sidebar-panel">
+            <div class="post-toc animated"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BB%8E%E5%AD%97%E8%8A%82%E7%A0%81%E7%9C%8B%E8%B5%B7"><span class="nav-number">1.</span> <span class="nav-text">从字节码看起</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#BUILD-SLICE"><span class="nav-number">2.</span> <span class="nav-text">BUILD_SLICE</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#BINARY-SUBSCR"><span class="nav-number">3.</span> <span class="nav-text">BINARY_SUBSCR</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%88%87%E7%89%87%E5%8F%82%E6%95%B0%E7%9A%84%E5%A4%84%E7%90%86"><span class="nav-number">4.</span> <span class="nav-text">切片参数的处理</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%88%97%E8%A1%A8%E5%88%87%E7%89%87"><span class="nav-number">5.</span> <span class="nav-text">列表切片</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%80%BB%E7%BB%93"><span class="nav-number">6.</span> <span class="nav-text">总结</span></a></li></ol></div>
+        </div>
+        <!--/noindex-->
+
+        <div class="site-overview-wrap sidebar-panel">
+          <div class="site-author animated" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">protream</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap animated">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+        <a href="/archives/">
+          <span class="site-state-item-count">14</span>
+          <span class="site-state-item-name">posts</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-tags">
+        <span class="site-state-item-count">11</span>
+        <span class="site-state-item-name">tags</span>
+      </div>
+  </nav>
+</div>
+
+        </div>
+      </div>
+    </div>
+
+    
+  </aside>
+
+
+    </div>
+
+    <div class="main-inner post posts-expand">
+
+
+  
+
+
+<div class="post-block">
+  
+  
+
+  <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="zh-Hans">
+    <link itemprop="mainEntityOfPage" href="https://protream.github.io/2019/understand-python-slice/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="protream">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Protream's Blog">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="post" itemscope itemtype="http://schema.org/CreativeWork">
+      <meta itemprop="name" content="深入 Python —— 切片（Slice）原理 | Protream's Blog">
+      <meta itemprop="description" content="">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          深入 Python —— 切片（Slice）原理
+        </h1>
+
+        <div class="post-meta-container">
+          <div class="post-meta">
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar"></i>
+      </span>
+      <span class="post-meta-item-text">Posted on</span>
+
+      <time title="Created: 2019-04-03 23:17:03" itemprop="dateCreated datePublished" datetime="2019-04-03T23:17:03+08:00">2019-04-03</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar-check"></i>
+      </span>
+      <span class="post-meta-item-text">Edited on</span>
+      <time title="Modified: 2023-06-15 11:40:47" itemprop="dateModified" datetime="2023-06-15T11:40:47+08:00">2023-06-15</time>
+    </span>
+
+  
+</div>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody"><p>在阅读本文前，先来测试一下对切片的掌握情况吧，尝试回答下面几个问题:</p>
+<figure class="highlight py"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">a = [<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>, <span class="number">4</span>, <span class="number">5</span>]</span><br></pre></td></tr></table></figure>
+
+<ol>
+<li>获取 [2, 3, 4]</li>
+<li>获取 [2, 4]</li>
+<li>获取 [5, 3, 1]</li>
+<li>a[:-1] &#x3D; ?</li>
+<li>a[::-1] &#x3D; ?</li>
+<li>a[-1:-2] &#x3D; ?</li>
+<li>a[6:-1] &#x3D; ?</li>
+<li>a[:-1:-1] &#x3D; ?</li>
+<li>a[1:-1:0] &#x3D; ?</li>
+<li>切片返回的是序列的深拷贝还是浅拷贝？</li>
+</ol>
+<span id="more"></span>
+
+<p>如果在不借助 Python 解释器的情况下你能很快的说出答案，那说明你已经对切片掌握的不错了。相信还是有很多人不能完全解答出来或者对其中的一个或者多个不完全确定。没关系，这篇文章我们就一起来从底层实现层面来彻底掌握切片机制，学完再回过头来看相信这些就不再是问题了。</p>
+<h2 id="从字节码看起"><a href="#从字节码看起" class="headerlink" title="从字节码看起"></a>从字节码看起</h2><figure class="highlight py"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><span class="line">In [<span class="number">1</span>]: <span class="keyword">def</span> <span class="title function_">test</span>():</span><br><span class="line">   ...:     a = [<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>, <span class="number">4</span>, <span class="number">5</span>]</span><br><span class="line">   ...:     b = a[<span class="number">1</span>:-<span class="number">1</span>]</span><br><span class="line">   ...:</span><br><span class="line"></span><br><span class="line">In [<span class="number">2</span>]: <span class="keyword">import</span> dis</span><br><span class="line"></span><br><span class="line">In [<span class="number">3</span>]: dis.dis(test)</span><br><span class="line">  <span class="number">2</span>           <span class="number">0</span> LOAD_CONST               <span class="number">1</span> (<span class="number">1</span>)</span><br><span class="line">              <span class="number">2</span> LOAD_CONST               <span class="number">2</span> (<span class="number">2</span>)</span><br><span class="line">              <span class="number">4</span> LOAD_CONST               <span class="number">3</span> (<span class="number">3</span>)</span><br><span class="line">              <span class="number">6</span> LOAD_CONST               <span class="number">4</span> (<span class="number">4</span>)</span><br><span class="line">              <span class="number">8</span> LOAD_CONST               <span class="number">5</span> (<span class="number">5</span>)</span><br><span class="line">             <span class="number">10</span> BUILD_LIST               <span class="number">5</span></span><br><span class="line">             <span class="number">12</span> STORE_FAST               <span class="number">0</span> (a)</span><br><span class="line"></span><br><span class="line">  <span class="number">3</span>          <span class="number">14</span> LOAD_FAST                <span class="number">0</span> (a)</span><br><span class="line">             <span class="number">16</span> LOAD_CONST               <span class="number">1</span> (<span class="number">1</span>)</span><br><span class="line">             <span class="number">18</span> LOAD_CONST               <span class="number">6</span> (-<span class="number">1</span>)</span><br><span class="line">             <span class="number">20</span> BUILD_SLICE              <span class="number">2</span></span><br><span class="line">             <span class="number">22</span> BINARY_SUBSCR</span><br><span class="line">             <span class="number">24</span> STORE_FAST               <span class="number">1</span> (b)</span><br></pre></td></tr></table></figure>
+
+<p>这段字节码分为俩个部分，上半部分构建列表 a，下半部分通过对 a 切片得到列表 b。和本文主题相关的俩个字节码指令就在下半部分，它们是：</p>
+<ul>
+<li>BUILD_SLICE</li>
+<li>BINARY_SUBSCR</li>
+</ul>
+<h2 id="BUILD-SLICE"><a href="#BUILD-SLICE" class="headerlink" title="BUILD_SLICE"></a>BUILD_SLICE</h2><figure class="highlight py"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="number">16</span> LOAD_CONST               <span class="number">1</span> (<span class="number">1</span>)</span><br><span class="line"><span class="number">18</span> LOAD_CONST               <span class="number">6</span> (-<span class="number">1</span>)</span><br><span class="line"><span class="number">20</span> BUILD_SLICE              <span class="number">2</span></span><br></pre></td></tr></table></figure>
+
+<p>在执行 BUILD_SLICE 之前，解释器将 slice 的俩个关键参数 start 和 stop 压入栈，然后执行 BUILD_SLICE 指令，注意，这里传入的参数是 2。2 代表构建 slice 对象的参数只有两个，也就是说并没有是指定第三个参数 step。</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line">TARGET(BUILD_SLICE) &#123;</span><br><span class="line">    PyObject *start, *stop, *step, *slice;</span><br><span class="line">    <span class="keyword">if</span> (oparg == <span class="number">3</span>)</span><br><span class="line">     step = POP();</span><br><span class="line">    <span class="keyword">else</span></span><br><span class="line">     step = <span class="literal">NULL</span>;</span><br><span class="line">    stop = POP();</span><br><span class="line">    start = TOP();</span><br><span class="line">    slice = PySlice_New(start, stop, step);</span><br><span class="line">    Py_DECREF(start);</span><br><span class="line">    Py_DECREF(stop);</span><br><span class="line">    Py_XDECREF(step);</span><br><span class="line">    SET_TOP(slice);</span><br><span class="line">    <span class="keyword">if</span> (slice == <span class="literal">NULL</span>)</span><br><span class="line">     <span class="keyword">goto</span> error;</span><br><span class="line">    DISPATCH();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>这段代码比较简单，首先根据传入的参数个数判断 slice 有没有第三个参数 step ，有的话它在 BUILD_SLICE 之前肯定是最后一个被压入栈的，现在从栈中取出的第一个就是 step，没有的话，step 被设为 NULL。然后，继续取出 start 和 stop，将这三个参数传入 <code>PySlice_New</code> 函数创建一个 slice 对象，再将这个对象放回栈中。</p>
+<p>我们可以来看一下 slice 对象到底是什么了：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">typedef</span> <span class="class"><span class="keyword">struct</span> &#123;</span></span><br><span class="line">    PyObject_HEAD</span><br><span class="line">    PyObject *start, *stop, *step;  <span class="comment">/* not NULL */</span></span><br><span class="line">&#125; PySliceObject;</span><br></pre></td></tr></table></figure>
+
+<p>现在明白了吧，<em>slice 对象就是一个记录了 start，stop，step 值（对象）的一个 Python 对象</em>，它的创建过程如下：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">static</span> PySliceObject *slice_cache = <span class="literal">NULL</span>;</span><br><span class="line">PyObject *</span><br><span class="line"><span class="title function_">PySlice_New</span><span class="params">(PyObject *start, PyObject *stop, PyObject *step)</span></span><br><span class="line">&#123;</span><br><span class="line">    PySliceObject *obj;</span><br><span class="line">    <span class="keyword">if</span> (slice_cache != <span class="literal">NULL</span>) &#123;</span><br><span class="line">		 <span class="comment">/* 为了效率，Python 会缓存一个 slice 对象，有缓存就省得申请内存了 */</span></span><br><span class="line">        obj = slice_cache;</span><br><span class="line">        slice_cache = <span class="literal">NULL</span>;</span><br><span class="line">        _Py_NewReference((PyObject *)obj);</span><br><span class="line">    &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">        obj = PyObject_GC_New(PySliceObject, &amp;PySlice_Type);</span><br><span class="line">        <span class="keyword">if</span> (obj == <span class="literal">NULL</span>)</span><br><span class="line">            <span class="keyword">return</span> <span class="literal">NULL</span>;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* step start stop 为设置会被置为 None */</span></span><br><span class="line">    <span class="keyword">if</span> (step == <span class="literal">NULL</span>) step = Py_None;</span><br><span class="line">    Py_INCREF(step);</span><br><span class="line">    <span class="keyword">if</span> (start == <span class="literal">NULL</span>) start = Py_None;</span><br><span class="line">    Py_INCREF(start);</span><br><span class="line">    <span class="keyword">if</span> (stop == <span class="literal">NULL</span>) stop = Py_None;</span><br><span class="line">    Py_INCREF(stop);</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 设置 slice 对象的 step start stop */</span></span><br><span class="line">    obj-&gt;step = step;</span><br><span class="line">    obj-&gt;start = start;</span><br><span class="line">    obj-&gt;stop = stop;</span><br><span class="line"></span><br><span class="line">    _PyObject_GC_TRACK(obj);</span><br><span class="line">    <span class="keyword">return</span> (PyObject *) obj;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>现在我们明白了一点，当我们对一个序列进行切片时，解释器会根据传入的 start，stop，step 创建一个 slice 对象，<em>slice 对象和你要切片的原序列并没有直接的关系</em>。</p>
+<p>Python 提供了 <code>slice</code> 内建函数来创建 slice 对象：</p>
+<figure class="highlight py"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">In [<span class="number">68</span>]: s = <span class="built_in">slice</span>(<span class="number">1</span>, -<span class="number">1</span>, <span class="number">2</span>)</span><br><span class="line"></span><br><span class="line">In [<span class="number">69</span>]: <span class="built_in">type</span>(s)</span><br><span class="line">Out[<span class="number">69</span>]: <span class="built_in">slice</span></span><br><span class="line">In [<span class="number">70</span>]: s.start</span><br><span class="line">Out[<span class="number">70</span>]: <span class="number">1</span></span><br><span class="line"></span><br><span class="line">In [<span class="number">71</span>]: s.stop</span><br><span class="line">Out[<span class="number">71</span>]: -<span class="number">1</span></span><br><span class="line"></span><br><span class="line">In [<span class="number">72</span>]: s.step</span><br><span class="line">Out[<span class="number">72</span>]: <span class="number">2</span></span><br></pre></td></tr></table></figure>
+
+<p>下面的俩种获取切片的方式是等价的：</p>
+<figure class="highlight py"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">In [<span class="number">73</span>]: a = [<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>, <span class="number">4</span>, <span class="number">5</span>]</span><br><span class="line"></span><br><span class="line">In [<span class="number">74</span>]: a[<span class="number">1</span>:-<span class="number">1</span>:<span class="number">2</span>]</span><br><span class="line">Out[<span class="number">74</span>]: [<span class="number">2</span>, <span class="number">4</span>]</span><br><span class="line"></span><br><span class="line">In [<span class="number">75</span>]: a[<span class="built_in">slice</span>(<span class="number">1</span>, -<span class="number">1</span>, <span class="number">2</span>)]</span><br><span class="line">Out[<span class="number">75</span>]: [<span class="number">2</span>, <span class="number">4</span>]</span><br></pre></td></tr></table></figure>
+
+<h2 id="BINARY-SUBSCR"><a href="#BINARY-SUBSCR" class="headerlink" title="BINARY_SUBSCR"></a>BINARY_SUBSCR</h2><p>这个指令翻译过来叫二元下标， a[0] 这种方式是一元下标，可以猜测一下，通过 slice 对象对序列切片和通过 index 对序列取值直接是不是有什么联系呢？我们继续往下看源码：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">TARGET(BINARY_SUBSCR) &#123;</span><br><span class="line">    PyObject *sub = POP();</span><br><span class="line">    PyObject *container = TOP();</span><br><span class="line">    PyObject *res = PyObject_GetItem(container, sub);</span><br><span class="line">    Py_DECREF(container);</span><br><span class="line">    Py_DECREF(sub);</span><br><span class="line">    SET_TOP(res);</span><br><span class="line">    <span class="keyword">if</span> (res == <span class="literal">NULL</span>)</span><br><span class="line">        <span class="keyword">goto</span> error;</span><br><span class="line">    DISPATCH();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>这里从栈中取出来给 sub 的对象就是我们前面构建的 slice 对象，而 container 对象就是我们要切片的原列表，它们被传给了 <code>PyObject_GetItem</code>。</p>
+<p>答案是不是呼之欲出了？二元下标也就是切片是通过 <code>PyObject_GetItem</code> 这个函数处理的，它也是用来处理一元下标的！</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br></pre></td><td class="code"><pre><span class="line"> PyObject *</span><br><span class="line"> <span class="title function_">PyObject_GetItem</span><span class="params">(PyObject *o, PyObject *key)</span></span><br><span class="line"> &#123;</span><br><span class="line">     PyMappingMethods *m;</span><br><span class="line"></span><br><span class="line">     <span class="keyword">if</span> (o == <span class="literal">NULL</span> || key == <span class="literal">NULL</span>) &#123;</span><br><span class="line">         <span class="keyword">return</span> null_error();</span><br><span class="line">     &#125;</span><br><span class="line"></span><br><span class="line">     m = o-&gt;ob_type-&gt;tp_as_mapping;</span><br><span class="line">     <span class="keyword">if</span> (m &amp;&amp; m-&gt;mp_subscript) &#123;</span><br><span class="line">         PyObject *item = m-&gt;mp_subscript(o, key);</span><br><span class="line">         assert((item != <span class="literal">NULL</span>) ^ (PyErr_Occurred() != <span class="literal">NULL</span>));</span><br><span class="line">         <span class="keyword">return</span> item;</span><br><span class="line">     &#125;</span><br><span class="line"></span><br><span class="line">     <span class="keyword">if</span> (o-&gt;ob_type-&gt;tp_as_sequence) &#123;</span><br><span class="line">         <span class="keyword">if</span> (PyIndex_Check(key)) &#123;</span><br><span class="line">             Py_ssize_t key_value;</span><br><span class="line">             key_value = PyNumber_AsSsize_t(key, PyExc_IndexError);</span><br><span class="line">             <span class="keyword">if</span> (key_value == <span class="number">-1</span> &amp;&amp; PyErr_Occurred())</span><br><span class="line">                 <span class="keyword">return</span> <span class="literal">NULL</span>;</span><br><span class="line">             <span class="keyword">return</span> PySequence_GetItem(o, key_value);</span><br><span class="line">         &#125;</span><br><span class="line">         <span class="keyword">else</span> <span class="keyword">if</span> (o-&gt;ob_type-&gt;tp_as_sequence-&gt;sq_item)</span><br><span class="line">             <span class="keyword">return</span> type_error(<span class="string">&quot;sequence index must &quot;</span></span><br><span class="line">                               <span class="string">&quot;be integer, not &#x27;%.200s&#x27;&quot;</span>, key);</span><br><span class="line">     &#125;</span><br><span class="line"></span><br><span class="line">     <span class="keyword">return</span> type_error(<span class="string">&quot;&#x27;%.200s&#x27; object is not subscriptable&quot;</span>, o);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><code>PyObject_GetItem</code> 是用来实现多态的，它根据要切片对象的不同，调用对象的特定函数做出不同的处理。我们后面会讲在列表列表的处理，现在我们需要明白，<em>序列的下标可以是 int 对象或者是 slice 对象，处理它们的函数接口是一样的</em>。</p>
+<figure class="highlight py"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line">In [<span class="number">76</span>]: a = [<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>, <span class="number">4</span>, <span class="number">5</span>]</span><br><span class="line"></span><br><span class="line">In [<span class="number">77</span>]: a.__getitem__(<span class="number">1</span>)</span><br><span class="line">Out[<span class="number">77</span>]: <span class="number">2</span></span><br><span class="line"></span><br><span class="line">In [<span class="number">78</span>]: a.__getitem__(<span class="built_in">slice</span>(<span class="number">1</span>, -<span class="number">1</span>, <span class="number">2</span>))</span><br><span class="line">Out[<span class="number">78</span>]: [<span class="number">2</span>, <span class="number">4</span>]</span><br><span class="line"></span><br><span class="line">In [<span class="number">80</span>]: s = <span class="string">&#x27;python&#x27;</span></span><br><span class="line"></span><br><span class="line">In [<span class="number">81</span>]: s.__getitem__(<span class="number">1</span>)</span><br><span class="line">Out[<span class="number">81</span>]: <span class="string">&#x27;y&#x27;</span></span><br><span class="line"></span><br><span class="line">In [<span class="number">82</span>]: s.__getitem__(<span class="built_in">slice</span>(<span class="number">1</span>, -<span class="number">1</span>, <span class="number">2</span>))</span><br><span class="line">Out[<span class="number">82</span>]: <span class="string">&#x27;yh&#x27;</span></span><br></pre></td></tr></table></figure>
+
+<h2 id="切片参数的处理"><a href="#切片参数的处理" class="headerlink" title="切片参数的处理"></a>切片参数的处理</h2><p>start 、stop 和 step 的值可以是整数，可以是负数，start 和 stop 的值还可能超过列表的长度，对于特殊 step、stop 值的处理也就决定了切片的结果，而这些处理正是在<code>PySlice_GetIndicesEx</code> 这个函数中完成的，理解切片行为的核心就是要理解这个函数的逻辑。我们拆开来看这个函数是怎么处理 start stop step 的。</p>
+<ol>
+<li>step 的处理</li>
+</ol>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">if</span> (r-&gt;step == Py_None) &#123;</span><br><span class="line">	 <span class="comment">/* step 默认是 1，这不难理解 */</span></span><br><span class="line">     *step = <span class="number">1</span>;</span><br><span class="line"> &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">     <span class="keyword">if</span> (!_PyEval_SliceIndex(r-&gt;step, step)) <span class="keyword">return</span> <span class="number">-1</span>;</span><br><span class="line">	 <span class="comment">/* step 不能为零，否则报 ValueError，要注意的是，这个异常是在执行 BINARY_SUBSCR 才报出来，</span></span><br><span class="line"><span class="comment">      * 在创建 slice 对象时如果 step 为 0 并不会报错 */</span></span><br><span class="line">     <span class="keyword">if</span> (*step == <span class="number">0</span>) &#123;</span><br><span class="line">         PyErr_SetString(PyExc_ValueError, <span class="string">&quot;slice step cannot be zero&quot;</span>);</span><br><span class="line">         <span class="keyword">return</span> <span class="number">-1</span>;</span><br><span class="line">     &#125;</span><br><span class="line">     <span class="comment">/* step 的最小值，他是根据 size_t 来定义的</span></span><br><span class="line"><span class="comment">      * #define PY_SSIZE_T_MAX ((Py_ssize_t)(((size_t)-1)&gt;&gt;1))</span></span><br><span class="line"><span class="comment">      * 所以在 32 为系统上就是 -2147483647 */</span></span><br><span class="line">     <span class="keyword">if</span> (*step &lt; -PY_SSIZE_T_MAX)</span><br><span class="line">         *step = -PY_SSIZE_T_MAX;</span><br><span class="line"> &#125;</span><br></pre></td></tr></table></figure>
+
+<ol start="2">
+<li>start 的处理</li>
+</ol>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* 当 start 未设置时的默认值，length 是序列的长度</span></span><br><span class="line"><span class="comment"> * 如果切片从序列头部开始（step &gt; 0），start = 0</span></span><br><span class="line"><span class="comment"> * 如果切片从序列末尾开始（step &lt; 0），start = length - 1 */</span></span><br><span class="line">defstart = *step &lt; <span class="number">0</span> ? length<span class="number">-1</span> : <span class="number">0</span>;</span><br><span class="line"><span class="keyword">if</span> (r-&gt;start == Py_None) &#123;</span><br><span class="line">    *start = defstart;</span><br><span class="line">&#125;</span><br><span class="line"><span class="keyword">else</span> &#123;</span><br><span class="line">    <span class="keyword">if</span> (!_PyEval_SliceIndex(r-&gt;start, start)) <span class="keyword">return</span> <span class="number">-1</span>;</span><br><span class="line">    <span class="comment">/* 如果 start 是负数，其实是通过加上序列长度转化成正数的 a[-1:] &lt;=&gt; a[4:] */</span></span><br><span class="line">    <span class="keyword">if</span> (*start &lt; <span class="number">0</span>) *start += length;</span><br><span class="line">    <span class="comment">/* 如果加上 length 还是小于 0，也就是 -start 超出了序列长度，这时候会根据 step 的正负将start</span></span><br><span class="line"><span class="comment">     * 设置为序列的开始（0）或结束（-1）位置</span></span><br><span class="line"><span class="comment">     * a[-6:-1]    &lt;=&gt; a[0:-1]</span></span><br><span class="line"><span class="comment">     * a[-6:-1:-1] &lt;=&gt; a[-1:-1:-1] */</span></span><br><span class="line">    <span class="keyword">if</span> (*start &lt; <span class="number">0</span>) *start = (*step &lt; <span class="number">0</span>) ? <span class="number">-1</span> : <span class="number">0</span>;</span><br><span class="line"><span class="comment">/* start 超出了序列长度，这时候会根据 step 的正负将start</span></span><br><span class="line"><span class="comment">     * 设置为序列的长度或序列长度减 1（最后一个元素）</span></span><br><span class="line"><span class="comment">     * a[6:-1]    &lt;=&gt; a[5:-1]</span></span><br><span class="line"><span class="comment">     * a[6:-1:-1] &lt;=&gt; a[4:-1:-1] */</span></span><br><span class="line">    <span class="keyword">if</span> (*start &gt;= length)</span><br><span class="line">        *start = (*step &lt; <span class="number">0</span>) ? length - <span class="number">1</span> : length;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<ol start="3">
+<li>stop 的处理</li>
+</ol>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line"> <span class="comment">/* 当 stop 未设置时的默认值，length 是序列的长度</span></span><br><span class="line"><span class="comment">  * 如果切片从序列头部开始（step &gt; 0），stop = length，比最后一个元素的下标多 1</span></span><br><span class="line"><span class="comment">  * 如果切片从序列末尾开始（step &lt; 0），start = -1，比第一个元素的下标少 1 */</span></span><br><span class="line">defstop = *step &lt; <span class="number">0</span> ? <span class="number">-1</span> : length;</span><br><span class="line"><span class="keyword">if</span> (r-&gt;stop == Py_None) &#123;</span><br><span class="line">     *stop = defstop;</span><br><span class="line"> &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">     <span class="keyword">if</span> (!_PyEval_SliceIndex(r-&gt;stop, stop)) <span class="keyword">return</span> <span class="number">-1</span>;</span><br><span class="line">     <span class="comment">/* 如果 stop 是负数，其实是通过加上序列长度转化成正数的 a[:-1] &lt;=&gt; a[:4] */</span></span><br><span class="line">     <span class="keyword">if</span> (*stop &lt; <span class="number">0</span>) *stop += length;</span><br><span class="line">     <span class="comment">/* 如果加上 length 还是小于 0，也就是 -stop 超出了序列长度，这时候会根据 step 的正负将 stop</span></span><br><span class="line"><span class="comment">      * 设置为序列的开始（0）或结束（-1）位置</span></span><br><span class="line"><span class="comment">      * a[3:-6]    &lt;=&gt; a[3:0]</span></span><br><span class="line"><span class="comment">      * a[3:-6:-1] &lt;=&gt; a[3::-1] */</span></span><br><span class="line">     <span class="keyword">if</span> (*stop &lt; <span class="number">0</span>) *stop = (*step &lt; <span class="number">0</span>) ? <span class="number">-1</span> : <span class="number">0</span>;</span><br><span class="line">     <span class="keyword">if</span> (*stop &gt;= length)</span><br><span class="line">         *stop = (*step &lt; <span class="number">0</span>) ? length - <span class="number">1</span> : length;</span><br><span class="line"> &#125;</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<ol start="4">
+<li>slicelength 的处理，slicelength 是切片结果的长度</li>
+</ol>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* 如：a[6:1]      处理后 start = 6 stop = 1 start &gt; stop</span></span><br><span class="line"><span class="comment"> *    a[6:-1]     处理后 start = 6 stop = 4 start &gt; stop</span></span><br><span class="line"><span class="comment"> *    a[2:3:-1]   处理后 start = 2 stop = 3 stop &gt;= start</span></span><br><span class="line"><span class="comment"> *    a[-3:-2:-1] 处理后 start = 2 stop = 3 stop &gt;= start */</span></span><br><span class="line"><span class="keyword">if</span> ((*step &lt; <span class="number">0</span> &amp;&amp; *stop &gt;= *start)</span><br><span class="line">    || (*step &gt; <span class="number">0</span> &amp;&amp; *start &gt;= *stop)) &#123;</span><br><span class="line">    *slicelength = <span class="number">0</span>;</span><br><span class="line">&#125;</span><br><span class="line"><span class="keyword">else</span> <span class="keyword">if</span> (*step &lt; <span class="number">0</span>) &#123;</span><br><span class="line">    *slicelength = (*stop-*start+<span class="number">1</span>)/(*step)+<span class="number">1</span>;</span><br><span class="line">&#125;</span><br><span class="line"><span class="keyword">else</span> &#123;</span><br><span class="line">    *slicelength = (*stop-*start<span class="number">-1</span>)/(*step)+<span class="number">1</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>记住几点：</p>
+<ul>
+<li>切片结果是通过 start、stop 处理后的值决定的，从 start 开始止于 stop 不包括 stop，[start, stop)</li>
+<li>如果 step &gt; 0，从 start 位置往后，每 step 取一个值，如果 start &gt;&#x3D; stop，结果为空</li>
+<li>如果 step &lt; 0，从 start 位置往前，每 step 取一个值，如果 start &lt;&#x3D; stop，结果为空</li>
+<li>start 或 stop 为负数时，如果绝对值在 length 内，那么和 length + start 或 stop 等价</li>
+<li>start 或 stop 为负数时，如果绝对值超过 length ，那么就要根据切片方向将 start 或 stop 转换为边界值</li>
+</ul>
+<h2 id="列表切片"><a href="#列表切片" class="headerlink" title="列表切片"></a>列表切片</h2><p>切片可以作用于所有序列对象：列表，字符串，元组。我们日常最常用的就是列表切片，这里就深入看下列表切片的处理，其他俩种处理方式应该也类似。</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">static</span> PyMappingMethods list_as_mapping = &#123;</span><br><span class="line">     ...</span><br><span class="line">     (binaryfunc)list_subscript,</span><br><span class="line">	...</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="type">static</span> PyMethodDef list_methods[] = &#123;</span><br><span class="line">	&#123;<span class="string">&quot;__getitem__&quot;</span>, (PyCFunction)list_subscript, METH_O|METH_COEXIST, getitem_doc&#125;,</span><br><span class="line">	...</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>深入到 list 对象的源码后发现， <code>o-&gt;ob_type-&gt;tp_as_mapping-&gt;mp_subscript</code>（回看 PyObject_GetItem 的逻辑）和 <code>list.__getitem__</code> 都指向了同一个函数——<code>list_subscript</code>，list 的切片正是在这里处理的：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br></pre></td><td class="code"><pre><span class="line"> <span class="type">static</span> PyObject *<span class="title function_">list_subscript</span><span class="params">(PyListObject* self, PyObject* item)</span></span><br><span class="line"> &#123;</span><br><span class="line">	...</span><br><span class="line">	<span class="comment">/* 如果下标是 slice 对象 */</span></span><br><span class="line">     <span class="keyword">if</span> (PySlice_Check(item)) &#123;</span><br><span class="line">         Py_ssize_t start, stop, step, slicelength, cur, i;</span><br><span class="line">         PyObject* result;</span><br><span class="line">         PyObject* it;</span><br><span class="line">         PyObject **src, **dest;</span><br><span class="line"></span><br><span class="line">		 <span class="comment">/* 从 slice 对象解析并处理 start stop step 和 slicelength */</span></span><br><span class="line">         <span class="keyword">if</span> (PySlice_GetIndicesEx(item, Py_SIZE(self),</span><br><span class="line">                          &amp;start, &amp;stop, &amp;step, &amp;slicelength) &lt; <span class="number">0</span>) &#123;</span><br><span class="line">             <span class="keyword">return</span> <span class="literal">NULL</span>;</span><br><span class="line">         &#125;</span><br><span class="line"></span><br><span class="line">		 <span class="comment">/* 从 start stop step 计算出切片结果的长度小于等于 0，返回空列表 */</span></span><br><span class="line">         <span class="keyword">if</span> (slicelength &lt;= <span class="number">0</span>) &#123;</span><br><span class="line">             <span class="keyword">return</span> PyList_New(<span class="number">0</span>);</span><br><span class="line">         &#125;</span><br><span class="line">         <span class="comment">/* 结果长度大于 0 而 step = 1，交给 list_slice 处理 */</span></span><br><span class="line">         <span class="keyword">else</span> <span class="keyword">if</span> (step == <span class="number">1</span>) &#123;</span><br><span class="line">             <span class="keyword">return</span> list_slice(self, start, stop);</span><br><span class="line">         &#125;</span><br><span class="line">         <span class="keyword">else</span> &#123;</span><br><span class="line">             <span class="comment">/* 创建一个与结果长度相等的列表对象 */</span></span><br><span class="line">             result = PyList_New(slicelength);</span><br><span class="line">             <span class="keyword">if</span> (!result) <span class="keyword">return</span> <span class="literal">NULL</span>;</span><br><span class="line"></span><br><span class="line">             src = self-&gt;ob_item;</span><br><span class="line">             dest = ((PyListObject *)result)-&gt;ob_item;</span><br><span class="line">             <span class="comment">/* 从 start 开始，每次前进 step，开始 copy 列表元素 */</span></span><br><span class="line">             <span class="keyword">for</span> (cur = start, i = <span class="number">0</span>; i &lt; slicelength;</span><br><span class="line">                  cur += (<span class="type">size_t</span>)step, i++) &#123;</span><br><span class="line">                 <span class="comment">/* 从这里可以看出，从原列表拷贝元素到切片，只是一个简单的赋值，所以切片是浅拷贝 */</span></span><br><span class="line">                 it = src[cur];</span><br><span class="line">                 Py_INCREF(it);</span><br><span class="line">                 dest[i] = it;</span><br><span class="line">             &#125;</span><br><span class="line"></span><br><span class="line">             <span class="keyword">return</span> result;</span><br><span class="line">     &#125;</span><br><span class="line">	...</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>其中的 <code>list_slice</code> 函数像是 <code>list_subscript</code> 当 step 等于 1 时的简化版：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">static</span> PyObject *</span><br><span class="line"><span class="title function_">list_slice</span><span class="params">(PyListObject *a, Py_ssize_t ilow, Py_ssize_t ihigh)</span></span><br><span class="line">&#123;</span><br><span class="line">    PyListObject *np;</span><br><span class="line">    PyObject **src, **dest;</span><br><span class="line">    Py_ssize_t i, len;</span><br><span class="line">    <span class="keyword">if</span> (ilow &lt; <span class="number">0</span>)</span><br><span class="line">        ilow = <span class="number">0</span>;</span><br><span class="line">    <span class="keyword">else</span> <span class="keyword">if</span> (ilow &gt; Py_SIZE(a))</span><br><span class="line">        ilow = Py_SIZE(a);</span><br><span class="line">    <span class="keyword">if</span> (ihigh &lt; ilow)</span><br><span class="line">        ihigh = ilow;</span><br><span class="line">    <span class="keyword">else</span> <span class="keyword">if</span> (ihigh &gt; Py_SIZE(a))</span><br><span class="line">        ihigh = Py_SIZE(a);</span><br><span class="line">    len = ihigh - ilow;</span><br><span class="line">    np = (PyListObject *) PyList_New(len);</span><br><span class="line">    <span class="keyword">if</span> (np == <span class="literal">NULL</span>)</span><br><span class="line">        <span class="keyword">return</span> <span class="literal">NULL</span>;</span><br><span class="line"></span><br><span class="line">    src = a-&gt;ob_item + ilow;</span><br><span class="line">    dest = np-&gt;ob_item;</span><br><span class="line">    <span class="keyword">for</span> (i = <span class="number">0</span>; i &lt; len; i++) &#123;</span><br><span class="line">        PyObject *v = src[i];</span><br><span class="line">        Py_INCREF(v);</span><br><span class="line">        dest[i] = v;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span> (PyObject *)np;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+
+<h2 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h2><p>本文从源码层面剖析了什么是 slice 对象，切片中对 start、stop、step 值的处理，及虚拟机生成一个列表切片的整个过程。弄懂了 Python 对 start、stop、step 的处理逻辑后，文章开始处的几道题也就不能得出答案了。</p>
+
+    </div>
+
+    
+    
+    
+
+    <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/%E6%BA%90%E7%A0%81%E7%AC%94%E8%AE%B0/" rel="tag"># 源码笔记</a>
+              <a href="/tags/%E6%B7%B1%E5%85%A5python/" rel="tag"># 深入python</a>
+          </div>
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-item">
+                <a href="/2016/write-a-command-line-train-tickets-query-tool-with-python/" rel="prev" title="用 Python 写一个命令行火车票查看器">
+                  <i class="fa fa-chevron-left"></i> 用 Python 写一个命令行火车票查看器
+                </a>
+            </div>
+            <div class="post-nav-item">
+                <a href="/2019/how-python-manage-memory-part-one/" rel="next" title="深入 Python —— Python 是如何管理内存的（上）">
+                  深入 Python —— Python 是如何管理内存的（上） <i class="fa fa-chevron-right"></i>
+                </a>
+            </div>
+          </div>
+    </footer>
+  </article>
+</div>
+
+
+
+
+
+
+</div>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+
+
+<div class="copyright">
+  &copy; 
+  <span itemprop="copyrightYear">2023</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">protream</span>
+</div>
+  <div class="powered-by">Powered by <a href="https://hexo.io/" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.js.org/pisces/" rel="noopener" target="_blank">NexT.Pisces</a>
+  </div>
+
+    </div>
+  </footer>
+
+  
+  <div class="back-to-top" role="button" aria-label="Back to top">
+    <i class="fa fa-arrow-up fa-lg"></i>
+    <span>0%</span>
+  </div>
+
+<noscript>
+  <div class="noscript-warning">Theme NexT works best with JavaScript enabled</div>
+</noscript>
+
+
+  
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js" integrity="sha256-XL2inqUJaslATFnHdJOi9GfQ60on8Wx1C2H8DYiN1xY=" crossorigin="anonymous"></script>
+<script src="/js/comments.js"></script><script src="/js/utils.js"></script><script src="/js/motion.js"></script><script src="/js/next-boot.js"></script>
+
+  
+
+
+
+
+
+
+  
+
+
+
+
+
+</body>
+</html>

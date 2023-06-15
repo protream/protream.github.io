@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="zh-Hans">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: dark)"><meta name="generator" content="Hexo 6.3.0">
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha256-HtsXJanqjKTc8vVQjO4YMhiqFoXkfBsjBWcX91T1jr8=" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/3.1.1/animate.min.css" integrity="sha256-PR7ttpcvz8qrF57fur/yAx1qXMFJeJFiA6pSzWi0OIE=" crossorigin="anonymous">
+
+<script class="next-config" data-name="main" type="application/json">{"hostname":"protream.github.io","root":"/","images":"/images","scheme":"Pisces","darkmode":true,"version":"8.17.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12},"copycode":{"enable":false,"style":null},"bookmark":{"enable":false,"color":"#222","save":"auto"},"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"stickytabs":false,"motion":{"enable":true,"async":false,"transition":{"menu_item":"fadeInDown","post_block":"fadeIn","post_header":"fadeInDown","post_body":"fadeInDown","coll_header":"fadeInLeft","sidebar":"fadeInUp"}},"prism":false,"i18n":{"placeholder":"Searching...","empty":"We didn't find any results for the search: ${query}","hits_time":"${hits} results found in ${time} ms","hits":"${hits} results found"}}</script><script src="/js/config.js"></script>
+
+    <meta name="description" content="本文介绍 PG 从接收到一条查询语句到输出结果的整个过程和一些主要操作。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="PostgreSQL 是如何执行一条查询的">
+<meta property="og:url" content="https://protream.github.io/2021/how-posgresql-execute-query/index.html">
+<meta property="og:site_name" content="Protream&#39;s Blog">
+<meta property="og:description" content="本文介绍 PG 从接收到一条查询语句到输出结果的整个过程和一些主要操作。">
+<meta property="og:locale">
+<meta property="og:image" content="http://etutorials.org/shared/images/tutorials/tutorial_47/04fig05.gif">
+<meta property="og:image" content="http://etutorials.org/shared/images/tutorials/tutorial_47/04fig06.gif">
+<meta property="og:image" content="https://www.centos.bz/wp-content/uploads/2019/06/1-2-3.png">
+<meta property="article:published_time" content="2021-04-01T06:30:00.000Z">
+<meta property="article:modified_time" content="2023-06-15T03:40:47.802Z">
+<meta property="article:author" content="protream">
+<meta property="article:tag" content="postgres">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://etutorials.org/shared/images/tutorials/tutorial_47/04fig05.gif">
+
+
+<link rel="canonical" href="https://protream.github.io/2021/how-posgresql-execute-query/">
+
+
+
+<script class="next-config" data-name="page" type="application/json">{"sidebar":"","isHome":false,"isPost":true,"lang":"zh-Hans","comments":true,"permalink":"https://protream.github.io/2021/how-posgresql-execute-query/","path":"2021/how-posgresql-execute-query/","title":"PostgreSQL 是如何执行一条查询的"}</script>
+
+<script class="next-config" data-name="calendar" type="application/json">""</script>
+<title>PostgreSQL 是如何执行一条查询的 | Protream's Blog</title>
+  
+
+
+
+
+
+
+
+
+  <noscript>
+    <link rel="stylesheet" href="/css/noscript.css">
+  </noscript>
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" class="use-motion">
+  <div class="headband"></div>
+
+  <main class="main">
+    <div class="column">
+      <header class="header" itemscope itemtype="http://schema.org/WPHeader"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="Toggle navigation bar" role="button">
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <i class="logo-line"></i>
+      <p class="site-title">Protream's Blog</p>
+      <i class="logo-line"></i>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger" aria-label="Search" role="button">
+    </div>
+  </div>
+</div>
+
+
+
+
+
+
+
+</header>
+        
+  
+  <aside class="sidebar">
+
+    <div class="sidebar-inner sidebar-nav-active sidebar-toc-active">
+      <ul class="sidebar-nav">
+        <li class="sidebar-nav-toc">
+          Table of Contents
+        </li>
+        <li class="sidebar-nav-overview">
+          Overview
+        </li>
+      </ul>
+
+      <div class="sidebar-panel-container">
+        <!--noindex-->
+        <div class="post-toc-wrap sidebar-panel">
+            <div class="post-toc animated"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%A6%82%E8%BF%B0"><span class="nav-number">1.</span> <span class="nav-text">概述</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Operators"><span class="nav-number">2.</span> <span class="nav-text">Operators</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#Seq-Scan"><span class="nav-number">2.1.</span> <span class="nav-text">Seq Scan</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Index-Scan"><span class="nav-number">2.2.</span> <span class="nav-text">Index Scan</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Sort"><span class="nav-number">2.3.</span> <span class="nav-text">Sort</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Unique"><span class="nav-number">2.4.</span> <span class="nav-text">Unique</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#LIMIT"><span class="nav-number">2.5.</span> <span class="nav-text">LIMIT</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Aggregate"><span class="nav-number">2.6.</span> <span class="nav-text">Aggregate</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Append"><span class="nav-number">2.7.</span> <span class="nav-text">Append</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Result"><span class="nav-number">2.8.</span> <span class="nav-text">Result</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Nested-Loop"><span class="nav-number">2.9.</span> <span class="nav-text">Nested Loop</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Merge-Join"><span class="nav-number">2.10.</span> <span class="nav-text">Merge Join</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Hash-and-Hash-Join"><span class="nav-number">2.11.</span> <span class="nav-text">Hash and Hash Join</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Group"><span class="nav-number">2.12.</span> <span class="nav-text">Group</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#GroupAggregate"><span class="nav-number">2.13.</span> <span class="nav-text">GroupAggregate</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Tid-Scan"><span class="nav-number">2.14.</span> <span class="nav-text">Tid Scan</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Materialize"><span class="nav-number">2.15.</span> <span class="nav-text">Materialize</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Setop-Intersect-Intersect-All-Except-Except-All"><span class="nav-number">2.16.</span> <span class="nav-text">Setop (Intersect, Intersect All, Except, Except All)</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%8F%82%E8%80%83"><span class="nav-number">3.</span> <span class="nav-text">参考</span></a></li></ol></div>
+        </div>
+        <!--/noindex-->
+
+        <div class="site-overview-wrap sidebar-panel">
+          <div class="site-author animated" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">protream</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap animated">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+        <a href="/archives/">
+          <span class="site-state-item-count">14</span>
+          <span class="site-state-item-name">posts</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-tags">
+        <span class="site-state-item-count">11</span>
+        <span class="site-state-item-name">tags</span>
+      </div>
+  </nav>
+</div>
+
+        </div>
+      </div>
+    </div>
+
+    
+  </aside>
+
+
+    </div>
+
+    <div class="main-inner post posts-expand">
+
+
+  
+
+
+<div class="post-block">
+  
+  
+
+  <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="zh-Hans">
+    <link itemprop="mainEntityOfPage" href="https://protream.github.io/2021/how-posgresql-execute-query/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="protream">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Protream's Blog">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="post" itemscope itemtype="http://schema.org/CreativeWork">
+      <meta itemprop="name" content="PostgreSQL 是如何执行一条查询的 | Protream's Blog">
+      <meta itemprop="description" content="">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          PostgreSQL 是如何执行一条查询的
+        </h1>
+
+        <div class="post-meta-container">
+          <div class="post-meta">
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar"></i>
+      </span>
+      <span class="post-meta-item-text">Posted on</span>
+
+      <time title="Created: 2021-04-01 14:30:00" itemprop="dateCreated datePublished" datetime="2021-04-01T14:30:00+08:00">2021-04-01</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar-check"></i>
+      </span>
+      <span class="post-meta-item-text">Edited on</span>
+      <time title="Modified: 2023-06-15 11:40:47" itemprop="dateModified" datetime="2023-06-15T11:40:47+08:00">2023-06-15</time>
+    </span>
+
+  
+</div>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody"><p>本文介绍 PG 从接收到一条查询语句到输出结果的整个过程和一些主要操作。</p>
+<span id="more"></span>
+
+
+<p>测试数据集：<a target="_blank" rel="noopener" href="https://github.com/devrimgunduz/pagila">pagila</a></p>
+<h2 id="概述"><a href="#概述" class="headerlink" title="概述"></a>概述</h2><p>PG 是典型的 C&#x2F;S 架构，客户端将 SQL 查询请求传给服务器，服务器收到请求后进行一系列处理，返会查询结果，结果可能是错误信息也可能是期望的查询结果。总的来说，在 PG 接收到一条查询请求到输出结果，会经历一下几个阶段：</p>
+<ol>
+<li>解析（parser）</li>
+</ol>
+<p>查询语句被传递给解析器（Parser），解析器进行词法分析、语法分析，如果有语法错误，直接返回错误信息；如果通过了语法检查，那么查询语句被转化成解析树——一种表示查询的结构化树形结构。</p>
+<p>示例：</p>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">SELECT</span> customer_name, balance <span class="keyword">FROM</span> customers <span class="keyword">WHERE</span> balance <span class="operator">&gt;</span> <span class="number">0</span> <span class="keyword">ORDER</span> <span class="keyword">BY</span> balance</span><br></pre></td></tr></table></figure>
+
+
+
+<p><img src="http://etutorials.org/shared/images/tutorials/tutorial_47/04fig05.gif" alt="graphics/04fig05.gif"></p>
+<ol start="2">
+<li>计划&#x2F;优化（Planner&#x2F;Optimizer）</li>
+</ol>
+<p>计划器遍历查询树找到执行查询语句的所有可能计划。对于上面的 select 查询，计划可能是全表扫描（ sequential scan），在有索引的情况下可能使用索引扫描（index scan）；如果查询涉及到两个或者更多的表，计划器会建议 Join 表的几种方式。</p>
+<p>优化分为两个层次：</p>
+<ol>
+<li>逻辑优化：基于规则</li>
+<li>物理优化：基于代价</li>
+</ol>
+<p>逻辑优化是建立在关系代数基础上的优化，关系代数中有一些等价的逻辑变换规则，通过对关系代数表达式进行逻辑上的等价变换，可能会获得执行性能比较好的等式，这样就能提高查询的性能；物理优化则是在建立物理执行路径的过程中进行优化，关系代数虽然指定了两个关系如何进行连接操作，但是这时的连接操作符属于属于逻辑运算符，它并没有指定以何种方式实现这种逻辑连接操作，而查询的执行器是不认识关系代数中的逻辑连接操纵的，我们需要生成多个物理连接路径来实现关系代数中的逻辑连接操作，并且根据查询执行器的执行步骤，建立代价计算模型，通过计算所有的物理连接路径的代价，从中选择出最优的路径。</p>
+<p>逻辑优化基于的等价变换公式：</p>
+<ol>
+<li>交换律</li>
+<li>结合律</li>
+<li>分配律</li>
+<li>串接律</li>
+</ol>
+<p>物理优化基于的代价衡量方法：</p>
+<p>**执行代价 &#x3D; IO 代价 + CPU 代价 **</p>
+<p>在 PG 中，逻辑优化又分为逻辑重写优化和逻辑分解优化。逻辑重写优化阶段主要是对查询树进行改造，而在逻辑分解阶段，会将查询树打散，再重新建立等价于查询树的逻辑关系。</p>
+<p>逻辑重写优化大的基调是减少查询的层次、消除外连接操作、减少冗余操作。</p>
+<ol start="3">
+<li>执行（Executor）</li>
+</ol>
+<p>当选择出代价最小的执行计划后，就进入执行的阶段了。</p>
+<p>执行是通过一系列 Operator 来执行完成的。Operator 将一个后者多个输入集转换成一个结果集。比如顺序扫描（Seq Scan）操作将输入（物理表）转换成结果（内存表）并过滤掉不服务查询约束的数据条目；排序操作（Sort）将输入集按照一个或者多个建排序输出一个有序的结果集。</p>
+<p><img src="http://etutorials.org/shared/images/tutorials/tutorial_47/04fig06.gif" alt="graphics/04fig06.gif"></p>
+<p>使用 explain 指令可以查看 PG 为一条查询选择的执行计划，参见另外一篇文章：<a target="_blank" rel="noopener" href="https://protream.com/2021/lean-how-to-read-pg-explain/">读懂 PostgreSQL 的 Explain</a>。</p>
+<h2 id="Operators"><a href="#Operators" class="headerlink" title="Operators"></a>Operators</h2><h3 id="Seq-Scan"><a href="#Seq-Scan" class="headerlink" title="Seq Scan"></a>Seq Scan</h3><p><code>Seq Scan</code> 所有 operator 中最基础的，顾名思义就是从头到尾把整个表按顺序扫描一遍，在每一行上检验是否符合 <code>where</code> 的条件约束（如果有的话），符合就放进结果集中。</p>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">pagila<span class="operator">=</span># explain <span class="keyword">select</span> <span class="operator">*</span> <span class="keyword">from</span> film <span class="keyword">where</span> length <span class="operator">&lt;</span> <span class="number">100</span>;</span><br><span class="line">                       QUERY PLAN</span><br><span class="line"><span class="comment">---------------------------------------------------------</span></span><br><span class="line"> Seq Scan <span class="keyword">on</span> film  (cost<span class="operator">=</span><span class="number">0.00</span>.<span class="number">.67</span><span class="number">.50</span> <span class="keyword">rows</span><span class="operator">=</span><span class="number">377</span> width<span class="operator">=</span><span class="number">390</span>)</span><br><span class="line">   <span class="keyword">Filter</span>: (length <span class="operator">&lt;</span> <span class="number">100</span>)</span><br><span class="line">(<span class="number">2</span> <span class="keyword">rows</span>)</span><br></pre></td></tr></table></figure>
+
+
+
+<p>使用情况：</p>
+<ol>
+<li>没有合适的索引；</li>
+<li>有索引，但是可能的结果数据集较大，相比较而言从原表扫描比从索引扫描代价更低。</li>
+</ol>
+<p>注意：</p>
+<p>由于 PG 中 delete 操作的实现机制是打标记、 update 是先标记为删除再插入新的行，如果一个表存在频繁、大量的 delete 、update 操作，就会产生很多 ”dead rows“，这些行用户是感知不到的，但是会非常影响 Seq Scan 的执行效率。</p>
+<p>Seq Scan 不需要整个过程执行完才输出第一行。</p>
+<h3 id="Index-Scan"><a href="#Index-Scan" class="headerlink" title="Index Scan"></a>Index Scan</h3><p>Index Scan 通过遍历索引结构查找数据。</p>
+<p>下面是一个 btree 索引的简单例子，该索引存储的记录为整型并且只有一个字段：</p>
+<p><img src="https://www.centos.bz/wp-content/uploads/2019/06/1-2-3.png" alt="img"></p>
+<p>以查找 49 为例，相比 Seq Scan 要遍历表中的每一条记录，Index Scan 的检索路径大大缩短了。另外，Seq Scan 按条的顺序返回结果，而索引结构是有序的，如果查询的是一个范围，那么通过索引返回的结果已经有序的，可以避免排序。</p>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">pagila<span class="operator">=</span># explain <span class="keyword">select</span> <span class="operator">*</span> <span class="keyword">from</span> film <span class="keyword">where</span> film_id <span class="operator">=</span> <span class="number">1</span>;</span><br><span class="line">                               QUERY PLAN</span><br><span class="line"><span class="comment">------------------------------------------------------------------------</span></span><br><span class="line"> Index Scan <span class="keyword">using</span> film_pkey <span class="keyword">on</span> film  (cost<span class="operator">=</span><span class="number">0.28</span>.<span class="number">.8</span><span class="number">.29</span> <span class="keyword">rows</span><span class="operator">=</span><span class="number">1</span> width<span class="operator">=</span><span class="number">390</span>)</span><br><span class="line">   Index Cond: (film_id <span class="operator">=</span> <span class="number">1</span>)</span><br><span class="line">(<span class="number">2</span> <span class="keyword">rows</span>)</span><br></pre></td></tr></table></figure>
+
+
+
+<p>Index Scan 不需要整个过程执行完才输出第一行。</p>
+<h3 id="Sort"><a href="#Sort" class="headerlink" title="Sort"></a>Sort</h3><p>Sort 对输入集进行排序，有两种策略：内存排序和磁盘排序。如果结果集的大小超过了 <code>sort_mem</code> 的，Sort 使用磁盘归并排序，如果没有超过，使用内存快速排序。</p>
+<p>SQL 中出现 <code>order by</code> 一般会用到 Sort 。一些 Operator 要要它们操作的结果集有序，也可能用到 Sort，如 Unique、MergeJoin 等。</p>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">pagila<span class="operator">=</span># explain <span class="keyword">select</span> <span class="operator">*</span> <span class="keyword">from</span> film <span class="keyword">order</span> <span class="keyword">by</span> length;</span><br><span class="line">                           QUERY PLAN</span><br><span class="line"><span class="comment">----------------------------------------------------------------</span></span><br><span class="line"> Sort  (cost<span class="operator">=</span><span class="number">114.83</span>.<span class="number">.117</span><span class="number">.33</span> <span class="keyword">rows</span><span class="operator">=</span><span class="number">1000</span> width<span class="operator">=</span><span class="number">390</span>)</span><br><span class="line">   Sort Key: length</span><br><span class="line">   <span class="operator">-</span><span class="operator">&gt;</span>  Seq Scan <span class="keyword">on</span> film  (cost<span class="operator">=</span><span class="number">0.00</span>.<span class="number">.65</span><span class="number">.00</span> <span class="keyword">rows</span><span class="operator">=</span><span class="number">1000</span> width<span class="operator">=</span><span class="number">390</span>)</span><br><span class="line">(<span class="number">3</span> <span class="keyword">rows</span>)</span><br></pre></td></tr></table></figure>
+
+
+
+<p>Sort 需要整个过程执行完才输出第一行。</p>
+<h3 id="Unique"><a href="#Unique" class="headerlink" title="Unique"></a>Unique</h3><p>Unique 对输入集进行去重。Unique 需要输入集有序，所以通常是先对数据集执行 Sort 操作，才执行 Unique 操作。</p>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">pagila<span class="operator">=</span># explain <span class="keyword">select</span> <span class="keyword">distinct</span> release_year <span class="keyword">from</span> film;</span><br><span class="line">                             QUERY PLAN</span><br><span class="line"><span class="comment">--------------------------------------------------------------------</span></span><br><span class="line"> <span class="keyword">Unique</span>  (cost<span class="operator">=</span><span class="number">114.83</span>.<span class="number">.119</span><span class="number">.83</span> <span class="keyword">rows</span><span class="operator">=</span><span class="number">1</span> width<span class="operator">=</span><span class="number">4</span>)</span><br><span class="line">   <span class="operator">-</span><span class="operator">&gt;</span>  Sort  (cost<span class="operator">=</span><span class="number">114.83</span>.<span class="number">.117</span><span class="number">.33</span> <span class="keyword">rows</span><span class="operator">=</span><span class="number">1000</span> width<span class="operator">=</span><span class="number">4</span>)</span><br><span class="line">         Sort Key: release_year</span><br><span class="line">         <span class="operator">-</span><span class="operator">&gt;</span>  Seq Scan <span class="keyword">on</span> film  (cost<span class="operator">=</span><span class="number">0.00</span>.<span class="number">.65</span><span class="number">.00</span> <span class="keyword">rows</span><span class="operator">=</span><span class="number">1000</span> width<span class="operator">=</span><span class="number">4</span>)</span><br><span class="line">(<span class="number">4</span> <span class="keyword">rows</span>)</span><br></pre></td></tr></table></figure>
+
+
+
+<p>Unique 是工作机制是，遍历每一行，把当前行和前一行比较，如果相等则从结果集移除。</p>
+<p>Unique 不需要整个过程执行完才输出第一行。</p>
+<h3 id="LIMIT"><a href="#LIMIT" class="headerlink" title="LIMIT"></a>LIMIT</h3><p>LIMIT 限制结果集的行数。</p>
+<p>LIMIT 的工作机制是丢弃开头的 x 行，返回后面的 y 行，剩下的就不管了。如果查询中 出现了 LIMIT ，那么 LIMIT 的数量就是 y，如果出现 OFFSET ，那么 OFFSET 的数量就是 x，否则为 x 为 0。</p>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">pagila<span class="operator">=</span># explain <span class="keyword">select</span> <span class="operator">*</span> <span class="keyword">from</span> film limit <span class="number">5</span>;</span><br><span class="line">                           QUERY PLAN</span><br><span class="line"><span class="comment">----------------------------------------------------------------</span></span><br><span class="line"> Limit  (cost<span class="operator">=</span><span class="number">0.00</span>.<span class="number">.0</span><span class="number">.33</span> <span class="keyword">rows</span><span class="operator">=</span><span class="number">5</span> width<span class="operator">=</span><span class="number">390</span>)</span><br><span class="line">   <span class="operator">-</span><span class="operator">&gt;</span>  Seq Scan <span class="keyword">on</span> film  (cost<span class="operator">=</span><span class="number">0.00</span>.<span class="number">.65</span><span class="number">.00</span> <span class="keyword">rows</span><span class="operator">=</span><span class="number">1000</span> width<span class="operator">=</span><span class="number">390</span>)</span><br><span class="line">(<span class="number">2</span> <span class="keyword">rows</span>)</span><br></pre></td></tr></table></figure>
+
+
+
+<p>LIMIT 不需要整个过程执行完才输出第一行。</p>
+<h3 id="Aggregate"><a href="#Aggregate" class="headerlink" title="Aggregate"></a>Aggregate</h3><p>当查询中使用了聚合函数时，就会产生 Aggregate 操作，聚合函数有：AVG()、COUNT()、MAX()、MIN、STDDEV()、SUM() 和 VARIANCE()。</p>
+<p>Aggregate 的工作机制是：读取输入集的所有行计算聚合值。</p>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">pagila<span class="operator">=</span># explain <span class="keyword">select</span> <span class="built_in">sum</span>(length) <span class="keyword">from</span> film;</span><br><span class="line">                          QUERY PLAN</span><br><span class="line"><span class="comment">--------------------------------------------------------------</span></span><br><span class="line"> Aggregate  (cost<span class="operator">=</span><span class="number">67.50</span>.<span class="number">.67</span><span class="number">.51</span> <span class="keyword">rows</span><span class="operator">=</span><span class="number">1</span> width<span class="operator">=</span><span class="number">8</span>)</span><br><span class="line">   <span class="operator">-</span><span class="operator">&gt;</span>  Seq Scan <span class="keyword">on</span> film  (cost<span class="operator">=</span><span class="number">0.00</span>.<span class="number">.65</span><span class="number">.00</span> <span class="keyword">rows</span><span class="operator">=</span><span class="number">1000</span> width<span class="operator">=</span><span class="number">2</span>)</span><br><span class="line">(<span class="number">2</span> <span class="keyword">rows</span>)</span><br></pre></td></tr></table></figure>
+
+
+
+<h3 id="Append"><a href="#Append" class="headerlink" title="Append"></a>Append</h3><p>Append 是用来实现 UNION 、UNION ALL 的，它将两个以上的输入集转化成一个结果集。</p>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">pagila<span class="operator">=</span># explain <span class="keyword">select</span> first_name, last_name <span class="keyword">from</span> actor <span class="keyword">union</span> <span class="keyword">all</span> <span class="keyword">select</span> first_name, last_name <span class="keyword">from</span> staff;</span><br><span class="line">                          QUERY PLAN</span><br><span class="line"><span class="comment">---------------------------------------------------------------</span></span><br><span class="line"> Append  (cost<span class="operator">=</span><span class="number">0.00</span>.<span class="number">.17</span><span class="number">.30</span> <span class="keyword">rows</span><span class="operator">=</span><span class="number">530</span> width<span class="operator">=</span><span class="number">45</span>)</span><br><span class="line">   <span class="operator">-</span><span class="operator">&gt;</span>  Seq Scan <span class="keyword">on</span> actor  (cost<span class="operator">=</span><span class="number">0.00</span>.<span class="number">.4</span><span class="number">.00</span> <span class="keyword">rows</span><span class="operator">=</span><span class="number">200</span> width<span class="operator">=</span><span class="number">13</span>)</span><br><span class="line">   <span class="operator">-</span><span class="operator">&gt;</span>  Seq Scan <span class="keyword">on</span> staff  (cost<span class="operator">=</span><span class="number">0.00</span>.<span class="number">.13</span><span class="number">.30</span> <span class="keyword">rows</span><span class="operator">=</span><span class="number">330</span> width<span class="operator">=</span><span class="number">64</span>)</span><br><span class="line">(<span class="number">3</span> <span class="keyword">rows</span>)</span><br></pre></td></tr></table></figure>
+
+
+
+<h3 id="Result"><a href="#Result" class="headerlink" title="Result"></a>Result</h3><ol>
+<li>执行一个查询，但并不是从表里面获取数据。</li>
+</ol>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">pagila<span class="operator">=</span># explain <span class="keyword">select</span> version();</span><br><span class="line">                QUERY PLAN</span><br><span class="line"><span class="comment">-------------------------------------------</span></span><br><span class="line"> <span class="keyword">Result</span>  (cost<span class="operator">=</span><span class="number">0.00</span>.<span class="number">.0</span><span class="number">.01</span> <span class="keyword">rows</span><span class="operator">=</span><span class="number">1</span> width<span class="operator">=</span><span class="number">32</span>)</span><br><span class="line">(<span class="number">1</span> <span class="type">row</span>)</span><br></pre></td></tr></table></figure>
+
+
+
+<ol start="2">
+<li>where 条件中包含与表数据无关的条件。</li>
+</ol>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">pagila<span class="operator">=</span># explain <span class="keyword">select</span> <span class="operator">*</span> <span class="keyword">from</span> film <span class="keyword">where</span> <span class="number">1</span> <span class="operator">&lt;&gt;</span> <span class="number">1</span>;</span><br><span class="line">                 QUERY PLAN</span><br><span class="line"><span class="comment">--------------------------------------------</span></span><br><span class="line"> <span class="keyword">Result</span>  (cost<span class="operator">=</span><span class="number">0.00</span>.<span class="number">.0</span><span class="number">.00</span> <span class="keyword">rows</span><span class="operator">=</span><span class="number">0</span> width<span class="operator">=</span><span class="number">184</span>)</span><br><span class="line">   <span class="keyword">One</span><span class="operator">-</span><span class="type">Time</span> <span class="keyword">Filter</span>: <span class="literal">false</span></span><br><span class="line">(<span class="number">2</span> <span class="keyword">rows</span>)</span><br></pre></td></tr></table></figure>
+
+
+
+<h3 id="Nested-Loop"><a href="#Nested-Loop" class="headerlink" title="Nested Loop"></a>Nested Loop</h3><p>Nested Loop 是用来执行 JOIN 的，需要两个输入集。</p>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">pagila<span class="operator">=</span># explain <span class="keyword">select</span> f.title, l.name <span class="keyword">from</span> film f <span class="keyword">inner</span> <span class="keyword">join</span> <span class="keyword">language</span> l <span class="keyword">on</span> f.language_id <span class="operator">=</span> l.language_id;</span><br><span class="line"> Nested Loop  (cost<span class="operator">=</span><span class="number">0.15</span>.<span class="number">.280</span><span class="number">.37</span> <span class="keyword">rows</span><span class="operator">=</span><span class="number">1000</span> width<span class="operator">=</span><span class="number">99</span>)</span><br><span class="line">   <span class="operator">-</span><span class="operator">&gt;</span>  Seq Scan <span class="keyword">on</span> film f  (cost<span class="operator">=</span><span class="number">0.00</span>.<span class="number">.65</span><span class="number">.00</span> <span class="keyword">rows</span><span class="operator">=</span><span class="number">1000</span> width<span class="operator">=</span><span class="number">19</span>)</span><br><span class="line">   <span class="operator">-</span><span class="operator">&gt;</span>  Index Scan <span class="keyword">using</span> language_pkey <span class="keyword">on</span> <span class="keyword">language</span> l  (cost<span class="operator">=</span><span class="number">0.15</span>.<span class="number">.0</span><span class="number">.22</span> <span class="keyword">rows</span><span class="operator">=</span><span class="number">1</span> width<span class="operator">=</span><span class="number">88</span>)</span><br><span class="line">         Index Cond: (language_id <span class="operator">=</span> f.language_id)</span><br></pre></td></tr></table></figure>
+
+<p>Nested Loop 的工作机制是没对一个输入集（外表）每一行，从另一个输入集（内表）查询符合 JOIN 条件的行。</p>
+<p>执行计划中列出的第一个表就是外表，此例中为 film。</p>
+<h3 id="Merge-Join"><a href="#Merge-Join" class="headerlink" title="Merge Join"></a>Merge Join</h3><p>Merge Join 也是用来执行 JOIN 的，需要两个数据集，并且输入集需要有序。</p>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">pagila<span class="operator">=</span># explain <span class="keyword">select</span> f.title, l.name <span class="keyword">from</span> film f <span class="keyword">inner</span> <span class="keyword">join</span> <span class="keyword">language</span> l <span class="keyword">on</span> f.language_id <span class="operator">=</span> l.language_id;</span><br><span class="line"> <span class="keyword">Merge</span> <span class="keyword">Join</span>  (cost<span class="operator">=</span><span class="number">47.14</span>.<span class="number">.171</span><span class="number">.89</span> <span class="keyword">rows</span><span class="operator">=</span><span class="number">1000</span> width<span class="operator">=</span><span class="number">99</span>)</span><br><span class="line">   <span class="keyword">Merge</span> Cond: (f.language_id <span class="operator">=</span> l.language_id)</span><br><span class="line">   <span class="operator">-</span><span class="operator">&gt;</span>  Index Scan <span class="keyword">using</span> idx_fk_language_id <span class="keyword">on</span> film f  (cost<span class="operator">=</span><span class="number">0.28</span>.<span class="number">.109</span><span class="number">.28</span> <span class="keyword">rows</span><span class="operator">=</span><span class="number">1000</span> width<span class="operator">=</span><span class="number">19</span>)</span><br><span class="line">   <span class="operator">-</span><span class="operator">&gt;</span>  Sort  (cost<span class="operator">=</span><span class="number">46.87</span>.<span class="number">.48</span><span class="number">.49</span> <span class="keyword">rows</span><span class="operator">=</span><span class="number">650</span> width<span class="operator">=</span><span class="number">88</span>)</span><br><span class="line">         Sort Key: l.language_id</span><br><span class="line">         <span class="operator">-</span><span class="operator">&gt;</span>  Seq Scan <span class="keyword">on</span> <span class="keyword">language</span> l  (cost<span class="operator">=</span><span class="number">0.00</span>.<span class="number">.16</span><span class="number">.50</span> <span class="keyword">rows</span><span class="operator">=</span><span class="number">650</span> width<span class="operator">=</span><span class="number">88</span>)</span><br></pre></td></tr></table></figure>
+
+
+
+<p>Merge Join 的工作机制类似与合并排序中合并两张表操作，用两个指针分别遍历两个有序的输入集，找到匹配的行。</p>
+<h3 id="Hash-and-Hash-Join"><a href="#Hash-and-Hash-Join" class="headerlink" title="Hash and Hash Join"></a>Hash and Hash Join</h3><p>Hash Join 也是用来执行 JOIN 的，需要两个数据集，通常和 Hash 一起工作。</p>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">pagila<span class="operator">=</span># explain <span class="keyword">select</span> f.title, l.name <span class="keyword">from</span> film f <span class="keyword">inner</span> <span class="keyword">join</span> <span class="keyword">language</span> l <span class="keyword">on</span> f.language_id <span class="operator">=</span> l.language_id;</span><br><span class="line"> Hash <span class="keyword">Join</span>  (cost<span class="operator">=</span><span class="number">24.62</span>.<span class="number">.92</span><span class="number">.27</span> <span class="keyword">rows</span><span class="operator">=</span><span class="number">1000</span> width<span class="operator">=</span><span class="number">99</span>)</span><br><span class="line">   Hash Cond: (f.language_id <span class="operator">=</span> l.language_id)</span><br><span class="line">   <span class="operator">-</span><span class="operator">&gt;</span>  Seq Scan <span class="keyword">on</span> film f  (cost<span class="operator">=</span><span class="number">0.00</span>.<span class="number">.65</span><span class="number">.00</span> <span class="keyword">rows</span><span class="operator">=</span><span class="number">1000</span> width<span class="operator">=</span><span class="number">19</span>)</span><br><span class="line">   <span class="operator">-</span><span class="operator">&gt;</span>  Hash  (cost<span class="operator">=</span><span class="number">16.50</span>.<span class="number">.16</span><span class="number">.50</span> <span class="keyword">rows</span><span class="operator">=</span><span class="number">650</span> width<span class="operator">=</span><span class="number">88</span>)</span><br><span class="line">         <span class="operator">-</span><span class="operator">&gt;</span>  Seq Scan <span class="keyword">on</span> <span class="keyword">language</span> l  (cost<span class="operator">=</span><span class="number">0.00</span>.<span class="number">.16</span><span class="number">.50</span> <span class="keyword">rows</span><span class="operator">=</span><span class="number">650</span> width<span class="operator">=</span><span class="number">88</span>)</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+
+
+<p>Hash Join 的工作机制是通过 Hash 操作将内表转换为哈希表，对于外表的每一行，通过哈希表找匹配的行。</p>
+<h3 id="Group"><a href="#Group" class="headerlink" title="Group"></a>Group</h3><p>Group 是用来执行 Group By 的，需要一个有序的输入集，一般和 Sort 一起出现。</p>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">Group</span>  (cost<span class="operator">=</span><span class="number">114.83</span>.<span class="number">.119</span><span class="number">.83</span> <span class="keyword">rows</span><span class="operator">=</span><span class="number">140</span> width<span class="operator">=</span><span class="number">2</span>)</span><br><span class="line">  <span class="keyword">Group</span> Key: length</span><br><span class="line">  <span class="operator">-</span><span class="operator">&gt;</span>  Sort  (cost<span class="operator">=</span><span class="number">114.83</span>.<span class="number">.117</span><span class="number">.33</span> <span class="keyword">rows</span><span class="operator">=</span><span class="number">1000</span> width<span class="operator">=</span><span class="number">2</span>)</span><br><span class="line">        Sort Key: length</span><br><span class="line">        <span class="operator">-</span><span class="operator">&gt;</span>  Seq Scan <span class="keyword">on</span> film  (cost<span class="operator">=</span><span class="number">0.00</span>.<span class="number">.65</span><span class="number">.00</span> <span class="keyword">rows</span><span class="operator">=</span><span class="number">1000</span> width<span class="operator">=</span><span class="number">2</span>)</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+
+
+<h3 id="GroupAggregate"><a href="#GroupAggregate" class="headerlink" title="GroupAggregate"></a>GroupAggregate</h3><p>类似 Aggregate，但是查询语句中有 group。</p>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">pagila<span class="operator">=</span># explain <span class="keyword">select</span> <span class="built_in">count</span>(<span class="operator">*</span>) <span class="keyword">from</span> film <span class="keyword">group</span> <span class="keyword">by</span> length;</span><br><span class="line">                             QUERY PLAN</span><br><span class="line"><span class="comment">--------------------------------------------------------------------</span></span><br><span class="line"> GroupAggregate  (cost<span class="operator">=</span><span class="number">114.83</span>.<span class="number">.123</span><span class="number">.73</span> <span class="keyword">rows</span><span class="operator">=</span><span class="number">140</span> width<span class="operator">=</span><span class="number">10</span>)</span><br><span class="line">   <span class="keyword">Group</span> Key: length</span><br><span class="line">   <span class="operator">-</span><span class="operator">&gt;</span>  Sort  (cost<span class="operator">=</span><span class="number">114.83</span>.<span class="number">.117</span><span class="number">.33</span> <span class="keyword">rows</span><span class="operator">=</span><span class="number">1000</span> width<span class="operator">=</span><span class="number">2</span>)</span><br><span class="line">         Sort Key: length</span><br><span class="line">         <span class="operator">-</span><span class="operator">&gt;</span>  Seq Scan <span class="keyword">on</span> film  (cost<span class="operator">=</span><span class="number">0.00</span>.<span class="number">.65</span><span class="number">.00</span> <span class="keyword">rows</span><span class="operator">=</span><span class="number">1000</span> width<span class="operator">=</span><span class="number">2</span>)</span><br><span class="line">(<span class="number">5</span> <span class="keyword">rows</span>)</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+
+
+<h3 id="Tid-Scan"><a href="#Tid-Scan" class="headerlink" title="Tid Scan"></a>Tid Scan</h3><p>这个 Operator 基本不会被使用。每个数据行有一个隐藏的 ctid 属性，当通过 ctid 属性查询数据时，就会出现 Tid Scan。</p>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">pagila<span class="operator">=</span># explain <span class="keyword">select</span> title <span class="keyword">from</span> film <span class="keyword">where</span> ctid <span class="operator">=</span> <span class="string">&#x27;(0, 1)&#x27;</span>;</span><br><span class="line"> Tid Scan <span class="keyword">on</span> film  (cost<span class="operator">=</span><span class="number">0.00</span>.<span class="number">.4</span><span class="number">.01</span> <span class="keyword">rows</span><span class="operator">=</span><span class="number">1</span> width<span class="operator">=</span><span class="number">21</span>)</span><br><span class="line">   TID Cond: (ctid <span class="operator">=</span> <span class="string">&#x27;(0,1)&#x27;</span>::tid)</span><br></pre></td></tr></table></figure>
+
+
+
+<h3 id="Materialize"><a href="#Materialize" class="headerlink" title="Materialize"></a>Materialize</h3><p>Materialize 操作会在一些子查询中出现，当 planner&#x2F;optimizer  认为将子查询的结果物化以后再对物化结果从头遍历进行下一步操作开销更低。</p>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">pagila<span class="operator">=</span># explain <span class="keyword">select</span> <span class="operator">*</span> <span class="keyword">from</span> film <span class="keyword">where</span> language_id <span class="keyword">in</span> (<span class="keyword">select</span> language_id <span class="keyword">from</span> <span class="keyword">language</span> <span class="keyword">where</span> name <span class="operator">=</span> <span class="string">&#x27;English&#x27;</span>);</span><br><span class="line"> Nested Loop  (cost<span class="operator">=</span><span class="number">0.00</span>.<span class="number">.128</span><span class="number">.09</span> <span class="keyword">rows</span><span class="operator">=</span><span class="number">5</span> width<span class="operator">=</span><span class="number">390</span>)</span><br><span class="line">   <span class="keyword">Join</span> <span class="keyword">Filter</span>: (film.language_id <span class="operator">=</span> language.language_id)</span><br><span class="line">   <span class="operator">-</span><span class="operator">&gt;</span>  Seq Scan <span class="keyword">on</span> film  (cost<span class="operator">=</span><span class="number">0.00</span>.<span class="number">.65</span><span class="number">.00</span> <span class="keyword">rows</span><span class="operator">=</span><span class="number">1000</span> width<span class="operator">=</span><span class="number">390</span>)</span><br><span class="line">   <span class="operator">-</span><span class="operator">&gt;</span>  Materialize  (cost<span class="operator">=</span><span class="number">0.00</span>.<span class="number">.18</span><span class="number">.14</span> <span class="keyword">rows</span><span class="operator">=</span><span class="number">3</span> width<span class="operator">=</span><span class="number">4</span>)</span><br><span class="line">         <span class="operator">-</span><span class="operator">&gt;</span>  Seq Scan <span class="keyword">on</span> <span class="keyword">language</span>  (cost<span class="operator">=</span><span class="number">0.00</span>.<span class="number">.18</span><span class="number">.12</span> <span class="keyword">rows</span><span class="operator">=</span><span class="number">3</span> width<span class="operator">=</span><span class="number">4</span>)</span><br><span class="line">               <span class="keyword">Filter</span>: (name <span class="operator">=</span> <span class="string">&#x27;English&#x27;</span>::bpchar)</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+
+
+<h3 id="Setop-Intersect-Intersect-All-Except-Except-All"><a href="#Setop-Intersect-Intersect-All-Except-Except-All" class="headerlink" title="Setop (Intersect, Intersect All, Except, Except All)"></a>Setop (Intersect, Intersect All, Except, Except All)</h3><p>一种有四种 Setop，分别是 Setop Intersect，Setop Intersect All，Setop  Except 和 Setop Except All，对应的 SQL 指令是 INTERSECT，INTERSECT ALL，EXCEPT 和 EXCEPT ALL。</p>
+<h2 id="参考"><a href="#参考" class="headerlink" title="参考"></a>参考</h2><p>[1] <a target="_blank" rel="noopener" href="http://etutorials.org/SQL/Postgresql/Part+I+General+PostgreSQL+Use/Chapter+4.+Performance/Understanding+How+PostgreSQL+Executes+a+Query/">Understanding How PostgreSQL Executes a Query</a></p>
+<p>[2] <a href="">PostgresSQL 技术内幕——查询优化深度探索</a></p>
+<p>[3] <a target="_blank" rel="noopener" href="https://www.postgresql.org/docs/10/using-explain.html">Using EXPLAIN</a></p>
+<p>[4] <a target="_blank" rel="noopener" href="https://www.postgresql.org/docs/13/runtime-config-query.html">Server Configuration</a></p>
+
+    </div>
+
+    
+    
+    
+
+    <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/postgres/" rel="tag"># postgres</a>
+          </div>
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-item">
+                <a href="/2021/a-postgresql-transaction-uncommit-problem/" rel="prev" title="记一个 PostgreSQL 事务未提交问题">
+                  <i class="fa fa-chevron-left"></i> 记一个 PostgreSQL 事务未提交问题
+                </a>
+            </div>
+            <div class="post-nav-item">
+                <a href="/2021/how-postgresql-store-data/" rel="next" title="PostgreSQL 是如何存储数据的">
+                  PostgreSQL 是如何存储数据的 <i class="fa fa-chevron-right"></i>
+                </a>
+            </div>
+          </div>
+    </footer>
+  </article>
+</div>
+
+
+
+
+
+
+</div>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+
+
+<div class="copyright">
+  &copy; 
+  <span itemprop="copyrightYear">2023</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">protream</span>
+</div>
+  <div class="powered-by">Powered by <a href="https://hexo.io/" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.js.org/pisces/" rel="noopener" target="_blank">NexT.Pisces</a>
+  </div>
+
+    </div>
+  </footer>
+
+  
+  <div class="back-to-top" role="button" aria-label="Back to top">
+    <i class="fa fa-arrow-up fa-lg"></i>
+    <span>0%</span>
+  </div>
+
+<noscript>
+  <div class="noscript-warning">Theme NexT works best with JavaScript enabled</div>
+</noscript>
+
+
+  
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js" integrity="sha256-XL2inqUJaslATFnHdJOi9GfQ60on8Wx1C2H8DYiN1xY=" crossorigin="anonymous"></script>
+<script src="/js/comments.js"></script><script src="/js/utils.js"></script><script src="/js/motion.js"></script><script src="/js/next-boot.js"></script>
+
+  
+
+
+
+
+
+
+  
+
+
+
+
+
+</body>
+</html>

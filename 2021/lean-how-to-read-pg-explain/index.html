@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="zh-Hans">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: dark)"><meta name="generator" content="Hexo 6.3.0">
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha256-HtsXJanqjKTc8vVQjO4YMhiqFoXkfBsjBWcX91T1jr8=" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/3.1.1/animate.min.css" integrity="sha256-PR7ttpcvz8qrF57fur/yAx1qXMFJeJFiA6pSzWi0OIE=" crossorigin="anonymous">
+
+<script class="next-config" data-name="main" type="application/json">{"hostname":"protream.github.io","root":"/","images":"/images","scheme":"Pisces","darkmode":true,"version":"8.17.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12},"copycode":{"enable":false,"style":null},"bookmark":{"enable":false,"color":"#222","save":"auto"},"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"stickytabs":false,"motion":{"enable":true,"async":false,"transition":{"menu_item":"fadeInDown","post_block":"fadeIn","post_header":"fadeInDown","post_body":"fadeInDown","coll_header":"fadeInLeft","sidebar":"fadeInUp"}},"prism":false,"i18n":{"placeholder":"Searching...","empty":"We didn't find any results for the search: ${query}","hits_time":"${hits} results found in ${time} ms","hits":"${hits} results found"}}</script><script src="/js/config.js"></script>
+
+    <meta name="description" content="查询优化的第一步是要读懂 PG 是如何执行查询的，而要用到的工具就是 EXPLAIN。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="读懂 PostgreSQL 的 Explain">
+<meta property="og:url" content="https://protream.github.io/2021/lean-how-to-read-pg-explain/index.html">
+<meta property="og:site_name" content="Protream&#39;s Blog">
+<meta property="og:description" content="查询优化的第一步是要读懂 PG 是如何执行查询的，而要用到的工具就是 EXPLAIN。">
+<meta property="og:locale">
+<meta property="article:published_time" content="2021-03-24T07:30:00.000Z">
+<meta property="article:modified_time" content="2023-06-15T03:40:47.805Z">
+<meta property="article:author" content="protream">
+<meta property="article:tag" content="postgres">
+<meta property="article:tag" content="技术笔记">
+<meta name="twitter:card" content="summary">
+
+
+<link rel="canonical" href="https://protream.github.io/2021/lean-how-to-read-pg-explain/">
+
+
+
+<script class="next-config" data-name="page" type="application/json">{"sidebar":"","isHome":false,"isPost":true,"lang":"zh-Hans","comments":true,"permalink":"https://protream.github.io/2021/lean-how-to-read-pg-explain/","path":"2021/lean-how-to-read-pg-explain/","title":"读懂 PostgreSQL 的 Explain"}</script>
+
+<script class="next-config" data-name="calendar" type="application/json">""</script>
+<title>读懂 PostgreSQL 的 Explain | Protream's Blog</title>
+  
+
+
+
+
+
+
+
+
+  <noscript>
+    <link rel="stylesheet" href="/css/noscript.css">
+  </noscript>
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" class="use-motion">
+  <div class="headband"></div>
+
+  <main class="main">
+    <div class="column">
+      <header class="header" itemscope itemtype="http://schema.org/WPHeader"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="Toggle navigation bar" role="button">
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <i class="logo-line"></i>
+      <p class="site-title">Protream's Blog</p>
+      <i class="logo-line"></i>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger" aria-label="Search" role="button">
+    </div>
+  </div>
+</div>
+
+
+
+
+
+
+
+</header>
+        
+  
+  <aside class="sidebar">
+
+    <div class="sidebar-inner sidebar-nav-active sidebar-toc-active">
+      <ul class="sidebar-nav">
+        <li class="sidebar-nav-toc">
+          Table of Contents
+        </li>
+        <li class="sidebar-nav-overview">
+          Overview
+        </li>
+      </ul>
+
+      <div class="sidebar-panel-container">
+        <!--noindex-->
+        <div class="post-toc-wrap sidebar-panel">
+            <div class="post-toc animated"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#Explain"><span class="nav-number">1.</span> <span class="nav-text">Explain</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Explain-Analyze"><span class="nav-number">2.</span> <span class="nav-text">Explain Analyze</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Explain-Buffers"><span class="nav-number">3.</span> <span class="nav-text">Explain Buffers</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#EXPLAIN-Verbose"><span class="nav-number">4.</span> <span class="nav-text">EXPLAIN Verbose</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%8F%82%E8%80%83"><span class="nav-number">5.</span> <span class="nav-text">参考</span></a></li></ol></div>
+        </div>
+        <!--/noindex-->
+
+        <div class="site-overview-wrap sidebar-panel">
+          <div class="site-author animated" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">protream</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap animated">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+        <a href="/archives/">
+          <span class="site-state-item-count">14</span>
+          <span class="site-state-item-name">posts</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-tags">
+        <span class="site-state-item-count">11</span>
+        <span class="site-state-item-name">tags</span>
+      </div>
+  </nav>
+</div>
+
+        </div>
+      </div>
+    </div>
+
+    
+  </aside>
+
+
+    </div>
+
+    <div class="main-inner post posts-expand">
+
+
+  
+
+
+<div class="post-block">
+  
+  
+
+  <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="zh-Hans">
+    <link itemprop="mainEntityOfPage" href="https://protream.github.io/2021/lean-how-to-read-pg-explain/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="protream">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Protream's Blog">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="post" itemscope itemtype="http://schema.org/CreativeWork">
+      <meta itemprop="name" content="读懂 PostgreSQL 的 Explain | Protream's Blog">
+      <meta itemprop="description" content="">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          读懂 PostgreSQL 的 Explain
+        </h1>
+
+        <div class="post-meta-container">
+          <div class="post-meta">
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar"></i>
+      </span>
+      <span class="post-meta-item-text">Posted on</span>
+
+      <time title="Created: 2021-03-24 15:30:00" itemprop="dateCreated datePublished" datetime="2021-03-24T15:30:00+08:00">2021-03-24</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar-check"></i>
+      </span>
+      <span class="post-meta-item-text">Edited on</span>
+      <time title="Modified: 2023-06-15 11:40:47" itemprop="dateModified" datetime="2023-06-15T11:40:47+08:00">2023-06-15</time>
+    </span>
+
+  
+</div>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody"><p>查询优化的第一步是要读懂 PG 是如何执行查询的，而要用到的工具就是 EXPLAIN。</p>
+<span id="more"></span>
+
+<h2 id="Explain"><a href="#Explain" class="headerlink" title="Explain"></a>Explain</h2><p>使用 <code>EXPLAIN</code> 命令可以查询 Planner 为查询创建的执行计划。</p>
+<p>查询计划是用树结构表示的，每一个树的节点都是一个子计划。树结构的最底层节点一般是扫描节点，负责从表中读取数据行。不同的扫描节点对应不同的表数据获取方法：</p>
+<ul>
+<li>顺序扫描（sequential scans）</li>
+<li>索引扫描（index scans）</li>
+<li>位图扫描（bitmap index scans）</li>
+</ul>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">pagila<span class="operator">=</span># explain <span class="keyword">select</span> <span class="operator">*</span> <span class="keyword">from</span> film;</span><br><span class="line">                        QUERY PLAN</span><br><span class="line"><span class="comment">----------------------------------------------------------</span></span><br><span class="line"> Seq Scan <span class="keyword">on</span> film  (cost<span class="operator">=</span><span class="number">0.00</span>.<span class="number">.65</span><span class="number">.00</span> <span class="keyword">rows</span><span class="operator">=</span><span class="number">1000</span> width<span class="operator">=</span><span class="number">390</span>)</span><br><span class="line">(<span class="number">1</span> <span class="type">row</span>)</span><br></pre></td></tr></table></figure>
+
+
+
+<p>没有 where 条件，所以需要扫描整张表，对应的扫描计划是 Seq Scan。括号里面从左到右4个数据的含义依次是：</p>
+<ul>
+<li>估计的启动开销，指输出阶段开始之前所花费的时间，同样的，在 sort 节点中指排序的时间。</li>
+<li>估计的总的开销。</li>
+<li>此计划节点输出的估计行数。</li>
+<li>此计划节点输出的行的估计平均宽度（单位：bytes）。</li>
+</ul>
+<p>代价的计算公式： (disk pages read * <a target="_blank" rel="noopener" href="https://www.postgresql.org/docs/10/runtime-config-query.html#GUC-SEQ-PAGE-COST">seq_page_cost</a>) + (rows scanned * <a target="_blank" rel="noopener" href="https://www.postgresql.org/docs/10/runtime-config-query.html#GUC-CPU-TUPLE-COST">cpu_tuple_cost</a>)</p>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">pagila<span class="operator">=</span># <span class="keyword">SELECT</span> relpages, reltuples <span class="keyword">FROM</span> pg_class <span class="keyword">WHERE</span> relname <span class="operator">=</span> <span class="string">&#x27;film&#x27;</span>;</span><br><span class="line"> relpages <span class="operator">|</span> reltuples</span><br><span class="line"><span class="comment">----------+-----------</span></span><br><span class="line">       <span class="number">55</span> <span class="operator">|</span>      <span class="number">1000</span></span><br><span class="line">(<span class="number">1</span> <span class="type">row</span>)</span><br></pre></td></tr></table></figure>
+
+
+
+<p>默认的, <code>seq_page_cost</code> 是 1.0 and <code>cpu_tuple_cost</code> 是 0.01，(55 * 1.0) + (0.01 * 1000) &#x3D; 65。</p>
+<p>记住：</p>
+<ul>
+<li><strong>上层节点的开销包括其所有子节点的开销</strong>。</li>
+<li>开销只反映了计划器关心的东西。</li>
+<li>开销不考虑将结果行传输到客户端花费的时间，这个在实际的时间花费中可能占很大一部分，计划器不考虑是因为，计划器改变计划也改不不了这个时间。</li>
+</ul>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">pagila<span class="operator">=</span># explain <span class="keyword">select</span> <span class="operator">*</span> <span class="keyword">from</span> film <span class="keyword">where</span> length <span class="operator">&gt;</span> <span class="number">100</span>;</span><br><span class="line">                       QUERY PLAN</span><br><span class="line"><span class="comment">---------------------------------------------------------</span></span><br><span class="line"> Seq Scan <span class="keyword">on</span> film  (cost<span class="operator">=</span><span class="number">0.00</span>.<span class="number">.67</span><span class="number">.50</span> <span class="keyword">rows</span><span class="operator">=</span><span class="number">611</span> width<span class="operator">=</span><span class="number">390</span>)</span><br><span class="line">   <span class="keyword">Filter</span>: (length <span class="operator">&gt;</span> <span class="number">100</span>)</span><br><span class="line">(<span class="number">2</span> <span class="keyword">rows</span>)</span><br></pre></td></tr></table></figure>
+
+
+
+<p>rows 因为过滤条件减少了，但是总的开销并没有减少，还增加了，因为还是要扫描 1000 行，每行还要判断是否满足过滤条件。增加的开销：1000 * <a target="_blank" rel="noopener" href="https://www.postgresql.org/docs/10/runtime-config-query.html#GUC-CPU-OPERATOR-COST">cpu_operator_cost</a>，该参数默认值是 0.0025，所以 65 + 1000 * 0.0025 得到 67.5。</p>
+<h2 id="Explain-Analyze"><a href="#Explain-Analyze" class="headerlink" title="Explain Analyze"></a>Explain Analyze</h2><p>加上 Analyze 参数后，查询会被执行，explain 会在原来的基础上显示每个节点真实的时间花费。</p>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">pagila<span class="operator">=</span># explain analyze <span class="keyword">select</span> f.title, l.name <span class="keyword">from</span> film f <span class="keyword">inner</span> <span class="keyword">join</span> <span class="keyword">language</span> l <span class="keyword">on</span> f.language_id <span class="operator">=</span> l.language_id;</span><br><span class="line">                                                     QUERY PLAN</span><br><span class="line"><span class="comment">----------------------------------------------------------------------------------------------------------------</span></span><br><span class="line"> Hash <span class="keyword">Join</span>  (cost<span class="operator">=</span><span class="number">24.62</span>.<span class="number">.92</span><span class="number">.27</span> <span class="keyword">rows</span><span class="operator">=</span><span class="number">1000</span> width<span class="operator">=</span><span class="number">99</span>) (actual <span class="type">time</span><span class="operator">=</span><span class="number">0.408</span>.<span class="number">.22</span><span class="number">.136</span> <span class="keyword">rows</span><span class="operator">=</span><span class="number">1000</span> loops<span class="operator">=</span><span class="number">1</span>)</span><br><span class="line">   Hash Cond: (f.language_id <span class="operator">=</span> l.language_id)</span><br><span class="line">   <span class="operator">-</span><span class="operator">&gt;</span>  Seq Scan <span class="keyword">on</span> film f  (cost<span class="operator">=</span><span class="number">0.00</span>.<span class="number">.65</span><span class="number">.00</span> <span class="keyword">rows</span><span class="operator">=</span><span class="number">1000</span> width<span class="operator">=</span><span class="number">19</span>) (actual <span class="type">time</span><span class="operator">=</span><span class="number">0.029</span>.<span class="number">.7</span><span class="number">.197</span> <span class="keyword">rows</span><span class="operator">=</span><span class="number">1000</span> loops<span class="operator">=</span><span class="number">1</span>)</span><br><span class="line">   <span class="operator">-</span><span class="operator">&gt;</span>  Hash  (cost<span class="operator">=</span><span class="number">16.50</span>.<span class="number">.16</span><span class="number">.50</span> <span class="keyword">rows</span><span class="operator">=</span><span class="number">650</span> width<span class="operator">=</span><span class="number">88</span>) (actual <span class="type">time</span><span class="operator">=</span><span class="number">0.253</span>.<span class="number">.0</span><span class="number">.270</span> <span class="keyword">rows</span><span class="operator">=</span><span class="number">6</span> loops<span class="operator">=</span><span class="number">1</span>)</span><br><span class="line">         Buckets: <span class="number">1024</span>  Batches: <span class="number">1</span>  Memory Usage: <span class="number">9</span>kB</span><br><span class="line">         <span class="operator">-</span><span class="operator">&gt;</span>  Seq Scan <span class="keyword">on</span> <span class="keyword">language</span> l  (cost<span class="operator">=</span><span class="number">0.00</span>.<span class="number">.16</span><span class="number">.50</span> <span class="keyword">rows</span><span class="operator">=</span><span class="number">650</span> width<span class="operator">=</span><span class="number">88</span>) (actual <span class="type">time</span><span class="operator">=</span><span class="number">0.055</span>.<span class="number">.0</span><span class="number">.131</span> <span class="keyword">rows</span><span class="operator">=</span><span class="number">6</span> loops<span class="operator">=</span><span class="number">1</span>)</span><br><span class="line"> Planning <span class="type">time</span>: <span class="number">0.594</span> ms</span><br><span class="line"> Execution <span class="type">time</span>: <span class="number">29.335</span> ms</span><br><span class="line">(<span class="number">8</span> <span class="keyword">rows</span>)</span><br></pre></td></tr></table></figure>
+
+
+
+<p><code>actual_time</code> 的单位是毫秒，而开销的估算单位是随意的，两者不可相提并论。</p>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">pagila<span class="operator">=</span># explain analyze <span class="keyword">select</span> <span class="operator">*</span> <span class="keyword">from</span> film <span class="keyword">where</span> length <span class="operator">&gt;</span> <span class="number">100</span>;</span><br><span class="line">                                             QUERY PLAN</span><br><span class="line"><span class="comment">-----------------------------------------------------------------------------------------------------</span></span><br><span class="line"> Seq Scan <span class="keyword">on</span> film  (cost<span class="operator">=</span><span class="number">0.00</span>.<span class="number">.67</span><span class="number">.50</span> <span class="keyword">rows</span><span class="operator">=</span><span class="number">611</span> width<span class="operator">=</span><span class="number">390</span>) (actual <span class="type">time</span><span class="operator">=</span><span class="number">0.046</span>.<span class="number">.6</span><span class="number">.862</span> <span class="keyword">rows</span><span class="operator">=</span><span class="number">610</span> loops<span class="operator">=</span><span class="number">1</span>)</span><br><span class="line">   <span class="keyword">Filter</span>: (length <span class="operator">&gt;</span> <span class="number">100</span>)</span><br><span class="line">   <span class="keyword">Rows</span> Removed <span class="keyword">by</span> <span class="keyword">Filter</span>: <span class="number">390</span></span><br><span class="line"> Planning <span class="type">time</span>: <span class="number">0.195</span> ms</span><br><span class="line"> Execution <span class="type">time</span>: <span class="number">13.014</span> ms</span><br><span class="line">(<span class="number">5</span> <span class="keyword">rows</span>)</span><br></pre></td></tr></table></figure>
+
+
+
+<p><code>Rows Removed</code> 显示 where 条件过滤掉了多少行。</p>
+<h2 id="Explain-Buffers"><a href="#Explain-Buffers" class="headerlink" title="Explain Buffers"></a>Explain Buffers</h2><p>explain 有个 buffers 参数可以和 analyze 一起使用获取更多的统计信息。buffers 提供的数据可以帮我们识别出哪部分查询时最 IO 密集的。</p>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">pagila<span class="operator">=</span># explain (analyze, buffers) <span class="keyword">select</span> <span class="operator">*</span> <span class="keyword">from</span> film <span class="keyword">where</span> length <span class="operator">&gt;</span> <span class="number">100</span>;</span><br><span class="line">                                             QUERY PLAN</span><br><span class="line"><span class="comment">-----------------------------------------------------------------------------------------------------</span></span><br><span class="line"> Seq Scan <span class="keyword">on</span> film  (cost<span class="operator">=</span><span class="number">0.00</span>.<span class="number">.67</span><span class="number">.50</span> <span class="keyword">rows</span><span class="operator">=</span><span class="number">611</span> width<span class="operator">=</span><span class="number">390</span>) (actual <span class="type">time</span><span class="operator">=</span><span class="number">0.020</span>.<span class="number">.7</span><span class="number">.365</span> <span class="keyword">rows</span><span class="operator">=</span><span class="number">610</span> loops<span class="operator">=</span><span class="number">1</span>)</span><br><span class="line">   <span class="keyword">Filter</span>: (length <span class="operator">&gt;</span> <span class="number">100</span>)</span><br><span class="line">   <span class="keyword">Rows</span> Removed <span class="keyword">by</span> <span class="keyword">Filter</span>: <span class="number">390</span></span><br><span class="line">   Buffers: shared hit<span class="operator">=</span><span class="number">55</span></span><br><span class="line"> Planning <span class="type">time</span>: <span class="number">0.110</span> ms</span><br><span class="line"> Execution <span class="type">time</span>: <span class="number">14.068</span> ms</span><br><span class="line">(<span class="number">6</span> <span class="keyword">rows</span>)</span><br></pre></td></tr></table></figure>
+
+
+
+<p>hit 的意思是数据块已经在缓存中了，避免了读操作。</p>
+<p><code>shared block</code>：包含从表和索引来的数据。</p>
+<p><code>local block</code>：包含从临时表和索引来的数据。</p>
+<p><code>temp block</code>：sort、hash、materialize 节点用到的临时数据。</p>
+<h2 id="EXPLAIN-Verbose"><a href="#EXPLAIN-Verbose" class="headerlink" title="EXPLAIN Verbose"></a>EXPLAIN Verbose</h2><p>显示有关计划的其他信息。具体来说，包括计划树中每个节点的输出列列表、模式限定表和函数名，始终使用范围表别名标记表达式中的变量，并始终打印显示统计信息的每个触发器的名称。</p>
+<h2 id="参考"><a href="#参考" class="headerlink" title="参考"></a>参考</h2><p>[1] <a target="_blank" rel="noopener" href="https://www.postgresql.org/docs/10/sql-explain.html">EXPLAIN</a></p>
+<p>[1] <a target="_blank" rel="noopener" href="https://www.postgresql.org/docs/10/using-explain.html">Using EXPLAIN</a></p>
+
+    </div>
+
+    
+    
+    
+
+    <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/postgres/" rel="tag"># postgres</a>
+              <a href="/tags/%E6%8A%80%E6%9C%AF%E7%AC%94%E8%AE%B0/" rel="tag"># 技术笔记</a>
+          </div>
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-item">
+                <a href="/2021/postgresql-locks/" rel="prev" title="PostgreSQL 锁机制浅析">
+                  <i class="fa fa-chevron-left"></i> PostgreSQL 锁机制浅析
+                </a>
+            </div>
+            <div class="post-nav-item">
+                <a href="/2021/how-flask-sqlalchemy-execute-a-query/" rel="next" title="Flask-SQLAlchemy 是如何执行一条查询的">
+                  Flask-SQLAlchemy 是如何执行一条查询的 <i class="fa fa-chevron-right"></i>
+                </a>
+            </div>
+          </div>
+    </footer>
+  </article>
+</div>
+
+
+
+
+
+
+</div>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+
+
+<div class="copyright">
+  &copy; 
+  <span itemprop="copyrightYear">2023</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">protream</span>
+</div>
+  <div class="powered-by">Powered by <a href="https://hexo.io/" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.js.org/pisces/" rel="noopener" target="_blank">NexT.Pisces</a>
+  </div>
+
+    </div>
+  </footer>
+
+  
+  <div class="back-to-top" role="button" aria-label="Back to top">
+    <i class="fa fa-arrow-up fa-lg"></i>
+    <span>0%</span>
+  </div>
+
+<noscript>
+  <div class="noscript-warning">Theme NexT works best with JavaScript enabled</div>
+</noscript>
+
+
+  
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js" integrity="sha256-XL2inqUJaslATFnHdJOi9GfQ60on8Wx1C2H8DYiN1xY=" crossorigin="anonymous"></script>
+<script src="/js/comments.js"></script><script src="/js/utils.js"></script><script src="/js/motion.js"></script><script src="/js/next-boot.js"></script>
+
+  
+
+
+
+
+
+
+  
+
+
+
+
+
+</body>
+</html>

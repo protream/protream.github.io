@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="zh-Hans">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: dark)"><meta name="generator" content="Hexo 6.3.0">
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha256-HtsXJanqjKTc8vVQjO4YMhiqFoXkfBsjBWcX91T1jr8=" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/3.1.1/animate.min.css" integrity="sha256-PR7ttpcvz8qrF57fur/yAx1qXMFJeJFiA6pSzWi0OIE=" crossorigin="anonymous">
+
+<script class="next-config" data-name="main" type="application/json">{"hostname":"protream.github.io","root":"/","images":"/images","scheme":"Pisces","darkmode":true,"version":"8.17.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12},"copycode":{"enable":false,"style":null},"bookmark":{"enable":false,"color":"#222","save":"auto"},"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"stickytabs":false,"motion":{"enable":true,"async":false,"transition":{"menu_item":"fadeInDown","post_block":"fadeIn","post_header":"fadeInDown","post_body":"fadeInDown","coll_header":"fadeInLeft","sidebar":"fadeInUp"}},"prism":false,"i18n":{"placeholder":"Searching...","empty":"We didn't find any results for the search: ${query}","hits_time":"${hits} results found in ${time} ms","hits":"${hits} results found"}}</script><script src="/js/config.js"></script>
+
+    <meta name="description" content="“Memory management is where the rubber meets the road – if we do the wrong thing at any level, the results will not be good. And if we don’t make the levels work well together, we are in serious trou">
+<meta property="og:type" content="article">
+<meta property="og:title" content="深入 Python —— Python 是如何管理内存的（上）">
+<meta property="og:url" content="https://protream.github.io/2019/how-python-manage-memory-part-one/index.html">
+<meta property="og:site_name" content="Protream&#39;s Blog">
+<meta property="og:description" content="“Memory management is where the rubber meets the road – if we do the wrong thing at any level, the results will not be good. And if we don’t make the levels work well together, we are in serious trou">
+<meta property="og:locale">
+<meta property="og:image" content="https://protream-blog.oss-cn-hangzhou.aliyuncs.com/python_memery_manage/python-mem-1.png">
+<meta property="og:image" content="https://protream-blog.oss-cn-hangzhou.aliyuncs.com/python_memery_manage/python-mem-5.png">
+<meta property="og:image" content="https://protream-blog.oss-cn-hangzhou.aliyuncs.com/python_memery_manage/python-mem-2.png">
+<meta property="og:image" content="https://protream-blog.oss-cn-hangzhou.aliyuncs.com/python_memery_manage/python-mem-3.png">
+<meta property="og:image" content="https://protream-blog.oss-cn-hangzhou.aliyuncs.com/python_memery_manage/python-mem-4.png">
+<meta property="article:published_time" content="2019-04-07T09:52:10.000Z">
+<meta property="article:modified_time" content="2023-06-15T03:40:47.804Z">
+<meta property="article:author" content="protream">
+<meta property="article:tag" content="源码笔记">
+<meta property="article:tag" content="深入python">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://protream-blog.oss-cn-hangzhou.aliyuncs.com/python_memery_manage/python-mem-1.png">
+
+
+<link rel="canonical" href="https://protream.github.io/2019/how-python-manage-memory-part-one/">
+
+
+
+<script class="next-config" data-name="page" type="application/json">{"sidebar":"","isHome":false,"isPost":true,"lang":"zh-Hans","comments":true,"permalink":"https://protream.github.io/2019/how-python-manage-memory-part-one/","path":"2019/how-python-manage-memory-part-one/","title":"深入 Python —— Python 是如何管理内存的（上）"}</script>
+
+<script class="next-config" data-name="calendar" type="application/json">""</script>
+<title>深入 Python —— Python 是如何管理内存的（上） | Protream's Blog</title>
+  
+
+
+
+
+
+
+
+
+  <noscript>
+    <link rel="stylesheet" href="/css/noscript.css">
+  </noscript>
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" class="use-motion">
+  <div class="headband"></div>
+
+  <main class="main">
+    <div class="column">
+      <header class="header" itemscope itemtype="http://schema.org/WPHeader"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="Toggle navigation bar" role="button">
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <i class="logo-line"></i>
+      <p class="site-title">Protream's Blog</p>
+      <i class="logo-line"></i>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger" aria-label="Search" role="button">
+    </div>
+  </div>
+</div>
+
+
+
+
+
+
+
+</header>
+        
+  
+  <aside class="sidebar">
+
+    <div class="sidebar-inner sidebar-nav-active sidebar-toc-active">
+      <ul class="sidebar-nav">
+        <li class="sidebar-nav-toc">
+          Table of Contents
+        </li>
+        <li class="sidebar-nav-overview">
+          Overview
+        </li>
+      </ul>
+
+      <div class="sidebar-panel-container">
+        <!--noindex-->
+        <div class="post-toc-wrap sidebar-panel">
+            <div class="post-toc animated"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%A6%82%E8%A7%88"><span class="nav-number">1.</span> <span class="nav-text">概览</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#pool"><span class="nav-number">2.</span> <span class="nav-text">pool</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#usedpools"><span class="nav-number">3.</span> <span class="nav-text">usedpools</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#arena"><span class="nav-number">4.</span> <span class="nav-text">arena</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%86%85%E5%AD%98%E5%9B%9E%E6%94%B6"><span class="nav-number">5.</span> <span class="nav-text">内存回收</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%80%BB%E7%BB%93"><span class="nav-number">6.</span> <span class="nav-text">总结</span></a></li></ol></div>
+        </div>
+        <!--/noindex-->
+
+        <div class="site-overview-wrap sidebar-panel">
+          <div class="site-author animated" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">protream</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap animated">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+        <a href="/archives/">
+          <span class="site-state-item-count">14</span>
+          <span class="site-state-item-name">posts</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-tags">
+        <span class="site-state-item-count">11</span>
+        <span class="site-state-item-name">tags</span>
+      </div>
+  </nav>
+</div>
+
+        </div>
+      </div>
+    </div>
+
+    
+  </aside>
+
+
+    </div>
+
+    <div class="main-inner post posts-expand">
+
+
+  
+
+
+<div class="post-block">
+  
+  
+
+  <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="zh-Hans">
+    <link itemprop="mainEntityOfPage" href="https://protream.github.io/2019/how-python-manage-memory-part-one/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="protream">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Protream's Blog">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="post" itemscope itemtype="http://schema.org/CreativeWork">
+      <meta itemprop="name" content="深入 Python —— Python 是如何管理内存的（上） | Protream's Blog">
+      <meta itemprop="description" content="">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          深入 Python —— Python 是如何管理内存的（上）
+        </h1>
+
+        <div class="post-meta-container">
+          <div class="post-meta">
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar"></i>
+      </span>
+      <span class="post-meta-item-text">Posted on</span>
+
+      <time title="Created: 2019-04-07 17:52:10" itemprop="dateCreated datePublished" datetime="2019-04-07T17:52:10+08:00">2019-04-07</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar-check"></i>
+      </span>
+      <span class="post-meta-item-text">Edited on</span>
+      <time title="Modified: 2023-06-15 11:40:47" itemprop="dateModified" datetime="2023-06-15T11:40:47+08:00">2023-06-15</time>
+    </span>
+
+  
+</div>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody"><blockquote>
+<p>“Memory management is where the rubber meets the road – if we do the wrong thing at any level, the results will not be good. And if we don’t make the levels work well together, we are in serious trouble.” —— “Dynamic Storage Allocation: A Survey and Critical Review”</p>
+</blockquote>
+<span id="more"></span>
+
+<p>内存管理可以说是任何基于 C&#x2F;C++ 的系统程序的基石，需要谨慎对待。我们知道原生的 Python 解释权就是用 C 编写的，它的内部有一套自己的内存管理方案。这篇文章就是要来探究这套管理方案的实现细节，我们将会看到 Python 运行时内存是如何组织的，创建一个对象需要的内存又是如何分配的以及不再需要的垃圾内存又是如何被回收的。本文基于 Python 2.7。</p>
+<h2 id="概览"><a href="#概览" class="headerlink" title="概览"></a>概览</h2><p>如果把一台计算机中所有的内存看做一块蛋糕的话，要从这块蛋糕成功切下一小块给一个 Python 对象，需要经过一个个层级的申请。</p>
+<p><img src="https://protream-blog.oss-cn-hangzhou.aliyuncs.com/python_memery_manage/python-mem-1.png"></p>
+<p>最底层，也就是图中的 -2 层，就是原始的物理存储，包含主存与二级存储；在这之上也就是 -1 层是我们的操作系统层，系统内核负责对物理存储进行管理和分配; 再上一层来到 0 层，这一层负责向操作系统申请内存，典型的如 C 语言的 <code>malloc</code> 库，Python 运行时需要的内存最终要通过这一层从操作系统申请；0 层往上才是 Python 运行时的内存管理层级。</p>
+<p>第 1 层中提供的<code>PyMem</code> 相关 API 主要是为了屏蔽不同平台 <code>malloc/free</code> 的差异，比如对于 malloc(0)，有的系统返回 NULL，有的系统返回一个指针但是指向的地方没有内存。解决这个问题的方法简单粗暴，就是不允许分配 0 内存，至少分配 1，PyMem_MALLOC(0) 会被转化成 malloc(1)。</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="keyword">define</span> PyMem_MALLOC(n)        ((size_t)(n) &gt; (size_t)PY_SSIZE_T_MAX ? NULL \</span></span><br><span class="line"><span class="meta">                : malloc((n) ? (n) : 1))</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> PyMem_REALLOC(p, n)    ((size_t)(n) &gt; (size_t)PY_SSIZE_T_MAX  ? NULL \</span></span><br><span class="line"><span class="meta">                : realloc((p), (n) ? (n) : 1))</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> PyMem_FREE        free</span></span><br></pre></td></tr></table></figure>
+
+
+<p>第 2 层从第 1 层获取内存，这些内存如何组织，如何分配给第 3 层的各种对象，以及垃圾内存是怎么被回收的就是这篇文章要关注的点。</p>
+<h2 id="pool"><a href="#pool" class="headerlink" title="pool"></a>pool</h2><p>一个 pool 可以理解为一块大小为 4k（一个系统内存页的大小） 的蛋糕。当要为一个对象分配内存时，会从某个 pool 切下来一块分给这个对象。这里存在的限制是：</p>
+<ul>
+<li>每个 pool 能被切下来的蛋糕大小是固定的，依次是 8，16，32，…，256 bytes，每个切下来的蛋糕块就是一个 <em>block</em>；</li>
+<li>超过 256 bytes 的蛋糕块不再通过 pool 切，而是由 malloc 直接从操作系统申请；</li>
+<li>请求 0 bytes 的蛋糕块也不通过 pool 切，0 会被改成 1 由 malloc 直接从操作系统申请；</li>
+</ul>
+<p>这样的话，对于 [1, 256] bytes 这个范围内存请求与实际分配的内存（block）的关系如下：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line">Request in bytes     Size of allocated block      Size class idx</span><br><span class="line">----------------------------------------------------------------</span><br><span class="line">        1-8                     8                       0</span><br><span class="line">        9-16                   16                       1</span><br><span class="line">       17-24                   24                       2</span><br><span class="line">       25-32                   32                       3</span><br><span class="line">       33-40                   40                       4</span><br><span class="line">       41-48                   48                       5</span><br><span class="line">       49-56                   56                       6</span><br><span class="line">       57-64                   64                       7</span><br><span class="line">       65-72                   72                       8</span><br><span class="line">        ...                   ...                     ...</span><br><span class="line">      241-248                 248                      30</span><br><span class="line">      249-256                 256                      31</span><br></pre></td></tr></table></figure>
+
+<p>现在我们回过头来聚焦到单个 pool ，可以想象，在任意时刻，这个 pool 会有三种状态：</p>
+<ol>
+<li><code>used</code>：已经切分了部分小蛋糕块（block）出去，但还有剩余；</li>
+<li><code>full</code>：所有的蛋糕块都被切分出去了；</li>
+<li><code>empty</code>：还没有切分蛋糕块出去；</li>
+</ol>
+<p>Python 会在每个 pool 的开始位置存放这个 pool 能切分蛋糕块大小以及当前状态等相关信息，它们存放在 <code>pool_header</code> 结构体中，其定义如下：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">pool_header</span> &#123;</span></span><br><span class="line">    <span class="class"><span class="keyword">union</span> &#123;</span> block *_padding;</span><br><span class="line">        uint count; &#125; ref;              <span class="comment">/* number of allocated blocks    */</span></span><br><span class="line">    block *freeblock;                   <span class="comment">/* pool&#x27;s free list head         */</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">pool_header</span> *<span class="title">nextpool</span>;</span>       <span class="comment">/* next pool of this size class  */</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">pool_header</span> *<span class="title">prevpool</span>;</span>       <span class="comment">/* previous pool                 */</span></span><br><span class="line">    uint arenaindex;                    <span class="comment">/* index into arenas of base adr */</span></span><br><span class="line">    uint szidx;                         <span class="comment">/* block size class index        */</span></span><br><span class="line">    uint nextoffset;                    <span class="comment">/* bytes to virgin block         */</span></span><br><span class="line">    uint maxnextoffset;                 <span class="comment">/* largest valid nextoffset      */</span></span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<p>假设现在有一块 4K 内存要被初始化为一个 pool，这个 pool 只能切割出 16 bytes 大小的 block ，下面是它的初始化过程：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/*</span></span><br><span class="line"><span class="comment"> * Initialize the pool header, set up the free list to</span></span><br><span class="line"><span class="comment"> * contain just the second block.</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line">pool-&gt;szidx = size;</span><br><span class="line">size = INDEX2SIZE(size);</span><br><span class="line">bp = (block *)pool + POOL_OVERHEAD;</span><br><span class="line">pool-&gt;nextoffset = POOL_OVERHEAD + (size &lt;&lt; <span class="number">1</span>);</span><br><span class="line">pool-&gt;maxnextoffset = POOL_SIZE - size;</span><br><span class="line">pool-&gt;freeblock = bp + size;</span><br><span class="line">*(block **)(pool-&gt;freeblock) = <span class="literal">NULL</span>;</span><br><span class="line">UNLOCK();</span><br><span class="line"><span class="keyword">return</span> (<span class="type">void</span> *)bp;</span><br></pre></td></tr></table></figure>
+
+<p>pool_header 中 <code>szidx</code> 存放的就是 size class index，这里只能切割 16 bytes ，那么传过来的 size 就是 size class index，对应的值必定是 1。</p>
+<p><code>INDEX2SIZE</code> 是一个宏，将 size class index 转化成对应的 block 的大小，这里将 1 转化成 16 又赋给了 size，size 变成了 16。</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="keyword">define</span> ALIGNMENT_SHIFT         3</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> INDEX2SIZE(I) (((uint)(I) + 1) &lt;&lt; ALIGNMENT_SHIFT)</span></span><br></pre></td></tr></table></figure>
+
+<p><code>POOL_OVERHEAD </code> 也是一个宏，它的作用是将 pool_header 占用的内存对齐为 8 的倍数。对齐后的位置才是可分配 block 的开始位置，这个位置值存放在了 <code>bp</code> 中，最后作为当前内存分配请求的结果被返回。</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="keyword">define</span> ALIGNMENT               8</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> ALIGNMENT_MASK          (ALIGNMENT - 1)</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> ROUNDUP(x)              (((x) + ALIGNMENT_MASK) &amp; ~ALIGNMENT_MASK)</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> POOL_OVERHEAD           ROUNDUP(sizeof(struct pool_header))</span></span><br></pre></td></tr></table></figure>
+
+<p><code>nextoffset</code> 指向的是这个 pool 中下一个处女 block，也就是还没有被分配给任何对象使用过的 block（被使用后释放的 block 会被加入到 <code>freeblock</code> 链表），<code>maxnextoffset</code> 指向了这个 pool 的最后一个 block，<code>freeblock</code> 被初始化为下一个可用的 block，又通过二级指针将 block 里面的值设置为 NULL，当这个 pool 里面有一个 block 需要被回收时，也会通过类似的二级指针操作加入到 freeblock 中：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* 回收 p 指向的 block */</span></span><br><span class="line">*(block **)p = lastfree = pool-&gt;freeblock;</span><br><span class="line">pool-&gt;freeblock = (block *)p;</span><br></pre></td></tr></table></figure>
+
+<p>这样 freeblock 就形成了一个特殊的链表结构。</p>
+<p>某一时刻一个处于 <em>used</em> 状态的 pool 的可能的内存分布图：</p>
+<p><img src="https://protream-blog.oss-cn-hangzhou.aliyuncs.com/python_memery_manage/python-mem-5.png"></p>
+<h2 id="usedpools"><a href="#usedpools" class="headerlink" title="usedpools"></a>usedpools</h2><p>所有处于 <code>used</code> 状态的 pool 都是通过 <code>usedpools</code> —— 一个特殊的数组管理的，前面没有介绍的 <code>szidx</code> 在这里排上用场了。我们已经知道 <code>szidx</code> 的取值范围是 [0, 31]，Python 会初始化一个特殊的数组存放所有处于 used 状态的 pool，这个数组的定义如下：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="keyword">define</span> SMALL_REQUEST_THRESHOLD 256</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> NB_SMALL_SIZE_CLASSES   (SMALL_REQUEST_THRESHOLD / ALIGNMENT)  <span class="comment">/* 256 / 8 = 32 */</span></span></span><br><span class="line"></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> PTA(x)  ((poolp )((uchar *)&amp;(usedpools[2*(x)]) - 2*sizeof(block *)))</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> PT(x)   PTA(x), PTA(x)</span></span><br><span class="line"></span><br><span class="line"><span class="type">static</span> poolp usedpools[<span class="number">2</span> * ((NB_SMALL_SIZE_CLASSES + <span class="number">7</span>) / <span class="number">8</span>) * <span class="number">8</span>] = &#123;</span><br><span class="line">    PT(<span class="number">0</span>), PT(<span class="number">1</span>), PT(<span class="number">2</span>), PT(<span class="number">3</span>), PT(<span class="number">4</span>), PT(<span class="number">5</span>), PT(<span class="number">6</span>), PT(<span class="number">7</span>)</span><br><span class="line"><span class="meta">#<span class="keyword">if</span> NB_SMALL_SIZE_CLASSES &gt; 8</span></span><br><span class="line">    , PT(<span class="number">8</span>), PT(<span class="number">9</span>), PT(<span class="number">10</span>), PT(<span class="number">11</span>), PT(<span class="number">12</span>), PT(<span class="number">13</span>), PT(<span class="number">14</span>), PT(<span class="number">15</span>)</span><br><span class="line"><span class="meta">#<span class="keyword">if</span> NB_SMALL_SIZE_CLASSES &gt; 16</span></span><br><span class="line">    , PT(<span class="number">16</span>), PT(<span class="number">17</span>), PT(<span class="number">18</span>), PT(<span class="number">19</span>), PT(<span class="number">20</span>), PT(<span class="number">21</span>), PT(<span class="number">22</span>), PT(<span class="number">23</span>)</span><br><span class="line"><span class="meta">#<span class="keyword">if</span> NB_SMALL_SIZE_CLASSES &gt; 24</span></span><br><span class="line">    , PT(<span class="number">24</span>), PT(<span class="number">25</span>), PT(<span class="number">26</span>), PT(<span class="number">27</span>), PT(<span class="number">28</span>), PT(<span class="number">29</span>), PT(<span class="number">30</span>), PT(<span class="number">31</span>)</span><br><span class="line"><span class="meta">#<span class="keyword">endif</span> <span class="comment">/* NB_SMALL_SIZE_CLASSES &gt; 24 */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">endif</span> <span class="comment">/* NB_SMALL_SIZE_CLASSES &gt; 16 */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">endif</span> <span class="comment">/* NB_SMALL_SIZE_CLASSES &gt;  8 */</span></span></span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<p>这个数组的设计很巧妙，我们结合图片来看，下面是 <code>usedpools</code> 初始化后的内存布局：</p>
+<p><img src="https://protream-blog.oss-cn-hangzhou.aliyuncs.com/python_memery_manage/python-mem-2.png"></p>
+<p>每个元素的初始化值为相应 szidx 在数组中的开始位置向前偏移 2 个 sizeof(block *) 的距离，也就是图中 2 个方块的距离。<br>如果需要检查是否有 szidx 为 1 处于 used 状态的 pool，我们来到  usedpools[1 + 1]，也就是图中的 p，如果把 p 当做 pool_head 指针，那么 nextpool 就是 szidx 为 2 的第一个内存块，因为 p 到 nextpool 之间间隔的俩块内存大小为 <code>2*sizeof(block *)</code>，正好抵消了</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">union</span> &#123;</span> block *_padding; uint count; &#125; ref;</span><br><span class="line">block *freeblock;</span><br></pre></td></tr></table></figure>
+
+<p>占用的内存，这里存放的正是 p ！这时候 p-&gt;nextpool 与 usedpools[1 + 1] 是相等的，也就是说 szidx 为 1 还没有对应的处于 used 状态的 pool。</p>
+<p>假设现在申请到了一个 szidx 为 1 的 pool，在其 header 被初始化之前，Python 首先做的其实是把它放到 usedpools 中：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">init_pool:</span><br><span class="line">    <span class="comment">/* Frontlink to used pools. */</span></span><br><span class="line">    next = usedpools[size + size]; <span class="comment">/* == prev */</span></span><br><span class="line">    pool-&gt;nextpool = next;</span><br><span class="line">    pool-&gt;prevpool = next;</span><br><span class="line">    next-&gt;nextpool = pool;</span><br><span class="line">    next-&gt;prevpool = pool;</span><br><span class="line">    pool-&gt;ref.count = <span class="number">1</span>;</span><br></pre></td></tr></table></figure>
+
+<p>此时 usedpools 的布局：</p>
+<p><img src="https://protream-blog.oss-cn-hangzhou.aliyuncs.com/python_memery_manage/python-mem-3.png"></p>
+<p>这时候 usedpools[1 + 1] !&#x3D; pool-&gt;nextpool，也就是说存在 szidx 为 1 的可用 pool。</p>
+<p>现在再结合 pool 来看请求的内存是如何通过 usedpools 分配出去的，这也是整个内存分配中最常见的情况：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* 请求 nbytes 个字节，转化成 szidx */</span></span><br><span class="line">size = (uint)(nbytes - <span class="number">1</span>) &gt;&gt; ALIGNMENT_SHIFT;</span><br><span class="line"><span class="comment">/* 找到对应的 usedpool */</span></span><br><span class="line">pool = usedpools[size + size];</span><br><span class="line"><span class="comment">/* 判断 usedpool 是否可用，不等于说明 usedpool 可用 */</span></span><br><span class="line"><span class="keyword">if</span> (pool != pool-&gt;nextpool) &#123;</span><br><span class="line">    ++pool-&gt;ref.count;</span><br><span class="line">    bp = pool-&gt;freeblock;</span><br><span class="line">      <span class="comment">/* used 状态的 pool 必定存在 freeblock */</span></span><br><span class="line">    assert(bp != <span class="literal">NULL</span>);</span><br><span class="line">       <span class="comment">/* 如果 freeblock 链表元素多余一个，将当前指向的 block 返回并将 freeblock 指向下一个 block */</span></span><br><span class="line">    <span class="keyword">if</span> ((pool-&gt;freeblock = *(block **)bp) != <span class="literal">NULL</span>) &#123;</span><br><span class="line">        UNLOCK();</span><br><span class="line">        <span class="keyword">return</span> (<span class="type">void</span> *)bp;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="comment">/* freeblock 的数量只有一个，说明分配出去的都没有释放，因为只有一个，当前的 freeblock</span></span><br><span class="line"><span class="comment">     * 被分配出去以后需要指向一个新的 block，那么就需要开荒下一块处女地，也就是 nextoffset</span></span><br><span class="line"><span class="comment">     * 指向的 block，需要先判断是否到达了最后一块 bock */</span></span><br><span class="line">    <span class="keyword">if</span> (pool-&gt;nextoffset &lt;= pool-&gt;maxnextoffset) &#123;</span><br><span class="line">        <span class="comment">/* freeblock 指向处女地 */</span></span><br><span class="line">        pool-&gt;freeblock = (block*)pool + pool-&gt;nextoffset;</span><br><span class="line">        <span class="comment">/* nextoffset 指向下一块处女地 */</span></span><br><span class="line">        pool-&gt;nextoffset += INDEX2SIZE(size);</span><br><span class="line">        *(block **)(pool-&gt;freeblock) = <span class="literal">NULL</span>;</span><br><span class="line">        UNLOCK();</span><br><span class="line">        <span class="keyword">return</span> (<span class="type">void</span> *)bp;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="comment">/* 走到这里说明当前 freeblock 指向的是最后一块可用的 block 了，分配出去以后</span></span><br><span class="line"><span class="comment">     * 这个 pool 也就由 used 状态变成了 full 状态，需要从 usedpools 中移除，</span></span><br><span class="line"><span class="comment">     * 也即是将 usedpools 中对应的位置恢复到初始化时的状态 */</span></span><br><span class="line">    next = pool-&gt;nextpool;</span><br><span class="line">    pool = pool-&gt;prevpool;</span><br><span class="line">    next-&gt;prevpool = pool;</span><br><span class="line">    pool-&gt;nextpool = next;</span><br><span class="line">    UNLOCK();</span><br><span class="line">    <span class="keyword">return</span> (<span class="type">void</span> *)bp;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h2 id="arena"><a href="#arena" class="headerlink" title="arena"></a>arena</h2><p>如果 usedpools 对应 szidx 位置里并没有可用 pool ，Python 会申请一块 4k 内存进行初始化，放入到 usedpools 中。那么又是从哪申请的 4k 内存呢？答案是 arena。简单来说，如果 pool 是一块 4k 大小的蛋糕，那么 arena 就是一块 <em>256k</em> 大小的蛋糕。当 usedpools 中与某个 szidx 对应的 pool 不存在时就会从 arena 这个更大块的蛋糕上切一块 4k 的小块，初始化为 pool 放入到 usedpools 中。</p>
+<p>详细一点来说，arena 只是一个 struct 结构体，里面有一个指针指向  256k 内存，arena 定义如下：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* Record keeping for arenas. */</span></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">arena_object</span> &#123;</span></span><br><span class="line">    <span class="comment">/* 与 pool 不同，pool 的 header 是包含在 4k 内存里面的，arena 的</span></span><br><span class="line"><span class="comment">     * header 与它管理的 256k 内存是相关独立的，256k 内存的地址存在这里 */</span></span><br><span class="line">    uptr address;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 下一块 pool 处女地的开始地址，类似于 pool 中的 nextoffset */</span></span><br><span class="line">    block* pool_address;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 剩余可用 pool 的数量，可以推断其初始值必定是 256k / 4k = 64 */</span></span><br><span class="line">    uint nfreepools;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 可用 pool 的总数量，可以推断其值必定是 256k / 4k = 64 */</span></span><br><span class="line">    uint ntotalpools;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 一个单链表，将所有可用的 pool 链接起来，类似于 pool 中的 freeblock */</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">pool_header</span>* <span class="title">freepools</span>;</span></span><br><span class="line"></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">arena_object</span>* <span class="title">nextarena</span>;</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">arena_object</span>* <span class="title">prevarena</span>;</span></span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<p>arena 并不是系统初始化就存在的，本着不能浪费的原则，系统每次只申请一块 256k 的内存，用完了才会申请第二块，但是系统会一次初始化多个 <code>arena_object</code> 头结构，由 <code>arenas</code> 管理，<code>arenas</code> 是一个全局的 <code>arena_object</code> 指针：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* Array of objects used to track chunks of memory (arenas). */</span></span><br><span class="line"><span class="type">static</span> <span class="class"><span class="keyword">struct</span> <span class="title">arena_object</span>* <span class="title">arenas</span> =</span> <span class="literal">NULL</span>;</span><br></pre></td></tr></table></figure>
+
+<p>大家看到 arenas 是一个指针，结合 arena_object 定义中的 nextarena 和 prevarena，可能会以为 arenas 指向的是双向链表，但是并不是，arenas 其实是一个数组。 nextarea 是负责将所有还没有使用（包括用完释放的）的 arena_object 连接成一个单链表，头指针是 <em>unused_arena_objects</em>。此外，next arena 和 prevarena 共同负责将在使用中的 arena_object 连接成一个双链表，头指针是 <em>usable_arenas</em>，这俩个头指针的定义如下：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">static</span> <span class="class"><span class="keyword">struct</span> <span class="title">arena_object</span>* <span class="title">unused_arena_objects</span> =</span> <span class="literal">NULL</span>;</span><br><span class="line"><span class="type">static</span> <span class="class"><span class="keyword">struct</span> <span class="title">arena_object</span>* <span class="title">usable_arenas</span> =</span> <span class="literal">NULL</span></span><br></pre></td></tr></table></figure>
+
+<p>还有俩个相关的定义：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* 上一次创建的 arena_object 的数量 */</span></span><br><span class="line"><span class="type">static</span> uint maxarenas = <span class="number">0</span>;</span><br><span class="line"></span><br><span class="line"><span class="comment">/* 首次创建的 arena_object 的数量 */</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> INITIAL_ARENA_OBJECTS 16</span></span><br></pre></td></tr></table></figure>
+
+<p>现在可以来看一下 <em>arenas</em> 的初始化了：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* 没有还没有使用的 arena_object 才进行新的初始化 */</span></span><br><span class="line"><span class="keyword">if</span> (unused_arena_objects == <span class="literal">NULL</span>) &#123;</span><br><span class="line">        uint i;</span><br><span class="line">        uint numarenas;</span><br><span class="line">        <span class="type">size_t</span> nbytes;</span><br><span class="line"></span><br><span class="line">        <span class="comment">/* maxarenas 为 0 表示首次创建，创建数量为 16，</span></span><br><span class="line"><span class="comment">         * 如果不为 0，创建数量为上次创建数量的 2 倍 */</span></span><br><span class="line">        numarenas = maxarenas ? maxarenas &lt;&lt; <span class="number">1</span> : INITIAL_ARENA_OBJECTS;</span><br><span class="line"></span><br><span class="line">        <span class="comment">/* overflow 相关判断略过 */</span></span><br><span class="line"></span><br><span class="line">          <span class="comment">/* 计算 numarenas 个 arena_object 占用的内存然后申请 */</span></span><br><span class="line">        nbytes = numarenas * <span class="keyword">sizeof</span>(*arenas);</span><br><span class="line">        <span class="comment">/* 申请内存，注意，用的是 realloc，表示扩大当前的数组 */</span></span><br><span class="line">        arenaobj = (<span class="keyword">struct</span> arena_object *)<span class="built_in">realloc</span>(arenas, nbytes);</span><br><span class="line">        <span class="keyword">if</span> (arenaobj == <span class="literal">NULL</span>)</span><br><span class="line">            <span class="keyword">return</span> <span class="literal">NULL</span>;</span><br><span class="line">        arenas = arenaobj;</span><br><span class="line"></span><br><span class="line">        <span class="comment">/* 将新创建的 arena_object 链接到 unused_arena_objects */</span></span><br><span class="line">        <span class="keyword">for</span> (i = maxarenas; i &lt; numarenas; ++i) &#123;</span><br><span class="line">            arenas[i].address = <span class="number">0</span>;              <span class="comment">/* 还没有分配内存 */</span></span><br><span class="line">            arenas[i].nextarena = i &lt; numarenas - <span class="number">1</span> ?</span><br><span class="line">                                   &amp;arenas[i+<span class="number">1</span>] : <span class="literal">NULL</span>;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="comment">/* 更新全局变量 */</span></span><br><span class="line">        unused_arena_objects = &amp;arenas[maxarenas];</span><br><span class="line">        maxarenas = numarenas;</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+
+<p>假设是首次初始化 arenas，经过上面的步骤后，arenas 现在是包含 16 个 arena_object 的数组，unused_arena_objects 则是包含 16 个<br>arena_object 的链表，下面才进入到切蛋糕给 arena 的环节：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* 取第一个没有使用的 area_object */</span></span><br><span class="line">assert(unused_arena_objects != <span class="literal">NULL</span>);</span><br><span class="line">arenaobj = unused_arena_objects;</span><br><span class="line">unused_arena_objects = arenaobj-&gt;nextarena;</span><br><span class="line">assert(arenaobj-&gt;address == <span class="number">0</span>);</span><br><span class="line"></span><br><span class="line">  <span class="comment">/* 切 256k 大小的蛋糕给这个 area_object */</span></span><br><span class="line">arenaobj-&gt;address = (uptr)<span class="built_in">malloc</span>(ARENA_SIZE);</span><br><span class="line">  <span class="comment">/* 内存分配失败 */</span></span><br><span class="line"><span class="keyword">if</span> (arenaobj-&gt;address == <span class="number">0</span>) &#123;</span><br><span class="line">    ...</span><br><span class="line">&#125;</span><br><span class="line"><span class="comment">/* 更新全局变量 */</span></span><br><span class="line">++narenas_currently_allocated;</span><br><span class="line"></span><br><span class="line"><span class="comment">/* 设置 arena_object 的初始化信息 */</span></span><br><span class="line"><span class="comment">/* freepools 指向的是用完释放的 pool，所以初始化的时候是 NULL */</span></span><br><span class="line">arenaobj-&gt;freepools = <span class="literal">NULL</span>;</span><br><span class="line">arenaobj-&gt;pool_address = (block*)arenaobj-&gt;address;</span><br><span class="line"><span class="comment">/* 可以切出来的 pool 的剩余数量 */</span></span><br><span class="line">arenaobj-&gt;nfreepools = ARENA_SIZE / POOL_SIZE;</span><br><span class="line">assert(POOL_SIZE * arenaobj-&gt;nfreepools == ARENA_SIZE);</span><br><span class="line"></span><br><span class="line">excess = (uint)(arenaobj-&gt;address &amp; POOL_SIZE_MASK);</span><br><span class="line"><span class="keyword">if</span> (excess != <span class="number">0</span>) &#123;</span><br><span class="line">    --arenaobj-&gt;nfreepools;</span><br><span class="line">    arenaobj-&gt;pool_address += POOL_SIZE - excess;</span><br><span class="line">&#125;</span><br><span class="line"><span class="comment">/* 可以切出来的 pool 的总数量数量 */</span></span><br><span class="line">arenaobj-&gt;ntotalpools = arenaobj-&gt;nfreepools;</span><br><span class="line"></span><br><span class="line"><span class="keyword">return</span> arenaobj;</span><br></pre></td></tr></table></figure>
+
+<p>上面的俩段代码整合起来就是这个函数的逻辑：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">static</span> <span class="keyword">struct</span> arena_object* <span class="title function_">new_arena</span><span class="params">(<span class="type">void</span>)</span>;</span><br></pre></td></tr></table></figure>
+
+<p>当要切一块蛋糕给 pool 时，如果还没有可以用的 arena，就会调用 <code>new_arena</code> 进行初始化：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* 没有可用的 arena */</span></span><br><span class="line"><span class="keyword">if</span> (usable_arenas == <span class="literal">NULL</span>) &#123;</span><br><span class="line">    <span class="comment">/* 创建新的 arena */</span></span><br><span class="line">    usable_arenas = new_arena();</span><br><span class="line">    <span class="keyword">if</span> (usable_arenas == <span class="literal">NULL</span>) &#123;</span><br><span class="line">        UNLOCK();</span><br><span class="line">        <span class="keyword">goto</span> redirect;</span><br><span class="line">    &#125;</span><br><span class="line">    usable_arenas-&gt;nextarena =</span><br><span class="line">        usable_arenas-&gt;prevarena = <span class="literal">NULL</span>;</span><br><span class="line">&#125;</span><br><span class="line">assert(usable_arenas-&gt;address != <span class="number">0</span>);</span><br></pre></td></tr></table></figure>
+
+<p>从初始化后的 arena 中切下4k 给然后初始化为 pool：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* pool_address 指向的处女地给 pool */</span></span><br><span class="line">pool = (poolp)usable_arenas-&gt;pool_address;</span><br><span class="line">pool-&gt;arenaindex = usable_arenas - arenas;</span><br><span class="line">assert(&amp;arenas[pool-&gt;arenaindex] == usable_arenas);</span><br><span class="line"><span class="comment">/* pool 的 szidx 初始值为 0xffff */</span></span><br><span class="line">pool-&gt;szidx = DUMMY_SIZE_IDX;</span><br><span class="line"><span class="comment">/* pool_address 移到下一个位置 */</span></span><br><span class="line">usable_arenas-&gt;pool_address += POOL_SIZE;</span><br><span class="line"><span class="comment">/* anena 中剩余可用的 pool 数量减 1 */</span></span><br><span class="line">--usable_arenas-&gt;nfreepools;</span><br><span class="line"></span><br><span class="line"><span class="keyword">goto</span> init_pool;</span><br></pre></td></tr></table></figure>
+
+<p>在这个切给 pool 以后，如果剩余的可用 pool 的数量 nfreepools 变成 0 了，那么这个 arena 就不再是可用的 arena 了，所有在减少 nfreepools 的操作后，有下面的处理：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">if</span> (usable_arenas-&gt;nfreepools == <span class="number">0</span>) &#123;</span><br><span class="line">    assert(usable_arenas-&gt;nextarena == <span class="literal">NULL</span> ||</span><br><span class="line">           usable_arenas-&gt;nextarena-&gt;prevarena ==</span><br><span class="line">           usable_arenas);</span><br><span class="line">    <span class="comment">/* 从 usable_arenas 链表中移除 */</span></span><br><span class="line">    usable_arenas = usable_arenas-&gt;nextarena;</span><br><span class="line">    <span class="keyword">if</span> (usable_arenas != <span class="literal">NULL</span>) &#123;</span><br><span class="line">        usable_arenas-&gt;prevarena = <span class="literal">NULL</span>;</span><br><span class="line">        assert(usable_arenas-&gt;address != <span class="number">0</span>);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+
+<p>当一个 pool 中的 block 都被释放后，这个 pool 就变成了一个 freepool，多个 freepool 链接成一个链表，链表头正是 arena 中的 <em>freepools</em>，相当于一个缓存，这一点和 freeblock 很相似，从可用的 arena 中申请 pool 是优先从 <em>freepools</em> 获取的：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* 尝试从 freepools 获取一个 pool */</span></span><br><span class="line">pool = usable_arenas-&gt;freepools;</span><br><span class="line"><span class="keyword">if</span> (pool != <span class="literal">NULL</span>) &#123;</span><br><span class="line">    <span class="comment">/* freepools 指向下一个 */</span></span><br><span class="line">    usable_arenas-&gt;freepools = pool-&gt;nextpool;</span><br><span class="line">    --usable_arenas-&gt;nfreepools;</span><br><span class="line">    <span class="keyword">if</span> (usable_arenas-&gt;nfreepools == <span class="number">0</span>) &#123;</span><br><span class="line">        <span class="comment">/* 最后一个 pool 被分配出去了，arena 变成了 full 状态，需要从 usable_arenas 移除 */</span></span><br><span class="line">        assert(usable_arenas-&gt;freepools == <span class="literal">NULL</span>);</span><br><span class="line">        assert(usable_arenas-&gt;nextarena == <span class="literal">NULL</span> ||</span><br><span class="line">               usable_arenas-&gt;nextarena-&gt;prevarena ==</span><br><span class="line">               usable_arenas);</span><br><span class="line"></span><br><span class="line">        usable_arenas = usable_arenas-&gt;nextarena;</span><br><span class="line">        <span class="keyword">if</span> (usable_arenas != <span class="literal">NULL</span>) &#123;</span><br><span class="line">            usable_arenas-&gt;prevarena = <span class="literal">NULL</span>;</span><br><span class="line">            assert(usable_arenas-&gt;address != <span class="number">0</span>);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">else</span> &#123;</span><br><span class="line">        <span class="comment">/* nfreepools &gt; 0:  那么 freepools 必定不为空，或者 arena 中还有未被切出来的 pool */</span></span><br><span class="line">        assert(usable_arenas-&gt;freepools != <span class="literal">NULL</span> ||</span><br><span class="line">               usable_arenas-&gt;pool_address &lt;=</span><br><span class="line">               (block*)usable_arenas-&gt;address +</span><br><span class="line">                   ARENA_SIZE - POOL_SIZE);</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+
+<p>现在可以来看看某一时刻 Python 程序 block，pool 和 arean 组成的内存池的全景了：</p>
+<p><img src="https://protream-blog.oss-cn-hangzhou.aliyuncs.com/python_memery_manage/python-mem-4.png"></p>
+<h2 id="内存回收"><a href="#内存回收" class="headerlink" title="内存回收"></a>内存回收</h2><p>Python 中一切都是对象，每个对象都有一个 <em>refcnt</em> 变量记录这个对象的引用计数，当引用计数变成零的时候，这个对象就会被回收，内存被释放（这句话不是绝对准确，不过这不是本文重点，我们姑且就这样认为吧）。这里说的内存被释放，并不是立刻还给操作系统，而是还给 pool。</p>
+<p>假设要释放 <em>p</em> 指向的内存，最简单的情形是，交还给 pool 后，pool 依然处于 used 状态，这时候只需要将 p 添加到 pool 的 freeblock 链表中即可：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line">assert(pool-&gt;ref.count &gt; <span class="number">0</span>);            <span class="comment">/* pool 不是 empty 状态 */</span></span><br><span class="line"><span class="comment">/* 获取当前 freeblock 的值给 lastfree，再 p 链接到 freeblock */</span></span><br><span class="line">*(block **)p = lastfree = pool-&gt;freeblock;</span><br><span class="line">pool-&gt;freeblock = (block *)p;</span><br><span class="line"><span class="keyword">if</span> (lastfree) &#123;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">arena_object</span>* <span class="title">ao</span>;</span></span><br><span class="line">    uint nf;  <span class="comment">/* ao-&gt;nfreepools */</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 释放 p 前，pool 是 used 状态，释放后，ref.count（先减 1）不为 0，说明还是 used</span></span><br><span class="line"><span class="comment">     * 状态，这就是最简单的情形，不需要额外的改变 */</span></span><br><span class="line">    <span class="keyword">if</span> (--pool-&gt;ref.count != <span class="number">0</span>) &#123;</span><br><span class="line">        <span class="comment">/* pool isn&#x27;t empty:  leave it in usedpools */</span></span><br><span class="line">        UNLOCK();</span><br><span class="line">        <span class="keyword">return</span>;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    ...</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+
+<p>如果释放 p 前，lastfree 是 NULL，那就说明 pool 处于 full 状态，当 p 释放后，pool 由 full 变成了 used 状态，这时候需要将这个 pool 放回到 usedpools 的对应位置中，并和对应位置上的值链接成链表：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">if</span> (lastfree) &#123;</span><br><span class="line">    ...</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">--pool-&gt;ref.count;</span><br><span class="line">assert(pool-&gt;ref.count &gt; <span class="number">0</span>);</span><br><span class="line">size = pool-&gt;szidx;</span><br><span class="line">next = usedpools[size + size];    <span class="comment">/* 得到在 usedpools 中的位置 */</span></span><br><span class="line">prev = next-&gt;prevpool;</span><br><span class="line"><span class="comment">/* pool 插入到 next 前面:   prev &lt;-&gt; pool &lt;-&gt; next */</span></span><br><span class="line">pool-&gt;nextpool = next;</span><br><span class="line">pool-&gt;prevpool = prev;</span><br><span class="line">next-&gt;prevpool = pool;</span><br><span class="line">prev-&gt;nextpool = pool;</span><br><span class="line">UNLOCK();</span><br><span class="line"><span class="keyword">return</span>;</span><br></pre></td></tr></table></figure>
+
+<p>假设 pool 只分配出去了一个 block，就是 p，那么现在 p 释放后，pool 的状态将由 used 变成 empty，这时候 Python 会将 这个 pool 从 usedpools 中移除并链接到所在 arena 的 freepools 中：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">if</span> (--pool-&gt;ref.count != <span class="number">0</span>) &#123;</span><br><span class="line">    ...</span><br><span class="line">&#125;</span><br><span class="line"><span class="comment">/* pool 状态变成 empty，从 usedpools 中移除 */</span></span><br><span class="line">next = pool-&gt;nextpool;</span><br><span class="line">prev = pool-&gt;prevpool;</span><br><span class="line">next-&gt;prevpool = prev;</span><br><span class="line">prev-&gt;nextpool = next;</span><br><span class="line"></span><br><span class="line"><span class="comment">/* 加入到所在 arena 的 freepools 中 */</span></span><br><span class="line">ao = &amp;arenas[pool-&gt;arenaindex];</span><br><span class="line">pool-&gt;nextpool = ao-&gt;freepools;</span><br><span class="line">ao-&gt;freepools = pool;</span><br><span class="line">nf = ++ao-&gt;nfreepools;</span><br></pre></td></tr></table></figure>
+
+<p>以上三种情况就是当一个对象的内存被释放后， pool 的状态变化和相应处理。总的来说就是将 block 归还给 pool，pool 变成 empty 再归还给 arena，Python 2.5 之前的内存释放逻辑到这里就结束了。但是这里还隐藏了一个问题，那就是从始至终都没有归还 arena 的内存！假如一个应用程序在开一始由于某种需要申请了大量内存，到内面不需要这么多内存了，释放的内存归还给了 arena，但是 arena 不会再归还给操作系统，这就造成类似内存泄漏的效果！虽然这种情况很少见，但小概率事件必然发生，还是有人碰到了。后来 Python 紧接着上面的代码后面加入了 arena 管理解决这个问题。</p>
+<p>现在考虑当一个 pool 归还给 arena 后， 也将引起 arena 的状态变化：</p>
+<ol>
+<li>由 used 状态变成了 free 状态</li>
+<li>由 full 状态变成了 used 状态</li>
+<li>释放之前是 used 状态，释放后还是 used 状态</li>
+<li>不做任何处理</li>
+</ol>
+<p>对于第一种情况，Python 会释放整个 arena 占用的内存：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* nfreepools == ntotalpools：说明 arena 变成 empty */</span></span><br><span class="line"><span class="keyword">if</span> (nf == ao-&gt;ntotalpools) &#123;</span><br><span class="line">    <span class="comment">/* Case 1.  First unlink ao from usable_arenas.</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    assert(ao-&gt;prevarena == <span class="literal">NULL</span> ||</span><br><span class="line">           ao-&gt;prevarena-&gt;address != <span class="number">0</span>);</span><br><span class="line">    assert(ao -&gt;nextarena == <span class="literal">NULL</span> ||</span><br><span class="line">           ao-&gt;nextarena-&gt;address != <span class="number">0</span>);</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* Fix the pointer in the prevarena, or the</span></span><br><span class="line"><span class="comment">     * usable_arenas pointer.</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="keyword">if</span> (ao-&gt;prevarena == <span class="literal">NULL</span>) &#123;</span><br><span class="line">        usable_arenas = ao-&gt;nextarena;</span><br><span class="line">        assert(usable_arenas == <span class="literal">NULL</span> ||</span><br><span class="line">               usable_arenas-&gt;address != <span class="number">0</span>);</span><br><span class="line">    &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">        assert(ao-&gt;prevarena-&gt;nextarena == ao);</span><br><span class="line">        ao-&gt;prevarena-&gt;nextarena =</span><br><span class="line">            ao-&gt;nextarena;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="comment">/* Fix the pointer in the nextarena. */</span></span><br><span class="line">    <span class="keyword">if</span> (ao-&gt;nextarena != <span class="literal">NULL</span>) &#123;</span><br><span class="line">        assert(ao-&gt;nextarena-&gt;prevarena == ao);</span><br><span class="line">        ao-&gt;nextarena-&gt;prevarena =</span><br><span class="line">            ao-&gt;prevarena;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="comment">/* Record that this arena_object slot is</span></span><br><span class="line"><span class="comment">     * available to be reused.</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    ao-&gt;nextarena = unused_arena_objects;</span><br><span class="line">    unused_arena_objects = ao;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* Free the entire arena. */</span></span><br><span class="line">    <span class="built_in">free</span>((<span class="type">void</span> *)ao-&gt;address);</span><br><span class="line">    ao-&gt;address = <span class="number">0</span>;                        <span class="comment">/* mark unassociated */</span></span><br><span class="line">    --narenas_currently_allocated;</span><br><span class="line"></span><br><span class="line">    UNLOCK();</span><br><span class="line">    <span class="keyword">return</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+
+<p>第二种情况，将 arena 直接插入到 <em>usable_arenas</em> 头部：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* ntotalpools == 1：表示 arena 由 full 变成了 used */</span></span><br><span class="line"><span class="keyword">if</span> (nf == <span class="number">1</span>) &#123;</span><br><span class="line">    ao-&gt;nextarena = usable_arenas;</span><br><span class="line">    ao-&gt;prevarena = <span class="literal">NULL</span>;</span><br><span class="line">    <span class="keyword">if</span> (usable_arenas)</span><br><span class="line">        usable_arenas-&gt;prevarena = ao;</span><br><span class="line">    usable_arenas = ao;</span><br><span class="line">    assert(usable_arenas-&gt;address != <span class="number">0</span>);</span><br><span class="line"></span><br><span class="line">    UNLOCK();</span><br><span class="line">    <span class="keyword">return</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>第三种情况，由于状态没有变化，arena  还是处于 usable_arenas 中。而 usable_arenas 是按照 arenas 中 nfreepools 的数量从小到大排序的。为什么要这样做呢？分配 arena 是优先从 usable_arenas 头获取了，这样的话，nfreepools 越大越靠后被使用的机会也就越小，随着其中 pool 的释放早点归还给操作系统的机会也就越大。现在我们可以看出来 Python 内存管理总的原则就是：<em>能不占着的内存就不占着，能早点归还给系统就早点归还</em>。</p>
+<p>现在一个 pool 释放，nfreepools 的数量增加，如果增加后比它右边 arena 的 nfreepools 要多，就需要重新调整顺序：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* 首先将 ao 从 useable_arenas 中移出来，分来 ao 是头结点和不是头结点俩种情况 */</span></span><br><span class="line"><span class="keyword">if</span> (ao-&gt;prevarena != <span class="literal">NULL</span>) &#123;</span><br><span class="line">    <span class="comment">/* ao 不是头结点 */</span></span><br><span class="line">    assert(ao-&gt;prevarena-&gt;nextarena == ao);</span><br><span class="line">    ao-&gt;prevarena-&gt;nextarena = ao-&gt;nextarena;</span><br><span class="line">&#125;</span><br><span class="line"><span class="keyword">else</span> &#123;</span><br><span class="line">    <span class="comment">/* ao 是头结点 */</span></span><br><span class="line">    assert(usable_arenas == ao);</span><br><span class="line">    usable_arenas = ao-&gt;nextarena;</span><br><span class="line">&#125;</span><br><span class="line">ao-&gt;nextarena-&gt;prevarena = ao-&gt;prevarena;</span><br><span class="line"></span><br><span class="line"><span class="comment">/* 遍历 usable_arenas 链表，找到 ao 要插入的位置 */</span></span><br><span class="line"><span class="keyword">while</span> (ao-&gt;nextarena != <span class="literal">NULL</span> &amp;&amp;</span><br><span class="line">                nf &gt; ao-&gt;nextarena-&gt;nfreepools) &#123;</span><br><span class="line">    ao-&gt;prevarena = ao-&gt;nextarena;</span><br><span class="line">    ao-&gt;nextarena = ao-&gt;nextarena-&gt;nextarena;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">/* 插入到新的位置 */</span></span><br><span class="line">assert(ao-&gt;nextarena == <span class="literal">NULL</span> ||</span><br><span class="line">    ao-&gt;prevarena == ao-&gt;nextarena-&gt;prevarena);</span><br><span class="line">assert(ao-&gt;prevarena-&gt;nextarena == ao-&gt;nextarena);</span><br><span class="line"></span><br><span class="line">ao-&gt;prevarena-&gt;nextarena = ao;</span><br><span class="line"><span class="keyword">if</span> (ao-&gt;nextarena != <span class="literal">NULL</span>)</span><br><span class="line">    ao-&gt;nextarena-&gt;prevarena = ao;</span><br></pre></td></tr></table></figure>
+
+<p>第四种情况就是第三种的特例，虽然 nfreepools 数量增加但是并没有超过它右边 arena 的 nfreepools 数量，这时候什么不用做什么：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">if</span> (ao-&gt;nextarena == <span class="literal">NULL</span> || nf &lt;= ao-&gt;nextarena-&gt;nfreepools) &#123;</span><br><span class="line">    UNLOCK();</span><br><span class="line">    <span class="keyword">return</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>这一节的代码整合起来就是</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">void</span> <span class="title function_">PyObject_Free</span><span class="params">(<span class="type">void</span> *p)</span>;</span><br></pre></td></tr></table></figure>
+
+<p>这个函数的逻辑。</p>
+<h2 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h2><p>本文详细剖析了 Python 运行时的内存组织方式、对象的内存分配以和内存回收过程。核心的概念包括 block、pool、usedpools 和 arenas。本文的代码片段整合起来就是 <code>obmalloc.c</code> 中最主要的三个函数：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line"><span class="type">void</span> <span class="title function_">PyObject_Free</span><span class="params">(<span class="type">void</span> *p)</span>;</span><br><span class="line"><span class="type">void</span> *<span class="title function_">PyObject_Malloc</span><span class="params">(<span class="type">size_t</span> nbytes)</span>;</span><br><span class="line"><span class="type">static</span> <span class="keyword">struct</span> arena_object* <span class="title function_">new_arena</span><span class="params">(<span class="type">void</span>)</span>;</span><br></pre></td></tr></table></figure>
+
+<p>在 Python3 中，block 最大值增加到了 <em>512</em>，对应的 szindex 最大到 63，除此之外，整个内存的组织和分配、回收逻辑并没有什么变化。</p>
+
+    </div>
+
+    
+    
+    
+
+    <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/%E6%BA%90%E7%A0%81%E7%AC%94%E8%AE%B0/" rel="tag"># 源码笔记</a>
+              <a href="/tags/%E6%B7%B1%E5%85%A5python/" rel="tag"># 深入python</a>
+          </div>
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-item">
+                <a href="/2019/understand-python-slice/" rel="prev" title="深入 Python —— 切片（Slice）原理">
+                  <i class="fa fa-chevron-left"></i> 深入 Python —— 切片（Slice）原理
+                </a>
+            </div>
+            <div class="post-nav-item">
+                <a href="/2019/how-python-manage-memory-part-two/" rel="next" title="深入 Python —— Python 是如何管理内存的 （下）">
+                  深入 Python —— Python 是如何管理内存的 （下） <i class="fa fa-chevron-right"></i>
+                </a>
+            </div>
+          </div>
+    </footer>
+  </article>
+</div>
+
+
+
+
+
+
+</div>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+
+
+<div class="copyright">
+  &copy; 
+  <span itemprop="copyrightYear">2023</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">protream</span>
+</div>
+  <div class="powered-by">Powered by <a href="https://hexo.io/" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.js.org/pisces/" rel="noopener" target="_blank">NexT.Pisces</a>
+  </div>
+
+    </div>
+  </footer>
+
+  
+  <div class="back-to-top" role="button" aria-label="Back to top">
+    <i class="fa fa-arrow-up fa-lg"></i>
+    <span>0%</span>
+  </div>
+
+<noscript>
+  <div class="noscript-warning">Theme NexT works best with JavaScript enabled</div>
+</noscript>
+
+
+  
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js" integrity="sha256-XL2inqUJaslATFnHdJOi9GfQ60on8Wx1C2H8DYiN1xY=" crossorigin="anonymous"></script>
+<script src="/js/comments.js"></script><script src="/js/utils.js"></script><script src="/js/motion.js"></script><script src="/js/next-boot.js"></script>
+
+  
+
+
+
+
+
+
+  
+
+
+
+
+
+</body>
+</html>

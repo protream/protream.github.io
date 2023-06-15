@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="zh-Hans">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: dark)"><meta name="generator" content="Hexo 6.3.0">
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha256-HtsXJanqjKTc8vVQjO4YMhiqFoXkfBsjBWcX91T1jr8=" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/3.1.1/animate.min.css" integrity="sha256-PR7ttpcvz8qrF57fur/yAx1qXMFJeJFiA6pSzWi0OIE=" crossorigin="anonymous">
+
+<script class="next-config" data-name="main" type="application/json">{"hostname":"protream.github.io","root":"/","images":"/images","scheme":"Pisces","darkmode":true,"version":"8.17.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12},"copycode":{"enable":false,"style":null},"bookmark":{"enable":false,"color":"#222","save":"auto"},"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"stickytabs":false,"motion":{"enable":true,"async":false,"transition":{"menu_item":"fadeInDown","post_block":"fadeIn","post_header":"fadeInDown","post_body":"fadeInDown","coll_header":"fadeInLeft","sidebar":"fadeInUp"}},"prism":false,"i18n":{"placeholder":"Searching...","empty":"We didn't find any results for the search: ${query}","hits_time":"${hits} results found in ${time} ms","hits":"${hits} results found"}}</script><script src="/js/config.js"></script>
+
+    <meta name="description" content="最近在排查一个问题时发现，对于使用 flask-sqlalchemy 的 db.session.exeute()  提交的查询是如何被执行的不甚明了，这篇文章就是探究这一过程的。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Flask-SQLAlchemy 是如何执行一条查询的">
+<meta property="og:url" content="https://protream.github.io/2021/how-flask-sqlalchemy-execute-a-query/index.html">
+<meta property="og:site_name" content="Protream&#39;s Blog">
+<meta property="og:description" content="最近在排查一个问题时发现，对于使用 flask-sqlalchemy 的 db.session.exeute()  提交的查询是如何被执行的不甚明了，这篇文章就是探究这一过程的。">
+<meta property="og:locale">
+<meta property="og:image" content="https://www.aosabook.org/images/sqlalchemy/layers.png">
+<meta property="og:image" content="https://www.aosabook.org/images/sqlalchemy/engine.png">
+<meta property="article:published_time" content="2021-03-25T12:40:00.000Z">
+<meta property="article:modified_time" content="2023-06-15T03:40:47.801Z">
+<meta property="article:author" content="protream">
+<meta property="article:tag" content="sqlalchemy">
+<meta property="article:tag" content="源码笔记">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://www.aosabook.org/images/sqlalchemy/layers.png">
+
+
+<link rel="canonical" href="https://protream.github.io/2021/how-flask-sqlalchemy-execute-a-query/">
+
+
+
+<script class="next-config" data-name="page" type="application/json">{"sidebar":"","isHome":false,"isPost":true,"lang":"zh-Hans","comments":true,"permalink":"https://protream.github.io/2021/how-flask-sqlalchemy-execute-a-query/","path":"2021/how-flask-sqlalchemy-execute-a-query/","title":"Flask-SQLAlchemy 是如何执行一条查询的"}</script>
+
+<script class="next-config" data-name="calendar" type="application/json">""</script>
+<title>Flask-SQLAlchemy 是如何执行一条查询的 | Protream's Blog</title>
+  
+
+
+
+
+
+
+
+
+  <noscript>
+    <link rel="stylesheet" href="/css/noscript.css">
+  </noscript>
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" class="use-motion">
+  <div class="headband"></div>
+
+  <main class="main">
+    <div class="column">
+      <header class="header" itemscope itemtype="http://schema.org/WPHeader"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="Toggle navigation bar" role="button">
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <i class="logo-line"></i>
+      <p class="site-title">Protream's Blog</p>
+      <i class="logo-line"></i>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger" aria-label="Search" role="button">
+    </div>
+  </div>
+</div>
+
+
+
+
+
+
+
+</header>
+        
+  
+  <aside class="sidebar">
+
+    <div class="sidebar-inner sidebar-nav-active sidebar-toc-active">
+      <ul class="sidebar-nav">
+        <li class="sidebar-nav-toc">
+          Table of Contents
+        </li>
+        <li class="sidebar-nav-overview">
+          Overview
+        </li>
+      </ul>
+
+      <div class="sidebar-panel-container">
+        <!--noindex-->
+        <div class="post-toc-wrap sidebar-panel">
+            <div class="post-toc animated"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#session-%E7%9A%84%E5%88%9B%E5%BB%BA"><span class="nav-number">1.</span> <span class="nav-text">session 的创建</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#SQLAlchemy-%E6%9E%B6%E6%9E%84"><span class="nav-number">2.</span> <span class="nav-text">SQLAlchemy 架构</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%9F%A5%E8%AF%A2%E7%9A%84%E6%89%A7%E8%A1%8C"><span class="nav-number">3.</span> <span class="nav-text">查询的执行</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Autocommit"><span class="nav-number">4.</span> <span class="nav-text">Autocommit</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%8F%82%E8%80%83"><span class="nav-number">5.</span> <span class="nav-text">参考</span></a></li></ol></div>
+        </div>
+        <!--/noindex-->
+
+        <div class="site-overview-wrap sidebar-panel">
+          <div class="site-author animated" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">protream</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap animated">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+        <a href="/archives/">
+          <span class="site-state-item-count">14</span>
+          <span class="site-state-item-name">posts</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-tags">
+        <span class="site-state-item-count">11</span>
+        <span class="site-state-item-name">tags</span>
+      </div>
+  </nav>
+</div>
+
+        </div>
+      </div>
+    </div>
+
+    
+  </aside>
+
+
+    </div>
+
+    <div class="main-inner post posts-expand">
+
+
+  
+
+
+<div class="post-block">
+  
+  
+
+  <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="zh-Hans">
+    <link itemprop="mainEntityOfPage" href="https://protream.github.io/2021/how-flask-sqlalchemy-execute-a-query/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="protream">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Protream's Blog">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="post" itemscope itemtype="http://schema.org/CreativeWork">
+      <meta itemprop="name" content="Flask-SQLAlchemy 是如何执行一条查询的 | Protream's Blog">
+      <meta itemprop="description" content="">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          Flask-SQLAlchemy 是如何执行一条查询的
+        </h1>
+
+        <div class="post-meta-container">
+          <div class="post-meta">
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar"></i>
+      </span>
+      <span class="post-meta-item-text">Posted on</span>
+
+      <time title="Created: 2021-03-25 20:40:00" itemprop="dateCreated datePublished" datetime="2021-03-25T20:40:00+08:00">2021-03-25</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar-check"></i>
+      </span>
+      <span class="post-meta-item-text">Edited on</span>
+      <time title="Modified: 2023-06-15 11:40:47" itemprop="dateModified" datetime="2023-06-15T11:40:47+08:00">2023-06-15</time>
+    </span>
+
+  
+</div>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody"><p>最近在排查一个问题时发现，对于使用 flask-sqlalchemy 的 <code>db.session.exeute()</code>  提交的查询是如何被执行的不甚明了，这篇文章就是探究这一过程的。</p>
+<span id="more"></span>
+
+
+<p>下面我们分俩个部分来看下 db.session.execute 是如何执行的：</p>
+<ol>
+<li>db.session：session 的创建</li>
+<li>session.execute：查询的执行</li>
+</ol>
+<p>在 1 和 2 之间，为了更好的理解查询的执过程，先看下 SQLAlchemy 的整体架构。此外，之前对 autocommit 参数有一些误解，这里说明一下。</p>
+<p>软件版本： SQLAlchemy 1.3.10，flask-sqlalchmey 2.4.1。</p>
+<h2 id="session-的创建"><a href="#session-的创建" class="headerlink" title="session 的创建"></a>session 的创建</h2><p><code>db</code> 对象是从 <code>SQLAlchemy</code> 实例化来的，在 <code>SQLAlchemy</code> 的初始化方法中</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">class</span> <span class="title class_">SQLAlchemy</span>(<span class="title class_ inherited__">object</span>):</span><br><span class="line"></span><br><span class="line">    <span class="keyword">def</span> <span class="title function_">__init</span>(<span class="params">self, ...</span>):</span><br><span class="line">        <span class="comment"># ...</span></span><br><span class="line">        self.session = self.create_scoped_session(session_options)</span><br><span class="line"></span><br><span class="line">    <span class="comment"># ...</span></span><br><span class="line"></span><br><span class="line">    <span class="keyword">def</span> <span class="title function_">create_scoped_session</span>(<span class="params">self, options=<span class="literal">None</span></span>):</span><br><span class="line">          <span class="keyword">if</span> options <span class="keyword">is</span> <span class="literal">None</span>:</span><br><span class="line">              options = &#123;&#125;</span><br><span class="line"></span><br><span class="line">          scopefunc = options.pop(<span class="string">&#x27;scopefunc&#x27;</span>, _app_ctx_stack.__ident_func__)</span><br><span class="line">          options.setdefault(<span class="string">&#x27;query_cls&#x27;</span>, self.Query)</span><br><span class="line">          <span class="keyword">return</span> orm.scoped_session(</span><br><span class="line">              self.create_session(options), scopefunc=scopefunc</span><br><span class="line">          )</span><br></pre></td></tr></table></figure>
+
+
+
+<p>从 <code>create_scoped_session</code> 的注释来看，所谓的 <code>scoped</code> 其实是类似于 <code>ThreadLocal</code> ，session 只在请求上下文内有效，传入的 <code>__ident_func__</code> 其实就是获取线程 ID 的，可以猜想，会有一个字典，当前请求的线程 ID 为 KEY，每个请求会通过工厂方法创建一个请求自己的 session。</p>
+<p>下面去 <code>sqlalchemy</code> 的代码中验证：</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">class</span> <span class="title class_">scoped_session</span>(<span class="title class_ inherited__">object</span>):</span><br><span class="line"></span><br><span class="line">    <span class="keyword">def</span> <span class="title function_">__init__</span>(<span class="params">self, session_factory, scopefunc=<span class="literal">None</span></span>):</span><br><span class="line"></span><br><span class="line">    self.session_factory = session_factory</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> scopefunc:</span><br><span class="line">        self.registry = ScopedRegistry(session_factory, scopefunc)</span><br><span class="line">    <span class="keyword">else</span>:</span><br><span class="line">        self.registry = ThreadLocalRegistry(session_factory)</span><br><span class="line"></span><br><span class="line">    <span class="keyword">def</span> <span class="title function_">__call__</span>(<span class="params">self, **kw</span>):</span><br><span class="line">        <span class="keyword">if</span> kw:</span><br><span class="line">            <span class="keyword">if</span> self.registry.has():</span><br><span class="line">                <span class="keyword">raise</span> sa_exc.InvalidRequestError(</span><br><span class="line">                    <span class="string">&quot;Scoped session is already present; &quot;</span></span><br><span class="line">                    <span class="string">&quot;no new arguments may be specified.&quot;</span></span><br><span class="line">                )</span><br><span class="line">            <span class="keyword">else</span>:</span><br><span class="line">                sess = self.session_factory(**kw)</span><br><span class="line">                self.registry.<span class="built_in">set</span>(sess)</span><br><span class="line">                <span class="keyword">return</span> sess</span><br><span class="line">        <span class="keyword">else</span>:</span><br><span class="line">            <span class="keyword">return</span> self.registry()</span><br></pre></td></tr></table></figure>
+
+
+
+<p><code>scoped_session</code> （<a target="_blank" rel="noopener" href="https://github.com/zzzeek/sqlalchemy/blob/rel_1_3_10/lib/sqlalchemy/orm/scoping.py#L20">源码</a>）只是一个中转站，</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line"><span class="keyword">class</span> <span class="title class_">ScopedRegistry</span>(<span class="title class_ inherited__">object</span>):</span><br><span class="line"></span><br><span class="line">    <span class="keyword">def</span> <span class="title function_">__init__</span>(<span class="params">self, createfunc, scopefunc</span>):</span><br><span class="line">        self.createfunc = createfunc</span><br><span class="line">        self.scopefunc = scopefunc</span><br><span class="line">        self.registry = &#123;&#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">def</span> <span class="title function_">__call__</span>(<span class="params">self</span>):</span><br><span class="line">        key = self.scopefunc()</span><br><span class="line">        <span class="keyword">try</span>:</span><br><span class="line">            <span class="keyword">return</span> self.registry[key]</span><br><span class="line">        <span class="keyword">except</span> KeyError:</span><br><span class="line">            <span class="keyword">return</span> self.registry.setdefault(key, self.createfunc())</span><br><span class="line"></span><br><span class="line">    <span class="keyword">def</span> <span class="title function_">has</span>(<span class="params">self</span>):</span><br><span class="line">        <span class="string">&quot;&quot;&quot;Return True if an object is present in the current scope.&quot;&quot;&quot;</span></span><br><span class="line"></span><br><span class="line">        <span class="keyword">return</span> self.scopefunc() <span class="keyword">in</span> self.registry</span><br></pre></td></tr></table></figure>
+
+
+
+<p>通过上面两段代码可以发现，事实正如我们想的一样，<code>ScopedRegistry</code> 内部维护了一个字典，通过传入的 <code>scopefunc</code> 生成 key，传入的 <code>session_factory</code> 工厂方法生成 sessoin 对象。</p>
+<p>下面看看工厂方法  <code>create_session</code> 创建 session 的过程：</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">class</span> <span class="title class_">SQLAlchemy</span>(<span class="title class_ inherited__">object</span>):</span><br><span class="line"></span><br><span class="line">    <span class="comment"># ...</span></span><br><span class="line"></span><br><span class="line">    <span class="keyword">def</span> <span class="title function_">create_session</span>(<span class="params">self, options</span>):</span><br><span class="line">        <span class="keyword">return</span> orm.sessionmaker(class_=SignallingSession, db=self, **options)</span><br></pre></td></tr></table></figure>
+
+<p><code>SignallingSession</code> 是对 <code>SQLAlchemy</code> 内部的 <code>Session</code> 类做了一些数据库事件信号方面的拓展封装，这里我们忽略这些拓展，就认为传入的是 SQLAlchemy 原生的 Session 类。<code>sessionmaker</code> 也是一个工厂方法，它做的事是将传入的参数经过一些处理，在传入到 <code>Session</code> 类中，最终返回了一个 session 对象。</p>
+<p>这样，每个 HTTP 请求内调用 <code>db.session</code> 都会创建一个只在这个请求范围内有效的 session。</p>
+<h2 id="SQLAlchemy-架构"><a href="#SQLAlchemy-架构" class="headerlink" title="SQLAlchemy 架构"></a>SQLAlchemy 架构</h2><p><img src="https://www.aosabook.org/images/sqlalchemy/layers.png" alt="img"></p>
+<p>上图是 SQLAlchemy 整体的架构，可以分成三个部分：</p>
+<ul>
+<li>ORM：对象关系映射处理。</li>
+<li>Core：底层的查询处理、连接池等。</li>
+<li>DBAPI：最底层的数据访问接口。</li>
+</ul>
+<p><img src="https://www.aosabook.org/images/sqlalchemy/engine.png" alt="img"></p>
+<p>上图是 Core 里面核心类之间的关系。</p>
+<p><strong>DBAPI</strong>：Python 在 pep249 中定义的数据库访问接口规范，核心是 <code>Connection</code> 和 <code>Cursor</code> 两个类，<code>Connection</code> 类封装数据库连           接，<code>Cursor</code> 封装了数据库查询的上下文信息。</p>
+<p><strong>Dialect</strong>：本身是一个抽象类，如何与数据库交互都是通过这个类定义的，包括元信息、查询语句生成、执行、结果集处理等，不同的数据库对应不同的实现。<a target="_blank" rel="noopener" href="https://github.com/zzzeek/sqlalchemy/blob/57e2433dcd8fc2d030d43b72009079ae175c5480/lib/sqlalchemy/engine/interfaces.py#L15">源码</a></p>
+<p><strong>Connection</strong>：对 DB-API 更高层次的封装，提供了对 SQL 语句执行的相关支持，里面包含了一个从数据库连接池拿来的一个 DBAPI 连接。</p>
+<p><strong>Engine</strong>：协调 Connection、Pool，提供用户级的接口，一般是通过外观方法 <code>create_engine()</code>来创建。</p>
+<p><strong>ExecutionContext</strong>：执行的过程中由 Connection 创建，<code>Dialect</code> 的信使，表示一个查询执行。</p>
+<p>每执行一个查询，Engine 会创建一个 Connection 对象，并从连接池 Pool 中取一个数据库连接传入 Connection，connection 通过 Dialect 与不同的数据库对话，最终的查询结果封装中 ResultProxy 中。</p>
+<h2 id="查询的执行"><a href="#查询的执行" class="headerlink" title="查询的执行"></a>查询的执行</h2><p>由上面的分析我们知道 <code>db.session</code> 最终返回的是一个 session 对象。从下面的 Session 类的代码中我们发现 session 对象在初始化时，就默认开始了一个事务（autocommit 参数默认为 False），也就是说 <code>db.session</code> 开启了一个事务。</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">class</span> <span class="title class_">Session</span>(<span class="title class_ inherited__">_SessionClassMethods</span>):</span><br><span class="line"></span><br><span class="line">		<span class="keyword">def</span> <span class="title function_">__init__</span>(<span class="params">self, ...</span>):</span><br><span class="line">      	<span class="comment"># ...</span></span><br><span class="line">      	<span class="keyword">if</span> <span class="keyword">not</span> self.autocommit:</span><br><span class="line">            self.begin()</span><br><span class="line"></span><br><span class="line">  	<span class="keyword">def</span> <span class="title function_">begin</span>(<span class="params">self, subtransactions=<span class="literal">False</span>, nested=<span class="literal">False</span></span>):</span><br><span class="line">        <span class="keyword">if</span> self.transaction <span class="keyword">is</span> <span class="keyword">not</span> <span class="literal">None</span>:</span><br><span class="line">            <span class="comment"># ...</span></span><br><span class="line">        <span class="keyword">else</span>:</span><br><span class="line">            self.transaction = SessionTransaction(self, nested=nested)</span><br><span class="line">        <span class="keyword">return</span> self.transaction  <span class="comment"># needed for __enter__/__exit__ hook</span></span><br></pre></td></tr></table></figure>
+
+
+
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">class</span> <span class="title class_">Session</span>(<span class="title class_ inherited__">_SessionClassMethods</span>):</span><br><span class="line"></span><br><span class="line">    <span class="comment"># ...</span></span><br><span class="line"></span><br><span class="line">    <span class="keyword">def</span> <span class="title function_">execute</span>(<span class="params">self, clause, params=<span class="literal">None</span>, mapper=<span class="literal">None</span>, bind=<span class="literal">None</span>, **kw</span>):</span><br><span class="line">        <span class="comment"># 处理查询语句</span></span><br><span class="line">   		  clause = expression._literal_as_text(</span><br><span class="line">            clause, allow_coercion_to_text=<span class="literal">True</span></span><br><span class="line">        )</span><br><span class="line">			  <span class="comment"># 获取 Engine 对象</span></span><br><span class="line">        <span class="keyword">if</span> bind <span class="keyword">is</span> <span class="literal">None</span>:</span><br><span class="line">            bind = self.get_bind(mapper, clause=clause, **kw)</span><br><span class="line">				<span class="comment"># 创建 Connection 对象，执行查询</span></span><br><span class="line">        <span class="keyword">return</span> self._connection_for_bind(bind, close_with_result=<span class="literal">True</span>).execute(</span><br><span class="line">            clause, params <span class="keyword">or</span> &#123;&#125;</span><br><span class="line">        )</span><br></pre></td></tr></table></figure>
+
+
+
+<p>事务在 session 初始化时自动开启了，但是在 execute 里面没有看到提交，因为一个事务里面可能有多次查询，对应多个 execute，所以，所有 execute 执行完后要自己调用 commit 方法提交事务。</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">class</span> <span class="title class_">Session</span>(<span class="title class_ inherited__">_SessionClassMethods</span>):</span><br><span class="line"></span><br><span class="line">    <span class="keyword">def</span> <span class="title function_">commit</span>(<span class="params">self</span>):</span><br><span class="line">        <span class="comment"># ...</span></span><br><span class="line">        self.transaction.commit()</span><br><span class="line"></span><br><span class="line"><span class="keyword">class</span> <span class="title class_">SessionTransaction</span>(<span class="title class_ inherited__">object</span>):</span><br><span class="line"></span><br><span class="line">    <span class="keyword">def</span> <span class="title function_">commit</span>(<span class="params">self</span>):</span><br><span class="line">        <span class="comment"># ...</span></span><br><span class="line">        self.close()</span><br><span class="line">        <span class="keyword">return</span> self._parent</span><br><span class="line"></span><br><span class="line">    <span class="keyword">def</span> <span class="title function_">close</span>(<span class="params">self, invalidate=<span class="literal">False</span></span>):</span><br><span class="line">        <span class="comment"># 关闭事务...</span></span><br><span class="line">        <span class="comment"># 同时开启另一个事务</span></span><br><span class="line">        <span class="keyword">if</span> <span class="keyword">not</span> self.session.autocommit:</span><br><span class="line">           self.session.begin()</span><br></pre></td></tr></table></figure>
+
+
+
+<h2 id="Autocommit"><a href="#Autocommit" class="headerlink" title="Autocommit"></a>Autocommit</h2><p><a target="_blank" rel="noopener" href="https://docs.sqlalchemy.org/en/13/orm/session_api.html?highlight=autocommit#sqlalchemy.orm.session.Session.params.autocommit">原文1</a></p>
+<blockquote>
+<p>The autocommit flag is <strong>not for general use</strong>, and if it is used, queries should only be invoked within the span of a <a target="_blank" rel="noopener" href="https://docs.sqlalchemy.org/en/13/orm/session_api.html?highlight=autocommit#sqlalchemy.orm.session.Session.begin"><code>Session.begin()</code></a> &#x2F; <a target="_blank" rel="noopener" href="https://docs.sqlalchemy.org/en/13/orm/session_api.html?highlight=autocommit#sqlalchemy.orm.session.Session.commit"><code>Session.commit()</code></a> pair. Executing queries outside of a demarcated transaction is a legacy mode of usage, and can in some cases lead to concurrent connection checkouts.</p>
+</blockquote>
+<p>autocommit 并不是字面意思那样会自动提交，相反，开启了 autocommit 后，要手动的调用， sesession.begin()&#x2F;session.commit()。在事务外执行查询时历史遗留问题，可能会导致并发问题。</p>
+<blockquote>
+<p>Defaults to <code>False</code>. When <code>True</code>, the <a target="_blank" rel="noopener" href="https://docs.sqlalchemy.org/en/13/orm/session_api.html?highlight=autocommit#sqlalchemy.orm.session.Session"><code>Session</code></a> does not keep a persistent transaction running, and will acquire connections from the engine on an as-needed basis, returning them immediately after their use. Flushes will begin and commit (or possibly rollback) their own transaction if no transaction is present. When using this mode, the <a target="_blank" rel="noopener" href="https://docs.sqlalchemy.org/en/13/orm/session_api.html?highlight=autocommit#sqlalchemy.orm.session.Session.begin"><code>Session.begin()</code></a> method is used to explicitly start transactions.</p>
+</blockquote>
+<p>默认为 Flase。当为 True 时，session 不会维持一个持久化的事务，并且会需要时才从 engine 获取 connection，用完后立刻归还。</p>
+<p><a target="_blank" rel="noopener" href="https://docs.sqlalchemy.org/en/13/orm/session_transaction.html#autocommit-mode">原文2</a></p>
+<blockquote>
+<p><strong>Deprecated since version 1.4:</strong> “autocommit” mode is a <strong>legacy mode of use</strong> and should not be considered for new projects. The feature will be deprecated in SQLAlchemy 1.4 and removed in version 2.0; both versions provide a more refined “autobegin” approach that allows the <a target="_blank" rel="noopener" href="https://docs.sqlalchemy.org/en/13/orm/session_api.html#sqlalchemy.orm.session.Session.begin"><code>Session.begin()</code></a> method to be used normally. If autocommit mode is used, it is strongly advised that the application at least ensure that transaction scope is made present via the <a target="_blank" rel="noopener" href="https://docs.sqlalchemy.org/en/13/orm/session_api.html#sqlalchemy.orm.session.Session.begin"><code>Session.begin()</code></a> method, rather than using the session in pure autocommit mode.</p>
+</blockquote>
+<p>概述在 1.4 被废弃，2.0 移除，会提供一个更合理的参数 <code>autobegin</code>。</p>
+<h2 id="参考"><a href="#参考" class="headerlink" title="参考"></a>参考</h2><p>[1] <a target="_blank" rel="noopener" href="https://www.aosabook.org/en/sqlalchemy.html">The Architecture of SQLAlchemy</a></p>
+<p>[2] <a target="_blank" rel="noopener" href="https://www.python.org/dev/peps/pep-0249/"> Python Database API Specification v2.0</a></p>
+<p>[3] <a target="_blank" rel="noopener" href="https://docs.sqlalchemy.org/en/14/orm/session_basics.html#when-do-i-construct-a-session-when-do-i-commit-it-and-when-do-i-close-it">session_basics</a></p>
+
+    </div>
+
+    
+    
+    
+
+    <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/sqlalchemy/" rel="tag"># sqlalchemy</a>
+              <a href="/tags/%E6%BA%90%E7%A0%81%E7%AC%94%E8%AE%B0/" rel="tag"># 源码笔记</a>
+          </div>
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-item">
+                <a href="/2021/lean-how-to-read-pg-explain/" rel="prev" title="读懂 PostgreSQL 的 Explain">
+                  <i class="fa fa-chevron-left"></i> 读懂 PostgreSQL 的 Explain
+                </a>
+            </div>
+            <div class="post-nav-item">
+                <a href="/2021/a-postgresql-transaction-uncommit-problem/" rel="next" title="记一个 PostgreSQL 事务未提交问题">
+                  记一个 PostgreSQL 事务未提交问题 <i class="fa fa-chevron-right"></i>
+                </a>
+            </div>
+          </div>
+    </footer>
+  </article>
+</div>
+
+
+
+
+
+
+</div>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+
+
+<div class="copyright">
+  &copy; 
+  <span itemprop="copyrightYear">2023</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">protream</span>
+</div>
+  <div class="powered-by">Powered by <a href="https://hexo.io/" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.js.org/pisces/" rel="noopener" target="_blank">NexT.Pisces</a>
+  </div>
+
+    </div>
+  </footer>
+
+  
+  <div class="back-to-top" role="button" aria-label="Back to top">
+    <i class="fa fa-arrow-up fa-lg"></i>
+    <span>0%</span>
+  </div>
+
+<noscript>
+  <div class="noscript-warning">Theme NexT works best with JavaScript enabled</div>
+</noscript>
+
+
+  
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js" integrity="sha256-XL2inqUJaslATFnHdJOi9GfQ60on8Wx1C2H8DYiN1xY=" crossorigin="anonymous"></script>
+<script src="/js/comments.js"></script><script src="/js/utils.js"></script><script src="/js/motion.js"></script><script src="/js/next-boot.js"></script>
+
+  
+
+
+
+
+
+
+  
+
+
+
+
+
+</body>
+</html>
