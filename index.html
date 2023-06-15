@@ -18,7 +18,7 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha256-HtsXJanqjKTc8vVQjO4YMhiqFoXkfBsjBWcX91T1jr8=" crossorigin="anonymous">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/3.1.1/animate.min.css" integrity="sha256-PR7ttpcvz8qrF57fur/yAx1qXMFJeJFiA6pSzWi0OIE=" crossorigin="anonymous">
 
-<script class="next-config" data-name="main" type="application/json">{"hostname":"protream.github.io","root":"/","images":"/images","scheme":"Gemini","darkmode":true,"version":"8.17.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12},"copycode":{"enable":false,"style":null},"bookmark":{"enable":false,"color":"#222","save":"auto"},"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"stickytabs":false,"motion":{"enable":true,"async":false,"transition":{"menu_item":"fadeInDown","post_block":"fadeIn","post_header":"fadeInDown","post_body":"fadeInDown","coll_header":"fadeInLeft","sidebar":"fadeInUp"}},"prism":false,"i18n":{"placeholder":"Searching...","empty":"We didn't find any results for the search: ${query}","hits_time":"${hits} results found in ${time} ms","hits":"${hits} results found"}}</script><script src="/js/config.js"></script>
+<script class="next-config" data-name="main" type="application/json">{"hostname":"protream.github.io","root":"/","images":"/images","scheme":"Muse","darkmode":true,"version":"8.17.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12},"copycode":{"enable":false,"style":null},"bookmark":{"enable":false,"color":"#222","save":"auto"},"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"stickytabs":false,"motion":{"enable":true,"async":false,"transition":{"menu_item":"fadeInDown","post_block":"fadeIn","post_header":"fadeInDown","post_body":"fadeInDown","coll_header":"fadeInLeft","sidebar":"fadeInUp"}},"prism":false,"i18n":{"placeholder":"Searching...","empty":"We didn't find any results for the search: ${query}","hits_time":"${hits} results found in ${time} ms","hits":"${hits} results found"}}</script><script src="/js/config.js"></script>
 
     <meta property="og:type" content="website">
 <meta property="og:title" content="Protream&#39;s Blog">
@@ -588,7 +588,7 @@
         <i class="far fa-calendar-check"></i>
       </span>
       <span class="post-meta-item-text">Edited on</span>
-      <time title="Modified: 2023-06-15 11:40:47" itemprop="dateModified" datetime="2023-06-15T11:40:47+08:00">2023-06-15</time>
+      <time title="Modified: 2023-06-15 11:58:02" itemprop="dateModified" datetime="2023-06-15T11:58:02+08:00">2023-06-15</time>
     </span>
 
   
@@ -616,83 +616,14 @@
     
     <div class="post-body" itemprop="articleBody">
           <p>最近遇到一个因应用端查询事务未提交导致数仓跑书脚本阻塞的问题。</p>
-<!--more--->
-
-
-<p>通过查看数据库的状态信息，定位到原因是：查询对表持有 <code>Access Share</code> 锁，而跑数脚本要先清空这张表，调用了 truncate 命令，而 truncate 命令会请求 <code>Access Exclusive</code> 锁。这两个锁是互斥的，一个事务持有了其中一个锁，只要事务未提交，另一个请求互斥锁的事务必须等待。</p>
-<p>但是什么导致事务未提交呢？</p>
-<h2 id="初步分析"><a href="#初步分析" class="headerlink" title="初步分析"></a>初步分析</h2><p>应用的代码是基于 Flask，使用了 SQLAclhemy 这个 ORM，并在查询的地方做了一层封装</p>
-<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">@staticmethod</span></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">fetch_data_sql</span>(<span class="params">sql, params, bind_key=<span class="literal">None</span></span>):</span><br><span class="line">    result = []</span><br><span class="line">    render_sql(sql=sql, params=params)</span><br><span class="line">    <span class="keyword">try</span>:</span><br><span class="line">        sql = text(sql)</span><br><span class="line">        con = db.session.execute(sql, params, bind=db.get_engine(current_app, bind=bind_key))</span><br><span class="line">        <span class="keyword">if</span> con.returns_rows:</span><br><span class="line">            result = con.fetchall()</span><br><span class="line">    <span class="keyword">except</span> Exception <span class="keyword">as</span> er:</span><br><span class="line">        LOG.error(<span class="string">&quot;fetch data error: &#123;0&#125;, sql is: &#123;1&#125;&quot;</span>.<span class="built_in">format</span>(er, sql))</span><br><span class="line">        <span class="keyword">raise</span> DBError()</span><br><span class="line">    <span class="keyword">else</span>:</span><br><span class="line">        <span class="keyword">return</span> result</span><br></pre></td></tr></table></figure>
-
-
-
-<p>注意到这里 <code>db.session.exuecute()</code> 发起了一个查询，而 db.session 在默认 <code>autocommit=False</code> 的情况下是会自动开启事务的（参见：<a href="">Flask-SQLAlchmey 是如何执行查询的</a>），问题似乎是开启了事务，而没有调用 <code>db.session.commit()</code> 提交事务。</p>
-<p>但仔细一想，有两个疑问：</p>
-<ol>
-<li>如果是因为没有调用 <code>db.session.commit()</code>，那这个问题应该存在已久，数据库应该存在大量未提交的事务；</li>
-<li>既然自动开启了事务，为什么没有自动关闭事务呢？按理说事务的生命周期应该和请求保持一致的。</li>
-</ol>
-<p>第一个疑问很好验证，从应用发起一个查询，通过 <code>pg_stat_activity</code>  和 <code>pg_locks</code> 查看事务和锁的状态，结果是，查询结束后，事务自动提交了，持有的锁也自动释放了。</p>
-<p>可以得到初步结论，即使没有调用 <code>db.session.commit()</code> ，事务也是会自动提交的。</p>
-<p>那是在什么地方提交的呢？SQLAlchemy 虽然帮我们自动开启了事务，但是它是不知道我们要在事务里提交几个查询的，所以它应该不会帮我们去提交，那应该就是在 flask-sqlalchemy 里处理的了。一个请求结束了，事务也应该提交，可以猜想，flask-sqlalchemy 里应该是注册了 flask 的 <code>request hook</code>，在请求结束时去自动去提交事务。</p>
-<h2 id="源码验证"><a href="#源码验证" class="headerlink" title="源码验证"></a>源码验证</h2><p>去源码里验证一下，相关软件版本：flask 1.1.1，SQLAlchemy 1.3.10，flask-sqlalchmey 2.4.1。</p>
-<p>发现，flask-sqlalchmey 的确是注册是一个关闭 session 的 hook 函数，和预想的不太一样的是，它是在 <code>app context</code> 而不是  <code>reqest context</code>。</p>
-<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="variable">@app</span>.teardown_appcontext</span><br><span class="line">def shutdown_session(response_or_exc):</span><br><span class="line">    if app.config[<span class="string">&#x27;SQLALCHEMY_COMMIT_ON_TEARDOWN&#x27;</span>]:</span><br><span class="line">        if response_or_exc <span class="keyword">is</span> <span class="keyword">None</span>:</span><br><span class="line">            self.session.commit()</span><br><span class="line"></span><br><span class="line">    self.session.remove()</span><br><span class="line">    <span class="keyword">return</span> response_or_exc</span><br></pre></td></tr></table></figure>
-
-
-
-<p><code>SQLALCHEMY_COMMIT_ON_TEARDOWN</code> 模式是 <code>False</code>，这里会进入到 <code>self.session.remove()</code>，触发的是 <code>scope_session</code> 的 <code>remove</code> 方法，这里面调用的 <code>close()</code> 方法正是去关闭事务的。</p>
-<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">class</span> <span class="title class_">scoped_session</span>(<span class="title class_ inherited__">object</span>):</span><br><span class="line"></span><br><span class="line">    <span class="keyword">def</span> <span class="title function_">remove</span>(<span class="params">self</span>):</span><br><span class="line">        <span class="keyword">if</span> self.registry.has():</span><br><span class="line">            self.registry().close()</span><br><span class="line">        self.registry.clear()</span><br></pre></td></tr></table></figure>
-
-
-
-<p>再去 flask 里面看一下，</p>
-<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">class</span> <span class="title class_">Flask</span>(<span class="title class_ inherited__">_PackageBoundObject</span>):</span><br><span class="line">    <span class="comment"># ...</span></span><br><span class="line">    self.teardown_appcontext_funcs = []</span><br><span class="line"></span><br><span class="line"><span class="meta">    @setupmethod</span></span><br><span class="line">    <span class="keyword">def</span> <span class="title function_">teardown_appcontext</span>(<span class="params">self, f</span>):</span><br><span class="line">        <span class="string">&quot;&quot;&quot;Registers a function to be called when the application context</span></span><br><span class="line"><span class="string">        ends.  These functions are typically also called when the request</span></span><br><span class="line"><span class="string">        context is popped.</span></span><br><span class="line"><span class="string">        &quot;&quot;&quot;</span></span><br><span class="line">        self.teardown_appcontext_funcs.append(f)</span><br><span class="line">        <span class="keyword">return</span> f</span><br><span class="line"></span><br><span class="line">    <span class="keyword">def</span> <span class="title function_">do_teardown_appcontext</span>(<span class="params">self, exc=_sentinel</span>):</span><br><span class="line">        <span class="string">&quot;&quot;&quot;Called right before the application context is popped.</span></span><br><span class="line"><span class="string">        When handling a request, the application context is popped</span></span><br><span class="line"><span class="string">        after the request context.</span></span><br><span class="line"><span class="string">        &quot;&quot;&quot;</span></span><br><span class="line">        <span class="keyword">if</span> exc <span class="keyword">is</span> _sentinel:</span><br><span class="line">            exc = sys.exc_info()[<span class="number">1</span>]</span><br><span class="line">        <span class="keyword">for</span> func <span class="keyword">in</span> <span class="built_in">reversed</span>(self.teardown_appcontext_funcs):</span><br><span class="line">            func(exc)</span><br><span class="line">        appcontext_tearing_down.send(self, exc=exc)</span><br></pre></td></tr></table></figure>
-
-
-
-<p><code>teardown_appcontext</code> 装饰器将 hook 函数保存在了 <code>teardown_appcontext_funcs</code> 列表里，在某一个时刻，会通过 <code>do_teardown_appcontext</code> 调用这些函数。从  <code>do_teardown_appcontext</code> 的注释可以得知，这些函数一般是请求上下文被删除时调用的，而请求上下文正是在一个请求处理结束时被删除。</p>
-<p>看来猜想是没错的，只是实现上的一点差异，继续看在哪触发的调用。</p>
-<p>flask 通过 <code>RequestContxt</code> 管理请求上下文，</p>
-<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">class</span> <span class="title class_">RequestContext</span>(<span class="title class_ inherited__">object</span>):</span><br><span class="line">    <span class="comment"># ...</span></span><br><span class="line"></span><br><span class="line">    <span class="keyword">def</span> <span class="title function_">pop</span>(<span class="params">self, exc=_sentinel</span>):</span><br><span class="line">        app_ctx = self._implicit_app_ctx_stack.pop()</span><br><span class="line"></span><br><span class="line">        <span class="keyword">try</span>:</span><br><span class="line">            clear_request = <span class="literal">False</span></span><br><span class="line">            <span class="keyword">if</span> <span class="keyword">not</span> self._implicit_app_ctx_stack:</span><br><span class="line">                self.preserved = <span class="literal">False</span></span><br><span class="line">                self._preserved_exc = <span class="literal">None</span></span><br><span class="line">                <span class="keyword">if</span> exc <span class="keyword">is</span> _sentinel:</span><br><span class="line">                    exc = sys.exc_info()[<span class="number">1</span>]</span><br><span class="line">                self.app.do_teardown_request(exc)</span><br><span class="line"></span><br><span class="line">                <span class="keyword">if</span> <span class="built_in">hasattr</span>(sys, <span class="string">&quot;exc_clear&quot;</span>):</span><br><span class="line">                    sys.exc_clear()</span><br><span class="line"></span><br><span class="line">                request_close = <span class="built_in">getattr</span>(self.request, <span class="string">&quot;close&quot;</span>, <span class="literal">None</span>)</span><br><span class="line">                <span class="keyword">if</span> request_close <span class="keyword">is</span> <span class="keyword">not</span> <span class="literal">None</span>:</span><br><span class="line">                    request_close()</span><br><span class="line">                clear_request = <span class="literal">True</span></span><br><span class="line">        <span class="keyword">finally</span>:</span><br><span class="line">            rv = _request_ctx_stack.pop()</span><br><span class="line"></span><br><span class="line">            <span class="keyword">if</span> clear_request:</span><br><span class="line">                rv.request.environ[<span class="string">&quot;werkzeug.request&quot;</span>] = <span class="literal">None</span></span><br><span class="line"></span><br><span class="line">            <span class="comment"># Get rid of the app as well if necessary.</span></span><br><span class="line">            <span class="keyword">if</span> app_ctx <span class="keyword">is</span> <span class="keyword">not</span> <span class="literal">None</span>:</span><br><span class="line">                app_ctx.pop(exc)</span><br><span class="line"></span><br><span class="line">            <span class="keyword">assert</span> rv <span class="keyword">is</span> self, <span class="string">&quot;Popped wrong request context. (%r instead of %r)&quot;</span> % (</span><br><span class="line">                rv,</span><br><span class="line">                self,</span><br><span class="line">            )</span><br></pre></td></tr></table></figure>
-
-
-
-<p>在请求处理结束时，会调用  <code>pop</code> 清除请求上下文，在这一行：</p>
-<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">self.app.do_teardown_request(exc)</span><br></pre></td></tr></table></figure>
-
-
-
-<p>调用了注册的请求结束时需要执行的 hook 函数。继续往下，在 finally 里面调用了 <code>app context </code> 的 <code>pop</code> 方法：</p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">if app_ctx is not None:</span><br><span class="line">    app_ctx.pop(exc)</span><br></pre></td></tr></table></figure>
-
-
-
-<p>在 <code>app context</code> 的 <code>pop</code> 方法里，触发了 <code>self.app.do_teardown_appcontext(exc)</code> 。</p>
-<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">class</span> <span class="title class_">AppContext</span>(<span class="title class_ inherited__">object</span>):</span><br><span class="line">    <span class="comment">#...</span></span><br><span class="line">    <span class="keyword">def</span> <span class="title function_">pop</span>(<span class="params">self, exc=_sentinel</span>):</span><br><span class="line">        <span class="string">&quot;&quot;&quot;Pops the app context.&quot;&quot;&quot;</span></span><br><span class="line">        <span class="keyword">try</span>:</span><br><span class="line">            self._refcnt -= <span class="number">1</span></span><br><span class="line">            <span class="keyword">if</span> self._refcnt &lt;= <span class="number">0</span>:</span><br><span class="line">                <span class="keyword">if</span> exc <span class="keyword">is</span> _sentinel:</span><br><span class="line">                    exc = sys.exc_info()[<span class="number">1</span>]</span><br><span class="line">                self.app.do_teardown_appcontext(exc)</span><br><span class="line">        <span class="keyword">finally</span>:</span><br><span class="line">            rv = _app_ctx_stack.pop()</span><br><span class="line">        <span class="keyword">assert</span> rv <span class="keyword">is</span> self, <span class="string">&quot;Popped wrong app context.  (%r instead of %r)&quot;</span> % (rv, self)</span><br><span class="line">        appcontext_popped.send(self.app)</span><br></pre></td></tr></table></figure>
-
-
-
-<h2 id="再次分析"><a href="#再次分析" class="headerlink" title="再次分析"></a>再次分析</h2><p>现在已经清晰了，即使没有主动调用 <code>db.session.commit()</code>，只要请求正常处理结束，flask-sqlalchemy 会自动帮我们清理事务的。</p>
-<p>看来导致查询事务未提交的根本原因是：<strong>请求非正常结束</strong>，也就是说 <code>db.session.execute</code> 提交了查询，数据库开启了事务，执行查询，但是还没等到触发 hook 函数，请求非正常终止了。</p>
-<p>经实验验证了一种情况：Flask App 是跑在 Docker 里的，在一个查询请求提交后，hook 函数执行前通过 <code>docker restart</code> 重启服务，就会导致事务不会被提交。</p>
-<p>当然，也不能完全排除有人从一些客户端、命令行开启事务没有提交，但这种可能性非常低。</p>
-<h2 id="解决方案"><a href="#解决方案" class="headerlink" title="解决方案"></a>解决方案</h2><ol>
-<li><p>还是要确保 <code>db.session.execute()/db.session.commit()</code> 成对出现，虽然 <code>flask-sqlalchemy</code> 会帮我们在自动清理，但是在发起请求和自动清理之间有很多其他指令要执行，这增加了触发问题的概率。</p>
-</li>
-<li><p>设置 <strong>idle_in_transaction_session_timeout</strong> 参数，如果一个事务长期处于 <code>idle in transaction</code> 状态，超过设置的时长（单位毫秒）时，数据库会自动清理掉这些事务。</p>
-</li>
-</ol>
-<p>对于 1：</p>
-<p>可以最好是统一使用上下文管理器：</p>
-<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">class</span> <span class="title class_">SQLAlchemy</span>(<span class="title class_ inherited__">_SQLAlchemy</span>):</span><br><span class="line"></span><br><span class="line"><span class="meta">    @contextmanager</span></span><br><span class="line">    <span class="keyword">def</span> <span class="title function_">auto_commit</span>(<span class="params">self</span>):</span><br><span class="line">        <span class="keyword">try</span>:</span><br><span class="line">            <span class="keyword">yield</span></span><br><span class="line">            self.session.commit()</span><br><span class="line">        <span class="keyword">except</span> Exception <span class="keyword">as</span> e:</span><br><span class="line">            logger.exception(e)</span><br><span class="line">            db.session.rollback()</span><br><span class="line">            <span class="keyword">raise</span></span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="keyword">with</span> db.auto_commit():</span><br><span class="line">  	<span class="comment"># some query</span></span><br></pre></td></tr></table></figure>
-
-
-
-
-
-<h2 id="参考"><a href="#参考" class="headerlink" title="参考"></a>参考</h2><p>[1] <a target="_blank" rel="noopener" href="https://www.postgresql.org/docs/10/runtime-config-client.html"> Server Configuration</a></p>
-
+          <!--noindex-->
+            <div class="post-button">
+              <a class="btn" href="/2021/a-postgresql-transaction-uncommit-problem/#more" rel="contents">
+                Read more &raquo;
+              </a>
+            </div>
+          <!--/noindex-->
+        
       
     </div>
 
@@ -1214,13 +1145,19 @@
   </span>
   <span class="author" itemprop="copyrightHolder">protream</span>
 </div>
-  <div class="powered-by">Powered by <a href="https://hexo.io/" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.js.org/" rel="noopener" target="_blank">NexT.Gemini</a>
+  <div class="powered-by">Powered by <a href="https://hexo.io/" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.js.org/muse/" rel="noopener" target="_blank">NexT.Muse</a>
   </div>
 
     </div>
   </footer>
 
   
+  <div class="toggle sidebar-toggle" role="button">
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+  </div>
+  <div class="sidebar-dimmer"></div>
   <div class="back-to-top" role="button" aria-label="Back to top">
     <i class="fa fa-arrow-up fa-lg"></i>
     <span>0%</span>
@@ -1233,7 +1170,7 @@
 
   
   <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js" integrity="sha256-XL2inqUJaslATFnHdJOi9GfQ60on8Wx1C2H8DYiN1xY=" crossorigin="anonymous"></script>
-<script src="/js/comments.js"></script><script src="/js/utils.js"></script><script src="/js/motion.js"></script><script src="/js/next-boot.js"></script>
+<script src="/js/comments.js"></script><script src="/js/utils.js"></script><script src="/js/motion.js"></script><script src="/js/schemes/muse.js"></script><script src="/js/next-boot.js"></script>
 
   
 
