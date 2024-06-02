@@ -1,0 +1,1387 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+    <id>https://protream.github.io</id>
+    <title>Protream&apos;s Notes</title>
+    <updated>2024-06-02T10:34:01.045Z</updated>
+    <generator>https://github.com/jpmonette/feed</generator>
+    <link rel="alternate" href="https://protream.github.io"/>
+    <link rel="self" href="https://protream.github.io/atom.xml"/>
+    <logo>https://protream.github.io/images/avatar.png</logo>
+    <icon>https://protream.github.io/favicon.ico</icon>
+    <rights>All rights reserved 2024, Protream&apos;s Notes</rights>
+    <entry>
+        <title type="html"><![CDATA[显卡直通技术原理]]></title>
+        <id>https://protream.github.io/post/vzZzy3P9V/</id>
+        <link href="https://protream.github.io/post/vzZzy3P9V/">
+        </link>
+        <updated>2024-06-02T10:32:36.000Z</updated>
+        <summary type="html"><![CDATA[<p>显卡直通（GPU Passthrough）的原理是通过硬件虚拟化技术，使得虚拟机能直接访问物理硬件资源，从而大大提高虚拟机的性能。</p>
+<p>在没有直通技术的情况下，虚拟机需要通过宿主机的操作系统来访问硬件资源，这会造成一定的性能损失。而显卡直通技术则可以使虚拟机绕过宿主机操作系统，直接访问显卡硬件。</p>
+]]></summary>
+        <content type="html"><![CDATA[<p>显卡直通（GPU Passthrough）的原理是通过硬件虚拟化技术，使得虚拟机能直接访问物理硬件资源，从而大大提高虚拟机的性能。</p>
+<p>在没有直通技术的情况下，虚拟机需要通过宿主机的操作系统来访问硬件资源，这会造成一定的性能损失。而显卡直通技术则可以使虚拟机绕过宿主机操作系统，直接访问显卡硬件。</p>
+<!-- more -->
+<h2 id="技术原理">技术原理</h2>
+<p>这种技术的实现需要硬件和软件的支持。在硬件方面，需要支持IOMMU（Input/Output Memory Management Unit）的CPU和主板，以及支持SR-IOV（Single Root I/O Virtualization）的显卡。在软件方面，需要支持硬件虚拟化和显卡直通的虚拟机管理程序，如KVM、Xen等。</p>
+<h3 id="iommu">IOMMU</h3>
+<p>IOMMU，全称是Input/Output Memory Management Unit，即输入/输出内存管理单元。它是一种硬件技术，主要用于控制设备对物理内存的访问。</p>
+<p>在没有IOMMU的情况下，设备（如网卡、显卡等）直接使用物理地址访问内存，这样可能会导致设备对任意内存的访问，从而带来安全问题。而有了IOMMU后，操作系统可以控制设备对哪些内存的访问，从而提高系统的安全性。</p>
+<p>此外，IOMMU还可以实现设备的虚拟化。在虚拟化环境中，虚拟机通常不能直接访问物理硬件，而是通过宿主机操作系统的模拟。但是，这种模拟方式会带来性能损失。而有了IOMMU后，虚拟机可以直接访问硬件，从而提高性能。</p>
+<p>IOMMU的具体实现方式因硬件厂商而异。在Intel平台上，它被称为VT-d（Virtualization Technology for Directed I/O）。在AMD平台上，它被称为AMD-Vi（AMD Virtualization technology for I/O devices）。</p>
+<h3 id="sr-io">SR-IO</h3>
+<p>SR-IOV，全称是Single Root Input/Output Virtualization，即单根输入/输出虚拟化。这是一种硬件辅助的I/O虚拟化技术，可以让一个物理设备在虚拟环境中表现为多个虚拟设备，每个虚拟设备可以被不同的虚拟机独立使用。</p>
+<p>SR-IOV技术的核心是引入了两种新的设备类型：Physical Function (PF) 和 Virtual Function (VF)。</p>
+<p>PF是物理设备的完整功能表示，包括设备的所有配置和管理功能，以及一些I/O功能。每个支持SR-IOV的物理设备都至少有一个PF。</p>
+<p>VF则是物理设备的一个轻量级表示，只包含一部分I/O功能，不包含配置和管理功能。每个PF可以有多个VF，每个VF可以被分配给一个虚拟机使用。</p>
+<p>通过SR-IOV技术，虚拟机可以直接访问硬件设备的部分功能，从而避免了通过宿主机操作系统进行I/O操作的开销，提高了I/O性能。同时，因为每个虚拟机都有自己的VF，所以虚拟机之间的I/O操作不会相互干扰，提高了I/O的稳定性和可靠性。</p>
+<p>SR-IOV技术广泛应用于网络设备和显卡等I/O密集型设备的虚拟化。</p>
+<h3 id="vfio-pci">VFIO-PCI</h3>
+<p>VFIO-PCI是VFIO的一个子模块，专门用于PCI设备的直通。</p>
+<p>VFIO提供了一种机制，使得用户空间的程序（如虚拟机）可以直接访问硬件设备，而无需通过内核。这种机制不仅可以提高性能，还可以提供更好的设备隔离，增强系统的安全性。</p>
+<p>VFIO-PCI模块通过VFIO框架提供的接口，实现了对PCI设备的直通。当你把一个PCI设备分配给虚拟机时，VFIO-PCI模块会负责把设备的所有操作（如读写设备寄存器、DMA操作等）转发给硬件设备。</p>
+<p>总的来说，VFIO-PCI是一种在Linux系统中实现PCI设备直通的技术，广泛应用于虚拟化和容器等领域。</p>
+<h2 id="参考">参考</h2>
+<p>[1] <a href="https://kubevirt.io/user-guide/compute/host-devices/">Host Devices Assignment</a></p>
+]]></content>
+    </entry>
+    <entry>
+        <title type="html"><![CDATA[SOLID 原则]]></title>
+        <id>https://protream.github.io/post/FPzI7NSe3/</id>
+        <link href="https://protream.github.io/post/FPzI7NSe3/">
+        </link>
+        <updated>2024-05-29T12:14:19.000Z</updated>
+        <summary type="html"><![CDATA[<p>SOLID 原则是由著名的鲍勃大叔（Robert J. Martin）在其论文里提出的，鲍勃大叔在架构领域建树颇多，《代码整洁之道》、《架构整洁之道》都出资他手。</p>
+<p>SOLID 是五个面向对象编程和设计的基本原则的首字母缩写，它们分别是：</p>
+<ol>
+<li>单一职责原则（Single Responsibility Principle, SRP）</li>
+<li>开放封闭原则（Open-Closed Principle, OCP）</li>
+<li>里氏替换原则（Liskov Substitution Principle, LSP）</li>
+<li>接口隔离原则（Interface Segregation Principle, ISP）</li>
+<li>依赖倒置原则（Dependency Inversion Principle, DIP）</li>
+</ol>
+]]></summary>
+        <content type="html"><![CDATA[<p>SOLID 原则是由著名的鲍勃大叔（Robert J. Martin）在其论文里提出的，鲍勃大叔在架构领域建树颇多，《代码整洁之道》、《架构整洁之道》都出资他手。</p>
+<p>SOLID 是五个面向对象编程和设计的基本原则的首字母缩写，它们分别是：</p>
+<ol>
+<li>单一职责原则（Single Responsibility Principle, SRP）</li>
+<li>开放封闭原则（Open-Closed Principle, OCP）</li>
+<li>里氏替换原则（Liskov Substitution Principle, LSP）</li>
+<li>接口隔离原则（Interface Segregation Principle, ISP）</li>
+<li>依赖倒置原则（Dependency Inversion Principle, DIP）</li>
+</ol>
+<!-- more -->
+<h2 id="单一职责原则">单一职责原则</h2>
+<p>单一职责原则是说，一个类应该只有一个引起它变化的原因。这个原则的主要目的是降低类的复杂性，并提高类的可读性和可维护性。</p>
+<p>比如说，有一个类叫做<code>UserManager</code>，它负责处理用户的添加和删除，同时也负责发送通知。这样的设计就违反了单一职责原则。因为<code>UserManager</code>类有两个改变的理由：用户管理的逻辑变化和通知的逻辑变化。</p>
+<p>如果用户管理的逻辑发生变化，比如说需要添加用户的年龄验证，那么你需要修改<code>UserManager</code>类。如果通知的逻辑发生变化，比如说需要增加短信通知，你也需要修改<code>UserManager</code>类。这样的设计使得<code>UserManager</code>类变得复杂，难以理解和维护。</p>
+<p>如果遵守单一职责原则，应该将用户管理和通知分离到两个类中，比如<code>UserManager</code>类只负责用户的添加和删除，<code>NotificationManager</code>类只负责发送通知。这样，当用户管理的逻辑变化时，你只需要修改<code>UserManager</code>类，当通知的逻辑变化时，你只需要修改<code>NotificationManager</code>类。这样的设计使得每个类都只有一个改变的理由，降低了类的复杂性，提高了类的可读性和可维护性。</p>
+<p>在函数层面，单一职责原则也是适用。</p>
+<p>函数应该做一件事情，做好一件事情。如果一个函数尝试去做多于一件的事情，它将会变得复杂，难以理解和维护。</p>
+<p>举个例子，如果你有一个函数叫做<code>handleUser</code>，它负责验证用户输入，处理用户请求，并且记录日志。这个函数就违反了单一职责原则，因为它有三个改变的理由：验证逻辑的变化，请求处理的变化，和日志记录的变化。</p>
+<pre><code class="language-go">func handleUser(user User) {
+    // 验证用户输入
+    // 处理用户请求
+    // 记录日志
+}
+</code></pre>
+<p>如果遵守单一职责原则，你应该将这三个功能分离到三个函数中，比如<code>validateUser</code>函数只负责验证用户输入，<code>processUser</code>函数只负责处理用户请求，<code>logUser</code>函数只负责记录日志。这样，每个函数都只有一个改变的理由，降低了函数的复杂性，提高了函数的可读性和可维护性。</p>
+<pre><code class="language-go">func validateUser(user User) {
+    // 验证用户输入
+}
+
+func processUser(user User) {
+    // 处理用户请求
+}
+
+func logUser(user User) {
+    // 记录日志
+}
+</code></pre>
+<p><code>handleUser</code>函数可以被重构为只负责调用其他处理具体任务的函数：</p>
+<pre><code class="language-go">func handleUser(user User) {
+    validateUser(user)
+    processUser(user)
+    logUser(user)
+}
+</code></pre>
+<p><code>handleUser</code>函数的职责就变成了协调<code>validateUser</code>，<code>processUser</code>和<code>logUser</code>这三个函数。这样，如果验证用户输入的逻辑需要变更，你只需要修改<code>validateUser</code>函数；如果处理用户请求的逻辑需要变更，你只需要修改<code>processUser</code>函数；如果记录日志的逻辑需要变更，你只需要修改<code>logUser</code>函数。每个函数都只有一个改变的理由，遵守了单一职责原则。</p>
+<p>这样的设计不仅使得代码更加清晰，也提高了代码的可维护性。</p>
+<h3 id="常见陷阱和反模式">常见陷阱和反模式</h3>
+<p>我们将以一个简单的书店发票程序的代码为例。首先定义一个用于发票的书籍类。</p>
+<pre><code class="language-go">class Book {
+	String name;
+	String authorName;
+	int year;
+	int price;
+	String isbn;
+
+	public Book(String name, String authorName, int year, int price, String isbn) {
+		this.name = name;
+		this.authorName = authorName;
+		this.year = year;
+        this.price = price;
+		this.isbn = isbn;
+	}
+}
+</code></pre>
+<p>这是一个带有一些字段的简单书籍类。没什么特别的。我没有将字段设为私有，这样我们就不需要处理 getter 和 setter，而是可以专注于逻辑。</p>
+<p>现在让我们创建发票类，它将包含创建发票和计算总价的逻辑。现在，假设我们的书店只卖书，不卖其他东西。</p>
+<pre><code class="language-go">
+public class Invoice {
+
+	private Book book;
+	private int quantity;
+	private double discountRate;
+	private double taxRate;
+	private double total;
+
+	public Invoice(Book book, int quantity, double discountRate, double taxRate) {
+		this.book = book;
+		this.quantity = quantity;
+		this.discountRate = discountRate;
+		this.taxRate = taxRate;
+		this.total = this.calculateTotal();
+	}
+
+	public double calculateTotal() {
+	        double price = ((book.price - book.price * discountRate) * this.quantity);
+
+		double priceWithTaxes = price * (1 + taxRate);
+
+		return priceWithTaxes;
+	}
+
+	public void printInvoice() {
+            System.out.println(quantity + &quot;x &quot; + book.name + &quot; &quot; +          book.price + &quot;$&quot;);
+            System.out.println(&quot;Discount Rate: &quot; + discountRate);
+            System.out.println(&quot;Tax Rate: &quot; + taxRate);
+            System.out.println(&quot;Total: &quot; + total);
+	}
+
+        public void saveToFile(String filename) {
+	// Creates a file with given name and writes the invoice
+	}
+
+}
+</code></pre>
+<p>这是我们的发票类。它还包含一些有关发票的字段和 3 种方法：</p>
+<ul>
+<li><strong>calculateTotal</strong>方法，计算总价，</li>
+<li><strong>printInvoice</strong>方法，应该将发票打印到控制台，以及</li>
+<li><strong>saveToFile</strong>方法，负责将发票写入文件。</li>
+</ul>
+<p>在阅读下一段之前，你应该花一点时间思考一下这个类设计有什么问题。</p>
+<p>好的，这是怎么回事？我们的类在多个方面违反了单一职责原则。</p>
+<p>第一个违规行为是<strong>printInvoice</strong>方法，该方法包含我们的打印逻辑。SRP 规定我们的类应该只有一个更改原因，并且该原因应该是我们类的发票计算发生变化。</p>
+<p>但在这种架构下，如果我们想改变打印格式，就需要改变类。这就是为什么我们不应该将打印逻辑与业务逻辑混合在同一个类中。</p>
+<p>我们的类中还有另一个违反 SRP 的方法：<strong>saveToFile</strong>方法。将持久性逻辑与业务逻辑混合在一起也是一个极其常见的错误。</p>
+<p>不要只考虑写入文件——它可以保存到数据库、进行 API 调用或进行与持久性相关的其他操作。</p>
+<p>那么您可能会问，我们如何修复此打印功能。</p>
+<p>我们可以为我们的打印和持久逻辑创建新的类，这样我们就不再需要为了这些目的修改发票类。</p>
+<p>我们创建 2 个类，<strong>InvoicePrinter</strong>和**InvoicePersistence，**并移动方法。</p>
+<pre><code class="language-go">public class InvoicePrinter {
+    private Invoice invoice;
+
+    public InvoicePrinter(Invoice invoice) {
+        this.invoice = invoice;
+    }
+
+    public void print() {
+        System.out.println(invoice.quantity + &quot;x &quot; + invoice.book.name + &quot; &quot; + invoice.book.price + &quot; $&quot;);
+        System.out.println(&quot;Discount Rate: &quot; + invoice.discountRate);
+        System.out.println(&quot;Tax Rate: &quot; + invoice.taxRate);
+        System.out.println(&quot;Total: &quot; + invoice.total + &quot; $&quot;);
+    }
+}
+</code></pre>
+<pre><code class="language-go">public class InvoicePersistence {
+    Invoice invoice;
+
+    public InvoicePersistence(Invoice invoice) {
+        this.invoice = invoice;
+    }
+
+    public void saveToFile(String filename) {
+        // Creates a file with given name and writes the invoice
+    }
+}
+</code></pre>
+<p>现在我们的类结构遵循单一职责原则，每个类负责应用程序的一个方面。太棒了！</p>
+<h2 id="开放封闭原则">开放封闭原则</h2>
+<p>开放封闭原则要求<strong>类应该对扩展开放，对修改关闭。</strong></p>
+<p>修改意味着改变现有类的代码，扩展意味着添加新的功能。</p>
+<p>因此，该原则的意思是：我们应该能够在不触碰类的现有代码的情况下添加新功能。这是因为每当我们修改现有代码时，我们都冒着产生潜在错误的风险。因此，如果可能的话，我们应该避免触碰经过测试且可靠的（大多数）生产代码。</p>
+<p>但是你可能会问，我们如何在不触及类的情况下添加新功能。这通常是借助接口和抽象类来完成的。</p>
+<p>现在我们已经介绍了该原理的基础知识，让我们将其应用到我们的发票应用程序中。</p>
+<p>假设我们的老板来找我们，说他们希望将发票保存到数据库中，以便我们轻松搜索。我们认为好的，老板，这很容易，请给我一点时间！</p>
+<p>我们创建数据库，连接到它，并向我们的<strong>InvoicePersistence</strong>类添加一个保存方法：</p>
+<pre><code class="language-go">public class InvoicePersistence {
+    Invoice invoice;
+
+    public InvoicePersistence(Invoice invoice) {
+        this.invoice = invoice;
+    }
+
+    public void saveToFile(String filename) {
+        // Creates a file with given name and writes the invoice
+    }
+
+    public void saveToDatabase() {
+        // Saves the invoice to database
+    }
+}
+</code></pre>
+<p>不幸的是，作为书店的懒惰开发人员，我们没有设计出将来易于扩展的类。因此，为了添加此功能，我们修改了<strong>InvoicePersistence</strong>类。</p>
+<p>如果我们的类设计遵循开放-封闭原则，我们就不需要改变这个类。</p>
+<p>因此，作为书店懒惰但聪明的开发人员，我们看到了设计问题并决定重构代码以遵循该原则。</p>
+<pre><code class="language-go">interface InvoicePersistence {
+
+    public void save(Invoice invoice);
+}
+</code></pre>
+<p>我们将InvoicePersistence**的类型改为Interface，并添加一个save方法，每个持久化类都会实现这个save方法。</p>
+<pre><code class="language-go">public class DatabasePersistence implements InvoicePersistence {
+
+    @Override
+    public void save(Invoice invoice) {
+        // Save to DB
+    }
+}
+</code></pre>
+<pre><code class="language-go">public class FilePersistence implements InvoicePersistence {
+
+    @Override
+    public void save(Invoice invoice) {
+        // Save to file
+    }
+}
+</code></pre>
+<p>所以我们的班级结构现在看起来像这样：</p>
+<figure data-type="image" tabindex="1"><img src="https://www.freecodecamp.org/news/content/images/2023/08/solid-article-image-1.png" alt="solid" loading="lazy"></figure>
+<p>现在我们的持久性逻辑很容易扩展。如果我们的老板要求我们添加另一个数据库，并且拥有 2 种不同类型的数据库，如 MySQL 和 MongoDB，我们可以轻松做到这一点。</p>
+<p>您可能认为我们可以创建多个没有接口的类，并为所有类添加保存方法。</p>
+<p>但是假设我们扩展了我们的应用程序并且有多个持久性类，如<strong>InvoicePersistence</strong>，<strong>BookPersistence</strong>，并且我们创建一个管理所有持久性类的<strong>PersistenceManager类：</strong></p>
+<pre><code class="language-go">public class PersistenceManager {
+    InvoicePersistence invoicePersistence;
+    BookPersistence bookPersistence;
+
+    public PersistenceManager(InvoicePersistence invoicePersistence,
+                              BookPersistence bookPersistence) {
+        this.invoicePersistence = invoicePersistence;
+        this.bookPersistence = bookPersistence;
+    }
+}
+</code></pre>
+<p>现在，我们可以借助多态性将任何实现<strong>InvoicePersistence</strong>接口的类传递给此类。这就是接口提供的灵活性。</p>
+<h2 id="里氏替换原则">里氏替换原则</h2>
+<p>里氏替换原则指出子类应该可以替换其基类。</p>
+<p>这意味着，假设 B 类是 A 类的子类，我们应该能够将 B 类的对象传递给任何需要 A 类对象的方法，并且在这种情况下该方法不应该给出任何奇怪的输出。</p>
+<p>这是预期的行为，因为当我们使用继承时，我们假设子类继承了超类拥有的所有内容。子类扩展了行为，但从未缩小其范围。</p>
+<p>因此，当一个类不遵循这个原则时，就会导致一些难以检测的严重错误。</p>
+<p>里氏原则很容易理解，但在代码中很难发现。让我们看一个例子。</p>
+<pre><code class="language-go">
+class Rectangle {
+	protected int width, height;
+
+	public Rectangle() {
+	}
+
+	public Rectangle(int width, int height) {
+		this.width = width;
+		this.height = height;
+	}
+
+	public int getWidth() {
+		return width;
+	}
+
+	public void setWidth(int width) {
+		this.width = width;
+	}
+
+	public int getHeight() {
+		return height;
+	}
+
+	public void setHeight(int height) {
+		this.height = height;
+	}
+
+	public int getArea() {
+		return width * height;
+	}
+}
+</code></pre>
+<p>我们有一个简单的 Rectangle 类和一个返回矩形面积的<strong>getArea函数。</strong></p>
+<p>现在我们决定为正方形创建另一个类。您可能知道，正方形只是一种特殊类型的矩形，其宽度等于高度。</p>
+<pre><code class="language-go">class Square extends Rectangle {
+	public Square() {}
+
+	public Square(int size) {
+		width = height = size;
+	}
+
+	@Override
+	public void setWidth(int width) {
+		super.setWidth(width);
+		super.setHeight(width);
+	}
+
+	@Override
+	public void setHeight(int height) {
+		super.setHeight(height);
+		super.setWidth(height);
+	}
+}
+</code></pre>
+<p>我们的 Square 类扩展了 Rectangle 类。我们在构造函数中将高度和宽度设置为相同的值，但我们不希望任何客户端（在代码中使用我们类的人）以违反 square 属性的方式更改高度或重量。</p>
+<p>因此，我们重写 setter，以便当其中一个属性发生变化时同时设置两个属性。但这样做却违反了里氏替换原则。</p>
+<p>让我们创建一个主类来对<strong>getArea</strong>函数进行测试。</p>
+<pre><code class="language-go">class Test {
+
+   static void getAreaTest(Rectangle r) {
+      int width = r.getWidth();
+      r.setHeight(10);
+      System.out.println(&quot;Expected area of &quot; + (width * 10) + &quot;, got &quot; + r.getArea());
+   }
+
+   public static void main(String[] args) {
+      Rectangle rc = new Rectangle(2, 3);
+      getAreaTest(rc);
+
+      Rectangle sq = new Square();
+      sq.setWidth(5);
+      getAreaTest(sq);
+   }
+}
+</code></pre>
+<p>你们团队的测试人员刚刚拿出了测试函数<strong>getAreaTest</strong>，并告诉你，你的<strong>getArea</strong>函数未能通过方形物体的测试。</p>
+<p>在第一个测试中，我们创建一个宽度为 2、高度为 3 的矩形，然后调用<strong>getAreaTest。<strong>输出结果与预期一致，为 20，但传入正方形时，结果出错。这是因为测试中对</strong>setHeight</strong>函数的调用也会设置宽度，导致输出结果出乎意料。</p>
+<h2 id="接口隔离原则">接口隔离原则</h2>
+<p>隔离意味着保持事物分离，接口隔离原则就是关于分离接口的。</p>
+<p>该原则指出，多个客户端专用接口比一个通用接口更好。不应强迫客户端实现他们不需要的功能。</p>
+<p>这是一个很容易理解和应用的原则，让我们看一个例子。</p>
+<pre><code class="language-go">public interface ParkingLot {
+
+	void parkCar(); // Decrease empty spot count by 1
+	void unparkCar(); // Increase empty spots by 1
+	void getCapacity(); // Returns car capacity
+	double calculateFee(Car car); // Returns the price based on number of hours
+	void doPayment(Car car);
+}
+
+class Car {
+
+}
+</code></pre>
+<p>我们建立了一个非常简单的停车场模型。这是按小时收费的停车场类型。现在假设我们想要实现一个免费的停车场。</p>
+<pre><code class="language-go">public class FreeParking implements ParkingLot {
+
+	@Override
+	public void parkCar() {
+
+	}
+
+	@Override
+	public void unparkCar() {
+
+	}
+
+	@Override
+	public void getCapacity() {
+
+	}
+
+	@Override
+	public double calculateFee(Car car) {
+		return 0;
+	}
+
+	@Override
+	public void doPayment(Car car) {
+		throw new Exception(&quot;Parking lot is free&quot;);
+	}
+}
+</code></pre>
+<p>我们的停车场界面由两部分组成：停车相关逻辑（停车、取车、获取容量）和支付相关逻辑。</p>
+<p>但是它太具体了。正因为如此，我们的 FreeParking 类被迫实现与支付无关的方法。让我们分离或隔离接口。</p>
+<figure data-type="image" tabindex="2"><img src="https://www.freecodecamp.org/news/content/images/2023/08/solid-article-image-2.png" alt="solid2" loading="lazy"></figure>
+<p>我们现在已经将停车场分开了。有了这个新模型，我们甚至可以更进一步，将<strong>PaidParkingLot</strong>分开，以支持不同类型的付款。</p>
+<p>现在我们的模型更加灵活、可扩展，并且客户端不需要实现任何不相关的逻辑，因为我们只在停车场界面提供与停车相关的功能。</p>
+<h2 id="依赖倒置原则">依赖倒置原则</h2>
+<p>依赖倒置原则指出我们的类应该依赖于接口或抽象类，而不是具体的类和函数。</p>
+<p>鲍勃大叔在他的中对这一原则进行了如下总结：</p>
+<blockquote>
+<p>“如果 OCP 阐明了 OO 架构的目标，那么 DIP 则阐明了主要机制”。</p>
+</blockquote>
+<p>这两个原则确实是相关的，我们之前在讨论开放封闭原则时就应用过这种模式。</p>
+<p>我们希望我们的类可以扩展，所以我们重新组织了依赖关系，使其依赖于接口而不是具体的类。我们的 PersistenceManager 类依赖于 InvoicePersistence，而不是实现该接口的类。</p>
+<h2 id="参考">参考</h2>
+<p>[1] <a href="https://www.freecodecamp.org/news/solid-principles-explained-in-plain-english/">solid-principles-explained-in-plain-english</a></p>
+<p>[2] <a href="https://staff.cs.utu.fi/~jounsmed/doos_06/material/DesignPrinciplesAndPatterns.pdf">Design Principles And Patterns</a></p>
+]]></content>
+    </entry>
+    <entry>
+        <title type="html"><![CDATA[ QUIC 协议]]></title>
+        <id>https://protream.github.io/post/6gHuzef_3/</id>
+        <link href="https://protream.github.io/post/6gHuzef_3/">
+        </link>
+        <updated>2024-05-17T13:44:53.000Z</updated>
+        <summary type="html"><![CDATA[<p>QUIC 协议是 Google 出品的传输层网络协议。那么，在已经有了安全可靠的 TCP 协议的情况下，又搞出来一个新的协议呢？简单来说，Google 对 TCP 协议的优化已经到了尽头，已经没有什么好优化的了，但还想更进一步，怎么办呢？搞个新的。</p>
+]]></summary>
+        <content type="html"><![CDATA[<p>QUIC 协议是 Google 出品的传输层网络协议。那么，在已经有了安全可靠的 TCP 协议的情况下，又搞出来一个新的协议呢？简单来说，Google 对 TCP 协议的优化已经到了尽头，已经没有什么好优化的了，但还想更进一步，怎么办呢？搞个新的。</p>
+<!-- more -->
+<p>设计目标：</p>
+<ul>
+<li>取代TCP协议</li>
+<li>降低连接和传输延迟</li>
+<li>改进拥塞控制</li>
+</ul>
+<p>相比 http2+tcp+tls 的优势：</p>
+<ol>
+<li>减少了 TCP 三次握手及 TLS 握手时间。</li>
+<li>改进的拥塞控制。</li>
+<li>避免队头阻塞的多路复用。</li>
+<li>连接迁移。</li>
+<li>前向冗余纠错。</li>
+</ol>
+<h2 id="特性">特性</h2>
+<p><strong>相互独立的逻辑流</strong></p>
+<p>相互独立的逻辑流是 QUIC 的核心特性之一。它允许在单个连接上并行传输多个数据流，并且每个流可以独立地处理。相比之下，TCP 只支持单数据流，需要按照发送顺序接收和确认每个报文。通过多路复用，应用程序可以更高效地发送和接收数据，并更好地利用网络带宽等资源。</p>
+<p><strong>一致安全性</strong></p>
+<p>QUIC 的另一个重要特性是它提供了端到端的安全保护。所有通过 QUIC 发送的数据都是默认加密的，并且不支持明文通信。这有助于防止数据被窃听和其他形式的攻击。QUIC 使用传输层安全协议（TLS）来建立和维护安全连接和端到端加密。</p>
+<p><strong>低延迟</strong></p>
+<p>QUIC 协议的设计目的是减少建立连接所需的延迟，以便在端点之间快速地发送和接收数据。对于移动网络这种高延迟的网络环境来说，这一点尤为重要。为了实现这个目标，QUIC 最小化了建立连接所需的往返次数，并且采用更小的报文来发送数据。传统的互联网协议通常存在延迟问题，例如美欧之间的往返时间有时可达 300 或 400 毫秒。</p>
+<p><strong>可靠性</strong></p>
+<p>QUIC 基于 UDP 但可提供可靠传输能力。类似于 TCP，它是一种面向连接的传输协议。QUIC 协议在数据传输过程中具有报文丢失恢复和重传功能，这可以确保数据的完整性和准确性。此外，QUIC 可以保证数据包按照发送顺序到达，避免因数据包乱序导致的数据错误。</p>
+<p><strong>消除 HOL 阻塞</strong></p>
+<p>QUIC 通过支持多个数据流来解决 HOL 阻塞问题。这使得来自不同应用的消息可以独立地传递，避免了因为等待其他应用而可能产生的延迟。</p>
+<h2 id="原理">原理</h2>
+<h2 id="场景">场景</h2>
+<p>HTTP/3 中，弃用 TCP 协议，改为使用基于 UDP 协议的 QUIC 协议实现。随着 HTTP/3 和 QUIC 越来越流行并被广泛采用，涌现出多种多样的应用场景。这些应用场景覆盖了直播、视频、点播、下载、Web 加速等领域，其中最具潜力的应用场景有：</p>
+<ol>
+<li>**实时 Web 和移动应用：**这些应用（如集成了语音和视频通信功能的 Web 和移动应用）需要低延迟和可靠的数据传输。QUIC 利用相互独立的数据流和拥塞控制机制，使其成为这些应用的理想选择，因为它可以快速高效地发送和接收数据。在 QUIC 的多路复用模式下，同一连接内不同数据流之间的数据传输互不干扰。</li>
+<li>**与物联网设备通信：**物联网设备通常使用 TCP 和 MQTT 等协议进行通信。然而，这些协议在受限的网络环境中可能存在高延迟和丢包等问题。相比之下，专为高延迟和丢包的网络环境而设计的 QUIC 可以提供更可靠和高效的替代方案。QUIC 可以实现接近零的往返时间（RTT），这对于提高网络性能和用户体验至关重要。</li>
+<li>**车联网和网联汽车：**QUIC 可以极大地促进车联网生态系统的发展。这些系统需要实时的数据交换来提供诸如交通管理、车辆跟踪和安全功能等服务。QUIC 具有低延迟、多路复用的特性，以及对数据包丢失和重排序的处理能力，可以确保车辆和基础设施组件之间可靠而高效的通信。此外，QUIC 使用 TLS 加密保护敏感车辆数据，提供了更强的安全保障。</li>
+<li>**云计算：**云计算是指通过互联网提供计算资源的服务。使用 QUIC 协议可以带来多方面的好处，例如低延迟和端到端加密，这可以提升用户体验、增强系统安全。</li>
+<li>**支付和电子商务应用：**这些应用需要安全可靠的数据传输。QUIC 通过 TLS 加密和可靠的 HTTP3 数据流，使其成为这些应用的理想选择，有助于保证数据安全完整地传输。从终端用户的角度来看，QUIC 协议通过保证更快、更顺畅的交易，优化了用户体验。</li>
+</ol>
+<h2 id="对比">对比</h2>
+<p>与 TCP 相比，QUIC 在高延迟和不稳定的网络环境中，如移动网络，可以显著提升网页加载速度并减少连接中断，使得网络体验更加流畅。</p>
+<table>
+<thead>
+<tr>
+<th>特性</th>
+<th>TCP (Transmission Control Protocol)</th>
+<th>QUIC (Quick UDP Internet Connections)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>协议层</strong></td>
+<td>传输层协议</td>
+<td>应用层协议</td>
+</tr>
+<tr>
+<td><strong>基础传输</strong></td>
+<td>基于 IP 协议之上的 TCP</td>
+<td>基于 IP 协议之上的 UDP</td>
+</tr>
+<tr>
+<td><strong>连接建立</strong></td>
+<td>三次握手</td>
+<td>单次握手</td>
+</tr>
+<tr>
+<td><strong>连接恢复</strong></td>
+<td>断开后需重新建立连接</td>
+<td>支持连接迁移和恢复</td>
+</tr>
+<tr>
+<td><strong>加密</strong></td>
+<td>TLS 1.2/1.3</td>
+<td>内置 TLS 1.3</td>
+</tr>
+<tr>
+<td><strong>启动延迟</strong></td>
+<td>较高，三次握手增加延迟</td>
+<td>较低，减少握手次数和延迟</td>
+</tr>
+<tr>
+<td><strong>多路复用</strong></td>
+<td>支持，但容易受阻塞影响</td>
+<td>原生支持，避免队头阻塞</td>
+</tr>
+<tr>
+<td><strong>传输效率</strong></td>
+<td>较高，但有队头阻塞问题</td>
+<td>更高，避免队头阻塞和优化路径恢复</td>
+</tr>
+<tr>
+<td><strong>数据完整性</strong></td>
+<td>基于序列号和确认号保证</td>
+<td>基于序列号和确认号保证</td>
+</tr>
+<tr>
+<td><strong>拥塞控制</strong></td>
+<td>内置多种拥塞控制算法</td>
+<td>内置拥塞控制，基于 TCP 的算法扩展</td>
+</tr>
+<tr>
+<td><strong>丢包重传</strong></td>
+<td>确认丢包后重传</td>
+<td>确认丢包后重传，优化的快速恢复机制</td>
+</tr>
+<tr>
+<td><strong>安全性</strong></td>
+<td>可选加密（通常通过 TLS 实现）</td>
+<td>默认启用（内置 TLS 1.3）</td>
+</tr>
+<tr>
+<td><strong>安全更新</strong></td>
+<td>更新慢，需要操作系统和应用配合</td>
+<td>更新快，协议可灵活更新</td>
+</tr>
+<tr>
+<td><strong>部署难易度</strong></td>
+<td>广泛部署，基础设施支持全面</td>
+<td>逐渐普及，需要支持 UDP 的网络设施</td>
+</tr>
+<tr>
+<td><strong>防火墙友好</strong></td>
+<td>广泛支持，默认开放</td>
+<td>可能被部分防火墙阻挡</td>
+</tr>
+<tr>
+<td><strong>常用场景</strong></td>
+<td>Web 浏览、文件传输、电子邮件等</td>
+<td>实时通信、视频流、现代 Web 应用等</td>
+</tr>
+<tr>
+<td><strong>协议灵活性</strong></td>
+<td>相对固定，修改需要标准化过程</td>
+<td>更灵活，支持快速迭代和更新</td>
+</tr>
+</tbody>
+</table>
+<h2 id="总结">总结</h2>
+<p>TCP（Transmission Control Protocol）是传输层的经典协议，基于IP协议之上，通过三次握手建立连接，提供可靠的数据传输、拥塞控制和流量控制。虽然TCP在网络通信中广泛应用，但它的传输效率受队头阻塞影响，且连接建立较慢。</p>
+<p>QUIC（Quick UDP Internet Connections）是一个基于UDP协议的新型应用层协议，通过单次握手建立连接，并内置TLS 1.3实现加密通信。QUIC具有较低的启动延迟、更高的传输效率和更好的安全性，特别适用于实时通信和现代Web应用。</p>
+<p>在连接建立、多路复用、传输效率、连接恢复、安全性等方面，QUIC相较于TCP有明显的优势。但是，TCP由于广泛的部署和成熟的基础设施支持，仍然是许多传统应用的首选。随着时间的推移，QUIC的普及度逐渐增加，尤其是在需要低延迟、高效率和安全性的场景下，它将成为更多应用的选择。</p>
+<h2 id="参考">参考</h2>
+<p>[1] <a href="https://zh.wikipedia.org/wiki/QUIC">QUIC</a></p>
+<p>[2] <a href="https://www.infoq.cn/article/lddlsa5f21sty04li3hp">一文读懂 QUIC 协议：更快、更稳、更高效的网络通信</a></p>
+<p>[3] <a href="https://xie.infoq.cn/article/bbe378c6ef55e16efc8880afe?utm_source=related_read&amp;utm_medium=article">QUIC 在京东直播的应用与实践</a></p>
+]]></content>
+    </entry>
+    <entry>
+        <title type="html"><![CDATA[Bazel 基本使用]]></title>
+        <id>https://protream.github.io/post/0Wbj5ilhe/</id>
+        <link href="https://protream.github.io/post/0Wbj5ilhe/">
+        </link>
+        <updated>2024-03-29T01:42:39.000Z</updated>
+        <summary type="html"><![CDATA[<p>本文是 Bazel 学习笔记，记录了 Bazel 的一些核心概念和基本使用方法，构建目标为 Go 语言项目。</p>
+]]></summary>
+        <content type="html"><![CDATA[<p>本文是 Bazel 学习笔记，记录了 Bazel 的一些核心概念和基本使用方法，构建目标为 Go 语言项目。</p>
+<!-- more -->
+<h2 id="概念">概念</h2>
+<h3 id="target目标">Target（目标）</h3>
+<p>目标是Bazel构建系统中的基本单元，它代表构建过程中的一个输出文件或一个可运行的程序。每个目标都有一个名称和一组属性，例如源文件、依赖项和构建规则。</p>
+<h3 id="rule规则">Rule（规则）</h3>
+<p>规则定义了如何构建一个目标。规则包括目标类型、名称、属性和构建命令。Bazel提供了许多内置规则，例如cc_library 和 cc_binary，以支持不同类型的目标。</p>
+<h3 id="workspace工作区">Workspace（工作区）</h3>
+<p>工作区是Bazel构建系统的最高级别的概念，它包含一个或多个项目。工作区由一个或多个目录组成，每个目录包含一个BUILD文件和其他相关文件。</p>
+<h3 id="package包">Package（包）</h3>
+<p>包是Bazel构建系统中的一个逻辑单元，它包含一个或多个相关的目标和规则。每个包都有一个名称和一个相对路径，例如//myproject/mypackage。</p>
+<h3 id="label标签">Label（标签）</h3>
+<p>标签是Bazel中唯一标识一个目标或规则的方式，它由包名和目标名组成，例如//myproject/mypackage:mytarget。</p>
+<h3 id="dependency依赖">Dependency（依赖）</h3>
+<p>依赖是指一个目标需要另一个目标才能构建的情况。Bazel使用依赖关系来自动构建和管理项目中的依赖项。</p>
+<h3 id="configuration配置">Configuration（配置）</h3>
+<p>配置是指构建过程中的一组参数，例如编译器选项、库路径和环境变量。Bazel支持多个配置，例如debug和release，以便在不同的环境中构建项目。</p>
+<h2 id="文件">文件</h2>
+<h3 id="workspace">WORKSPACE</h3>
+<p>用于将目录及其内容标识为 Bazel 工作区，并位于项目目录结构的根目录中。Bazel 构建项目时，所有输入都必须位于同一工作区中。除非链接，否则位于不同工作区中的文件彼此独立。</p>
+<h3 id="buildbazel">BUILD.bazel</h3>
+<p>用于告知 Bazel 如何构建项目的不同部分。工作区中包含 <code>BUILD</code> 文件的目录就是一个软件包。每个 <code>BUILD</code> 文件至少需要一条规则（即一组指令），用于告知 Bazel 如何构建所需的输出，例如可执行二进制文件或库。<code>BUILD</code> 文件中构建规则的每个实例都称为目标，指向一组特定的源文件和依赖项。目标还可以指向其他目标。</p>
+<p>示例：</p>
+<pre><code class="language-yaml">cc_binary(
+    name = &quot;hello-world&quot;,
+    srcs = [&quot;hello-world.cc&quot;],
+)
+</code></pre>
+<h3 id="bazelrc">.bazelrc</h3>
+<p>bazel 是 Java 开发的，可以在该文件中设置 JVM，此外，可以配置 go 代理，可以配置目标系统等。</p>
+<pre><code class="language-yaml"># 设置JVM
+startup --host_jvm_args=-XX:+UseParallelGC --host_jvm_args=-Xmx6g --host_jvm_args=-Xms1g
+# 设置CoreDump
+startup --unlimit_coredumps
+
+# 设置GOPROXY
+test --action_env=GOPROXY=https://goproxy.cn
+build --action_env=GOPROXY=https://goproxy.cn
+run --action_env=GOPROXY=https://goproxy.cn
+
+# 设置GOSUMDB
+test --action_env=GOSUMDB=goproxy.cn/sumdb/sum.golang.org
+build --action_env=GOSUMDB=goproxy.cn/sumdb/sum.golang.org
+run --action_env=GOSUMDB=goproxy.cn/sumdb/sum.golang.org
+
+# 设置编译目标平台
+build --platforms=@io_bazel_rules_go//go/toolchain:linux_amd64
+run --platforms=@io_bazel_rules_go//go/toolchain:linux_amd64
+</code></pre>
+<h3 id="自定义-rule-bzl">自定义 rule (*.bzl)</h3>
+<p>如果你的项目有一些复杂构造逻辑、或者一些需要复用的构造逻辑，那么可以将这些逻辑以函数形式保存在 <code>.bzl</code> 文件，供 <code>WORKSPACE</code> 或者 <code>BUILD</code> 文件调用。其语法跟 Python 类似：</p>
+<pre><code class="language-yaml">def download_package():
+    # 下载 Bazel Go语言 规则集
+    if not native.existing_rule(&quot;io_bazel_rules_go&quot;):
+        http_archive(
+            name = &quot;io_bazel_rules_go&quot;,
+            sha256 = &quot;56d8c5a5c91e1af73eca71a6fab2ced959b67c86d12ba37feedb0a2dfea441a6&quot;,
+            urls = [
+                &quot;https://mirror.bazel.build/github.com/bazelbuild/rules_go/releases/download/v0.37.0/rules_go-v0.37.0.zip&quot;,
+                &quot;https://github.com/bazelbuild/rules_go/releases/download/v0.37.0/rules_go-v0.37.0.zip&quot;,
+            ],
+        )
+
+    # 下载 Bazel Gazelle 规则集
+    if not native.existing_rule(&quot;bazel_gazelle&quot;):
+        http_archive(
+            name = &quot;bazel_gazelle&quot;,
+            sha256 = &quot;ecba0f04f96b4960a5b250c8e8eeec42281035970aa8852dda73098274d14a1d&quot;,
+            urls = [
+                &quot;https://mirror.bazel.build/github.com/bazelbuild/bazel-gazelle/releases/download/v0.29.0/bazel-gazelle-v0.29.0.tar.gz&quot;,
+                &quot;https://github.com/bazelbuild/bazel-gazelle/releases/download/v0.29.0/bazel-gazelle-v0.29.0.tar.gz&quot;,
+            ],
+        )
+</code></pre>
+<h3 id="bazelversion">.bazelversion</h3>
+<p>配置 bazel 版本。</p>
+<h2 id="步骤">步骤</h2>
+<h3 id="设置-workspace">设置 WORKSPACE</h3>
+<pre><code class="language-yaml">workspace(name = &quot;go-bazel&quot;)
+
+load(&quot;@bazel_tools//tools/build_defs/repo:http.bzl&quot;, &quot;http_archive&quot;)
+
+http_archive(
+    name = &quot;io_bazel_rules_go&quot;,
+    sha256 = &quot;c8035e8ae248b56040a65ad3f0b7434712e2037e5dfdcebfe97576e620422709&quot;,
+    urls = [
+        &quot;https://github.com/bazelbuild/rules_go/releases/download/v0.44.0/rules_go-v0.44.0.zip&quot;,
+        &quot;https://mirror.bazel.build/github.com/bazelbuild/rules_go/releases/download/v0.44.0/rules_go-v0.44.0.zip&quot;,
+    ],
+)
+
+http_archive(
+    name = &quot;bazel_gazelle&quot;,
+    sha256 = &quot;32938bda16e6700063035479063d9d24c60eda8d79fd4739563f50d331cb3209&quot;,
+    urls = [
+        &quot;https://github.com/bazelbuild/bazel-gazelle/releases/download/v0.35.0/bazel-gazelle-v0.35.0.tar.gz&quot;,
+        &quot;https://mirror.bazel.build/github.com/bazelbuild/bazel-gazelle/releases/download/v0.35.0/bazel-gazelle-v0.35.0.tar.gz&quot;,
+    ],
+)
+
+load(&quot;@bazel_gazelle//:deps.bzl&quot;, &quot;gazelle_dependencies&quot;)
+load(&quot;@com_google_protobuf//:protobuf_deps.bzl&quot;, &quot;protobuf_deps&quot;)
+load(&quot;@io_bazel_rules_go//go:deps.bzl&quot;, &quot;go_register_toolchains&quot;, &quot;go_rules_dependencies&quot;)
+
+############################################################
+# Define your own dependencies here using go_repository.
+# Else, dependencies declared by rules_go/gazelle will be used.
+# The first declaration of an external repository &quot;wins&quot;.
+############################################################
+
+# gazelle:repository go_repository name=org_golang_x_xerrors importpath=golang.org/x/xerrors
+
+load(&quot;//:deps.bzl&quot;, &quot;go_dependencies&quot;)
+
+# gazelle:repository_macro deps.bzl%go_dependencies
+go_dependencies()
+
+go_rules_dependencies()
+
+go_register_toolchains(version = &quot;1.21.5&quot;)
+
+gazelle_dependencies()
+</code></pre>
+<p>其中，Gazelle 是一个自动生成 Bazel 编译文件的工具，包括给 <code>WORKSPACE</code> 添加外部依赖、扫描源文件依赖自动生成<code>BUILD.bazel</code>文件等。Gazelle 原生支持Go和 protobuf。</p>
+<h3 id="protobuf">Protobuf</h3>
+<p>需要在 WORKSPACE 中添加：</p>
+<pre><code class="language-yaml">http_archive(
+    name = &quot;com_google_protobuf&quot;,
+    sha256 = &quot;d0f5f605d0d656007ce6c8b5a82df3037e1d8fe8b121ed42e536f569dec16113&quot;,
+    strip_prefix = &quot;protobuf-3.14.0&quot;,
+    urls = [
+        &quot;https://github.com/protocolbuffers/protobuf/archive/v3.14.0.tar.gz&quot;,
+        &quot;https://mirror.bazel.build/github.com/protocolbuffers/protobuf/archive/v3.14.0.tar.gz&quot;,
+    ],
+)
+
+protobuf_deps()
+</code></pre>
+<h2 id="命令">命令</h2>
+<p>使用 Gazelle 构建 <code>BUILD.bazel</code>：</p>
+<pre><code class="language-yaml">bazel run //:gazelle
+</code></pre>
+<p>更新 golang 依赖：</p>
+<pre><code class="language-yaml">bazel run //:gazelle-update-repos
+</code></pre>
+<p>跑测试：</p>
+<pre><code class="language-yaml">bazel test //...
+</code></pre>
+<p>构建项目：</p>
+<pre><code class="language-yaml">bazel build //...
+</code></pre>
+<h2 id="docker-镜像">Docker 镜像</h2>
+<p>在 WORKSPACE 中添加：</p>
+<pre><code class="language-yaml">http_archive(
+    name = &quot;io_bazel_rules_docker&quot;,
+    sha256 = &quot;b1e80761a8a8243d03ebca8845e9cc1ba6c82ce7c5179ce2b295cd36f7e394bf&quot;,
+    urls = [&quot;https://github.com/bazelbuild/rules_docker/releases/download/v0.25.0/rules_docker-v0.25.0.tar.gz&quot;],
+)
+
+load(
+    &quot;@io_bazel_rules_docker//repositories:repositories.bzl&quot;,
+    container_repositories = &quot;repositories&quot;,
+)
+
+container_repositories()
+
+load(&quot;@io_bazel_rules_docker//repositories:deps.bzl&quot;, container_deps = &quot;deps&quot;)
+
+container_deps()
+
+</code></pre>
+<h3 id="基础镜像">基础镜像</h3>
+<p>在 WOKRSPACE 中拉取：</p>
+<pre><code class="language-yaml">
+load(&quot;@io_bazel_rules_docker//container:pull.bzl&quot;, &quot;container_pull&quot;)
+
+container_pull(
+    name = &quot;alpine_linux_amd64&quot;,
+    registry = &quot;index.docker.io&quot;,
+    repository = &quot;library/alpine&quot;,
+    tag = &quot;latest&quot;,
+)
+</code></pre>
+<h3 id="构建镜像">构建镜像</h3>
+<p>在 BUILD 中：</p>
+<pre><code class="language-yaml">container_image(
+    name = &quot;image&quot;,
+    base = &quot;@alpine_linux_amd64//image&quot;,
+    entrypoint = [&quot;/servicea&quot;],
+    files = [
+        &quot;:servicea&quot;,
+    ],
+)
+</code></pre>
+<h3 id="推送镜像">推送镜像</h3>
+<p>在 BUILD 中：</p>
+<pre><code class="language-yaml">container_push(
+    name = &quot;image-push&quot;,
+    format = &quot;Docker&quot;,
+    image = &quot;:image&quot;,
+    registry = &quot;registry.cn-hangzhou.aliyuncs.com&quot;,
+    repository = &quot;bazel/greeter&quot;,
+    tag = &quot;latest&quot;,
+)
+
+</code></pre>
+<h2 id="参考">参考</h2>
+<p>[1] <a href="%5Bhttps://bazel.build/start/cpp?hl=zh-cn%5D(https://bazel.build/start/cpp?hl=zh-cn)">Bazel 教程：构建 C++ 项目</a></p>
+<p>[2] <a href="%5Bhttps://developer.aliyun.com/article/1150284%5D(https://developer.aliyun.com/article/1150284)">Kratos微服务工程Bazel构建指南</a></p>
+<p>[3] <a href="%5Bhttps://github.com/jankremlacek/go-bazel/tree/main%5D(https://github.com/jankremlacek/go-bazel/tree/main)">go-bazel</a></p>
+<p>[4] <a href="%5Bhttps://github.com/bazelbuild/bazel-gazelle%5D(https://github.com/bazelbuild/bazel-gazelle)">bazel-gazelle</a></p>
+]]></content>
+    </entry>
+    <entry>
+        <title type="html"><![CDATA[Tmux 基本用法]]></title>
+        <id>https://protream.github.io/post/Zq6cxvh7A/</id>
+        <link href="https://protream.github.io/post/Zq6cxvh7A/">
+        </link>
+        <updated>2024-02-18T06:10:58.000Z</updated>
+        <summary type="html"><![CDATA[<p>当用户与远程计算机进行会话时，创建的窗口是其中的进程是绑定的，当用户长时间不操作或者因为网络异常导致远程连接中断，窗口及其里面的进行也随之中断，里面如果有些还未完成的任务也会被关闭。tmux 解决的问题是将会话与窗口解绑。窗口关闭会话并不会关闭，重新连接上终端可以恢复会话。</p>
+]]></summary>
+        <content type="html"><![CDATA[<p>当用户与远程计算机进行会话时，创建的窗口是其中的进程是绑定的，当用户长时间不操作或者因为网络异常导致远程连接中断，窗口及其里面的进行也随之中断，里面如果有些还未完成的任务也会被关闭。tmux 解决的问题是将会话与窗口解绑。窗口关闭会话并不会关闭，重新连接上终端可以恢复会话。</p>
+<!-- more -->
+<h2 id="命令">命令</h2>
+<p>• 创建会话：tmux new -s <session-name><br>
+• 列出会话：tmux ls<br>
+• 退出会话：C-b d<br>
+• 进入会话：tmux a -t <session-name><br>
+• 删除会话：tmux kill-session -t <session-name></p>
+<h2 id="快捷键">快捷键</h2>
+<h3 id="全局">全局</h3>
+<p>• 显示帮助：C-b ?<br>
+• 重新加载配置：C-b :source-file ~/.tmux.conf<br>
+会话操作<br>
+• 列出所有会话：C-b s<br>
+• 重命名当前会话：C-n $</p>
+<h3 id="窗口操作">窗口操作</h3>
+<p>• 创建新窗口：C-b c<br>
+• 下一个窗口：C-b n<br>
+• 上一个窗口：C-b p<br>
+• 重命名窗口：C-b ,<br>
+• 从列表选择窗口：C-b w<br>
+• 按编号选择窗口：C-b <number><br>
+• 查看历史数据：<br>
+• 进入查看模式：C-B [<br>
+• 翻页：Option 方向键</p>
+<h3 id="窗格操作">窗格操作</h3>
+<p>• 垂直分割：C-b %<br>
+• 水平分割：C-b &quot;<br>
+• 全屏/退出全屏：C-b z<br>
+• 上一个窗格：C-b ;<br>
+• 下一个窗格：C-b o<br>
+• 与上一个窗格交换位置：C-b {<br>
+• 与下一个窗格交换位置：C-b }<br>
+• 改变窗格排列方式：C-b space</p>
+<h2 id="参考">参考</h2>
+<p>[1] <a href="https://www.ruanyifeng.com/blog/2019/10/tmux.html">阮一峰 tmux 教程</a><br>
+[2] <a href="https://gist.github.com/ryerh/14b7c24dfd623ef8edc7">Tmux 配置</a></p>
+]]></content>
+    </entry>
+    <entry>
+        <title type="html"><![CDATA[pve 虚拟机配置]]></title>
+        <id>https://protream.github.io/post/0y-19LIoR/</id>
+        <link href="https://protream.github.io/post/0y-19LIoR/">
+        </link>
+        <updated>2024-02-11T13:23:49.000Z</updated>
+        <content type="html"><![CDATA[<h2 id="配置虚拟机">配置虚拟机</h2>
+<h3 id="系统">系统</h3>
+<p>i440fx：i440fx 是一个旧的主板模拟类型，它模拟的是 Intel 440FX 主板，该主板用于早期的 x86 架构计算机。i440fx 是一种较为传统和兼容性较高的选择，适用于需要与老旧操作系统或特定硬件环境兼容的情况。然而，i440fx 在一些高级特性方面可能有一些限制，并且不支持某些现代技术。<br>
+q35：q35 是一种更现代的主板模拟类型，它模拟的是 Intel Q35 Express 芯片组，该芯片组用于较新的 x86 架构计算机。q35 提供了更多的功能和先进的虚拟化特性，如 PCI Express 设备的直通、高级电源管理等。它在性能和功能方面相对较好，适用于大多数现代虚拟化场景。</p>
+<h3 id="磁盘">磁盘</h3>
+<ul>
+<li>IDE（Integrated Drive Electronics）是一种较旧的接口标准，用于将存储设备（例如硬盘和光驱）连接到计算机。它已经被较新的标准如SATA所取代。</li>
+<li>SATA（Serial Advanced Technology Attachment）是一种现代的接口标准，用于将存储设备连接到计算机。相比IDE，它提供更快的数据传输速度和更好的性能。</li>
+<li>VirtIO block是一种虚拟化接口，可以使虚拟机有效地访问存储设备。它为运行在虚拟机中的客户操作系统与超级监视程序或主机系统的存储子系统之间提供了标准化的通信方式。</li>
+<li>SCSI（Small Computer System Interface）是一组标准，定义了计算机和外部设备（包括存储设备）之间的通信方式。SCSI最初设计用于将多个设备连接到单个总线，但随着时间的推移，它不断发展，并包括支持不同传输速度和技术的各种版本和协议。</li>
+</ul>
+<h3 id="网络">网络</h3>
+<ul>
+<li>
+<p>Intel E1000：这是一种基于软件仿真的虚拟网络适配器，模拟了Intel 82545EM Gigabit Ethernet控制器。E1000广泛用于许多虚拟化平台，性能稳定且兼容性良好。</p>
+</li>
+<li>
+<p>VirtIO半虚拟化：VirtIO是一种半虚拟化技术，通过在虚拟机和宿主机之间共享驱动程序和设备模型来提供高性能和低延迟的网络通信。VirtIO网络适配器需要使用相应的VirtIO驱动程序来实现。</p>
+</li>
+<li>
+<p>Realtek RTL8139：这是一种基于软件仿真的虚拟网络适配器，模拟了Realtek RTL8139 Fast Ethernet控制器。RTL8139适用于一些虚拟化平台，但性能可能相对较低。</p>
+</li>
+<li>
+<p>VMware VMXNET3：这是VMware开发的高性能虚拟网络适配器，专门为VMware虚拟化环境优化。VMXNET3提供了高速数据传输、低CPU利用率和更好的网络性能，适用于在VMware虚拟机上运行的场景</p>
+</li>
+</ul>
+<h3 id="配置硬件">配置硬件</h3>
+<p>• 配置 虚拟机/硬件/硬盘 开启 SSD 仿真<br>
+• 配置 虚拟机/硬件/磁盘 ，通过磁盘操作-调整磁盘大小操作设置设置的磁盘大小；<br>
+• 删除 CD/ROM</p>
+<h3 id="配置选项">配置选项</h3>
+<p>• 修改引导顺序，将虚拟机磁盘调到第一位<br>
+配置 CloudInit<br>
+在 虚拟机/Cloud-Init 中配置<br>
+• 用户名<br>
+• 密码<br>
+• DNS<br>
+• SSH 公钥<br>
+• IP</p>
+<h3 id="配置镜像">配置镜像</h3>
+<p>下载镜像<br>
+https://down.idc.wiki/Image/realServer-Template/current/qcow2/</p>
+<p>导入镜像</p>
+<pre><code>qm disk import ${vmId} ${image} local-lvm
+</code></pre>
+<h2 id="网络配置">网络配置</h2>
+<p>编辑 <code>/etc/netplan/50-cloud-init.yaml</code></p>
+<pre><code class="language-yaml">network:
+    version: 2
+    ethernets:
+        eth0:
+            dhcp4: no
+            dhcp6: no
+            link-local: [ ipv4 ]
+            match:
+                    macaddress: ${macAddress}
+            set-name: eth0
+            addresses: [${ip}/24]
+            gateway4: ${gateay}
+            nameservers:
+                    addresses: [223.5.5.5]
+</code></pre>
+<p>设置生效：</p>
+<pre><code>sudo netplan apply -f
+</code></pre>
+<h2 id="替换国内源">替换国内源</h2>
+<p>修改 <code>/etc/apt/sources.list</code> 替换为阿里国内源</p>
+<pre><code>deb http://mirrors.aliyun.com/ubuntu/ jammy main restricted universe multiverse
+deb-src http://mirrors.aliyun.com/ubuntu/ jammy main restricted universe multiverse
+deb http://mirrors.aliyun.com/ubuntu/ jammy-security main restricted universe multiverse
+deb-src http://mirrors.aliyun.com/ubuntu/ jammy-security main restricted universe multiverse
+deb http://mirrors.aliyun.com/ubuntu/ jammy-updates main restricted universe multiverse
+deb-src http://mirrors.aliyun.com/ubuntu/ jammy-updates main restricted universe multiverse
+deb http://mirrors.aliyun.com/ubuntu/ jammy-proposed main restricted universe multiverse
+deb-src http://mirrors.aliyun.com/ubuntu/ jammy-proposed main restricted universe multiverse
+deb http://mirrors.aliyun.com/ubuntu/ jammy-backports main restricted universe multiverse
+deb-src http://mirrors.aliyun.com/ubuntu/ jammy-backports main restricted universe multiverse
+</code></pre>
+<p>执行</p>
+<pre><code>sudo apt update
+sudo apt upgrade
+</code></pre>
+<p>使配置生效。<br>
+配置虚拟机网路</p>
+<h2 id="配置-qemu-guest-agent">配置 qemu-guest-agent</h2>
+<p>安装：</p>
+<pre><code>apt install qemu-guest-agent
+</code></pre>
+<p>启动：</p>
+<pre><code>systemctl enable qemu-guest-agent
+</code></pre>
+<p>配置 <code>虚拟机/选项/QEMU Guest Agent</code> 为启用，然后关机重新启动。</p>
+<p>配置用户无需root密码</p>
+<p>配置 <code>/etc/sudo</code></p>
+<pre><code>shiyanlou ALL=(ALL) NOPASSWD: ALL
+Defaults:shiyanlou !requiretty
+</code></pre>
+<p>安装常用软件</p>
+<pre><code>apt install git zsh wireguard
+</code></pre>
+<h2 id="参考">参考</h2>
+<p>[1] <a href="https://pve.proxmox.com/wiki/Qemu/KVM_Virtual_Machines">Qemu/KVM Virtual Machines</a></p>
+]]></content>
+    </entry>
+    <entry>
+        <title type="html"><![CDATA[wireguard 原理与基本使用]]></title>
+        <id>https://protream.github.io/post/jlVlyIZaC/</id>
+        <link href="https://protream.github.io/post/jlVlyIZaC/">
+        </link>
+        <updated>2024-02-10T13:22:03.000Z</updated>
+        <summary type="html"><![CDATA[<p>WireGuard 的核心是一个名为 Cryptokey Routing 的概念，它的工作原理是将公钥与隧道中允许的隧道 IP 地址列表相关联。每个网络接口（interface）都有一个私钥和一个 peer list。每个 peer 都有一个公钥。公钥既短又简单，被 peer 用来互相验证。它们可以通过任何带外方法在配置文件中传递，类似于将其 SSH 公钥发送给朋友以访问 shell 服务器。</p>
+<p>由于每个节点都有自己的公钥和私钥，实际上就建立了公钥和节点之间的一一映射。当 wg0 需要向外发送的包的时候，会查这个表来找到正确的公钥。当接收到一个外部的包的时候，会根据公钥来检查是否是合法的目标 IP。</p>
+<p>当一个 Peer 发过来一个包，并且通过了验证之后，路由表就会记录下对方的外部地址，这样当需要给对方发包的时候，就可以直接通过这个地址发送了。同时，如果对方切换了网络，那么路由表就会跟着新的包更新，也就是 WireGuard 支持“漫游”。</p>
+]]></summary>
+        <content type="html"><![CDATA[<p>WireGuard 的核心是一个名为 Cryptokey Routing 的概念，它的工作原理是将公钥与隧道中允许的隧道 IP 地址列表相关联。每个网络接口（interface）都有一个私钥和一个 peer list。每个 peer 都有一个公钥。公钥既短又简单，被 peer 用来互相验证。它们可以通过任何带外方法在配置文件中传递，类似于将其 SSH 公钥发送给朋友以访问 shell 服务器。</p>
+<p>由于每个节点都有自己的公钥和私钥，实际上就建立了公钥和节点之间的一一映射。当 wg0 需要向外发送的包的时候，会查这个表来找到正确的公钥。当接收到一个外部的包的时候，会根据公钥来检查是否是合法的目标 IP。</p>
+<p>当一个 Peer 发过来一个包，并且通过了验证之后，路由表就会记录下对方的外部地址，这样当需要给对方发包的时候，就可以直接通过这个地址发送了。同时，如果对方切换了网络，那么路由表就会跟着新的包更新，也就是 WireGuard 支持“漫游”。</p>
+<!-- more -->
+<h2 id="wireguard-优点">WireGuard 优点</h2>
+<p>•简单易用<br>
+•加密健全<br>
+•最小攻击面<br>
+•高性能：比目前主流的 VPN 协议，连接速度要更快，延迟更低<br>
+•简单的网络接口（interface）：就像普通的以太网接口一样，以 Linux 内核模块的形式运行，资源占用小。<br>
+•加密密钥路由：使用了更先进的加密技术，具有前向加密和抗降级攻击的能力。<br>
+•内置漫游<br>
+•容器就绪：可以运行在主机中为容器之间提供通信，也可以运行在容器中为主机之间提供通信。<br>
+•能够将部分流量或所有流量通过 VPN 传送到局域网内的任意主机。<br>
+•能够在网络故障恢复之后自动重连，这是相比其他 VPN 优势的一点<br>
+•支持任何类型的二层网络通信，例如 ARP、DHCP 和 ICMP，而不仅仅是 TCP/HTTP。比如 VPN Peer 之间可以互 ping</p>
+<h2 id="配置方法">配置方法</h2>
+<h3 id="公共步骤">公共步骤</h3>
+<p>1、生成公钥和私钥：</p>
+<pre><code> wg genkey | tee privatekey | wg pubkey &gt; publickey
+</code></pre>
+<p>2、创建 /etc/wireguard/wg0.conf；</p>
+<h3 id="客户端配置">客户端配置</h3>
+<p>1、执行公共步骤；<br>
+2、配置 wg.conf</p>
+<pre><code>[Interface]
+# Name = ${clientName}
+Address = 10.0.0.2/32
+PrivateKey = ${clientPrivateKey}
+PostUp   = iptables -A FORWARD -i wg0 -j ACCEPT; iptables -A FORWARD -o wg0 -j ACCEPT; iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE
+PostDown = iptables -D FORWARD -i wg0 -j ACCEPT; iptables -D FORWARD -o wg0 -j ACCEPT; iptables -t nat -D POSTROUTING -o eth0 -j MASQUERADE
+
+[Peer]
+Endpoint = ${publicIp}:${publicPort:51820}
+PublicKey = ${delayPublicKey}
+AllowedIPs = ${vpnCIDR}
+PersistentKeepalive = 25
+</code></pre>
+<p>3、执行 wg-quick up wg0 启动 wireguard。</p>
+<h3 id="服务端配置">服务端配置</h3>
+<p>1、执行公共步骤；<br>
+2、配置 wg.conf</p>
+<pre><code>[Interface]
+# Name = ${serverName}
+Address = 10.0.0.1/24
+PrivateKey = ${delayPrivateKey}
+ListenPort = ${publicPort:51820}
+PostUp = iptables -t nat -A POSTROUTING -o wg0 -j MASQUERADE
+PostDown = iptables -t nat -D POSTROUTING -o wg0 -j MASQUERADE
+DNS = 223.5.5.5
+
+[Peer]
+# Name = pve
+PublicKey = ${clientIp}
+AllowedIPs = ${clientIp}/32
+PersistentKeepalive = 25
+</code></pre>
+<p>3、执行 wg-quick up wg0 启动 wireguard。</p>
+<h2 id="技巧">技巧</h2>
+<p>不重启重新加载配置：</p>
+<pre><code> wg syncconf wg0 &lt;(wg-quick strip wg0)
+</code></pre>
+<p>设置开机自启动</p>
+<pre><code>systemctl enable wg-quick@wg0
+</code></pre>
+<h2 id="几种典型的拓扑">几种典型的拓扑</h2>
+<p>• Point-to-point<br>
+• Hub-and-spoke<br>
+• Nat-to-Nat<br>
+• Full Mesh</p>
+<h2 id="参考">参考</h2>
+<p>[1] <a href="https://cshihong.github.io/2020/10/11/WireGuard%E5%9F%BA%E6%9C%AC%E5%8E%9F%E7%90%86/">WireGuard基本原理</a></p>
+]]></content>
+    </entry>
+    <entry>
+        <title type="html"><![CDATA[在 VsCode 中调试 Golang 代码]]></title>
+        <id>https://protream.github.io/post/DzHDfUluJ/</id>
+        <link href="https://protream.github.io/post/DzHDfUluJ/">
+        </link>
+        <updated>2024-02-05T08:36:10.000Z</updated>
+        <summary type="html"><![CDATA[<p>本文简单记录一下怎么在 vscode 中配置调试 goalng 项目，分为普通项目和基于 Bilibili 开源的 Kratos 框架的项目。</p>
+]]></summary>
+        <content type="html"><![CDATA[<p>本文简单记录一下怎么在 vscode 中配置调试 goalng 项目，分为普通项目和基于 Bilibili 开源的 Kratos 框架的项目。</p>
+<!-- more -->
+<h2 id="普通项目">普通项目</h2>
+<pre><code class="language-yaml">{
+	&quot;version&quot;: &quot;0.2.0&quot;,
+	&quot;configurations&quot;: [
+		{
+			&quot;name&quot;: &quot;serviceName&quot;,
+			&quot;type&quot;: &quot;go&quot;,
+			&quot;request&quot;: &quot;launch&quot;,
+			&quot;mode&quot;: &quot;auto&quot;,
+			&quot;program&quot;: &quot;${workspaceFolder}/serviceName.go&quot;,
+			&quot;args&quot;: [&quot;-c&quot;, &quot;conf/dev.yaml&quot;, &quot;command&quot;],
+		}
+	]
+}
+</code></pre>
+<h2 id="kratos-项目">Kratos 项目</h2>
+<pre><code class="language-yaml">{
+	&quot;version&quot;: &quot;0.2.0&quot;,
+	&quot;configurations&quot;: [
+		{
+			&quot;name&quot;: &quot;serviceName&quot;,
+			&quot;type&quot;: &quot;go&quot;,
+			&quot;request&quot;: &quot;launch&quot;,
+			&quot;mode&quot;: &quot;auto&quot;,
+			&quot;program&quot;: &quot;${workspaceFolder}/cmd/serviceName&quot;,
+			&quot;args&quot;: [&quot;-conf&quot;, &quot;${workspaceFolder}/configs/config-dev.yaml&quot;]
+		}
+	]
+}
+</code></pre>
+<h2 id="参考">参考</h2>
+<p>[1] <a href="https://segmentfault.com/a/1190000018671207">VS Code 断点调试golang</a><br>
+[2] <a href="https://github.com/golang/vscode-go/blob/master/docs/debugging.md">debugging</a><br>
+[3] <a href="https://learn.microsoft.com/zh-cn/azure/developer/go/configure-visual-studio-code">配置 Visual Studio Code for Go 开发</a></p>
+]]></content>
+    </entry>
+    <entry>
+        <title type="html"><![CDATA[k8s 入门 7：Volume]]></title>
+        <id>https://protream.github.io/post/czIOlANXY/</id>
+        <link href="https://protream.github.io/post/czIOlANXY/">
+        </link>
+        <updated>2024-02-05T08:21:37.000Z</updated>
+        <summary type="html"><![CDATA[<p>容器中的文件在磁盘上是临时存放的，这给在容器中运行较重要的应用带来一些问题。 当容器崩溃或停止时会出现一个问题。此时容器状态未保存， 因此在容器生命周期内创建或修改的所有文件都将丢失。 在崩溃期间，kubelet 会以干净的状态重新启动容器。 当多个容器在一个 Pod 中运行并且需要共享文件时，会出现另一个问题。 跨所有容器设置和访问共享文件系统具有一定的挑战性。</p>
+<p>卷要解决的问题：</p>
+<p>1、 <strong>文件的持久化存储</strong>；</p>
+<p>2、<strong>多个容器在一个 Pod 中运行需要共享文件</strong>；</p>
+]]></summary>
+        <content type="html"><![CDATA[<p>容器中的文件在磁盘上是临时存放的，这给在容器中运行较重要的应用带来一些问题。 当容器崩溃或停止时会出现一个问题。此时容器状态未保存， 因此在容器生命周期内创建或修改的所有文件都将丢失。 在崩溃期间，kubelet 会以干净的状态重新启动容器。 当多个容器在一个 Pod 中运行并且需要共享文件时，会出现另一个问题。 跨所有容器设置和访问共享文件系统具有一定的挑战性。</p>
+<p>卷要解决的问题：</p>
+<p>1、 <strong>文件的持久化存储</strong>；</p>
+<p>2、<strong>多个容器在一个 Pod 中运行需要共享文件</strong>；</p>
+<!-- more -->
+<h2 id="卷的分类">卷的分类</h2>
+<p>卷的核心是一个目录，其中可能存有数据，Pod 中的容器可以访问该目录中的数据。所采用的特定的卷类型将决定该目录如何形成的、使用何种介质保存数据以及目录中存放的内容。</p>
+<p>卷主要可以分为以下几类。</p>
+<h3 id="临时卷ephemeral-volume">临时卷（Ephemeral Volume）</h3>
+<p>临时卷的生命周期和 Pod 想同。</p>
+<p>有些应用程序需要额外的存储，但并不关心数据在重启后是否仍然可用。 例如，缓存服务经常受限于内存大小，而且可以将不常用的数据转移到比内存慢的存储中，对总体性能的影响并不大。</p>
+<p>另有些应用程序需要以文件形式注入的只读数据，比如配置数据或密钥。</p>
+<p><strong>临时卷</strong> 就是为此类用例设计的。因为卷会遵从 Pod 的生命周期，与 Pod 一起创建和删除， 所以停止和重新启动 Pod 时，不会受持久卷在何处可用的限制。</p>
+<p>临时卷主要有以下几种分类：</p>
+<ul>
+<li>
+<p><a href="https://kubernetes.io/zh-cn/docs/concepts/storage/volumes/#emptydir">emptyDir</a>： Pod 启动时为空，存储空间来自本地的 kubelet 根目录（通常是根磁盘）或内存</p>
+</li>
+<li>
+<p><a href="https://kubernetes.io/zh-cn/docs/concepts/storage/volumes/#configmap">configMap</a>、 <a href="https://kubernetes.io/zh-cn/docs/concepts/storage/volumes/#downwardapi">downwardAPI</a>、 <a href="https://kubernetes.io/zh-cn/docs/concepts/storage/volumes/#secret">secret</a>： 将不同类型的 Kubernetes 数据注入到 Pod 中</p>
+</li>
+<li>
+<p><a href="https://kubernetes.io/zh-cn/docs/concepts/storage/ephemeral-volumes/#csi-ephemeral-volumes">CSI 临时卷</a>： 类似于前面的卷类型，但由专门<a href="https://kubernetes-csi.github.io/docs/ephemeral-local-volumes.html">支持此特性</a> 的指定 <a href="https://kubernetes.io/zh-cn/docs/concepts/storage/volumes/#csi">CSI</a> 驱动程序提供</p>
+</li>
+<li>
+<p><a href="https://kubernetes.io/zh-cn/docs/concepts/storage/ephemeral-volumes/#generic-ephemeral-volumes">通用临时卷</a>： 它可以由所有支持持久卷的存储驱动程序提供</p>
+</li>
+</ul>
+<h3 id="持久卷persistent-volume">持久卷（Persistent Volume）</h3>
+<p>持久卷的生命周期长于 Pod，Pod 销毁后持久卷依然存在。</p>
+<p>持久卷有两个核心概念：PV 和 PVC：</p>
+<p><strong>持久卷（PersistentVolume，PV）</strong> 是集群中的一块存储，可以由管理员事先制备， 或者使用<a href="https://kubernetes.io/zh-cn/docs/concepts/storage/storage-classes/">存储类（Storage Class）</a>来动态制备。 持久卷是集群资源，就像节点也是集群资源一样。PV 持久卷和普通的 Volume 一样， 也是使用卷插件来实现的，只是它们拥有独立于任何使用 PV 的 Pod 的生命周期。 此 API 对象中记述了存储的实现细节，无论其背后是 NFS、iSCSI 还是特定于云平台的存储系统。</p>
+<p><strong>持久卷申领（PersistentVolumeClaim，PVC）</strong> 表达的是用户对存储的请求。概念上与 Pod 类似。 Pod 会耗用节点资源，而 PVC 申领会耗用 PV 资源。Pod 可以请求特定数量的资源（CPU 和内存）。同样 PVC 申领也可以请求特定的大小和访问模式 （例如，可以挂载为 ReadWriteOnce、ReadOnlyMany、ReadWriteMany 或 ReadWriteOncePod， 请参阅<a href="https://kubernetes.io/zh-cn/docs/concepts/storage/persistent-volumes/#access-modes">访问模式</a>）。</p>
+<h3 id="投射卷projected-volumes">投射卷**（Projected Volumes）**</h3>
+<p><code>projected</code> 卷可以将若干现有的卷源映射到同一个目录之上。</p>
+<h2 id="pv-pvc-和-sc">PV、PVC 和 SC</h2>
+<h3 id="pv-和-pvc-的关系">PV 和 PVC 的关系</h3>
+<figure data-type="image" tabindex="1"><img src="https://raw.githubusercontent.com/protream/protream.github.io/images/20240205-k8s-volume/1.png" alt="" loading="lazy"></figure>
+<p>PV 将存储系统之上的存储空间抽象为 Kubernetes 系统全局级别的 API 资源，由集群管理员负责管理和维护。</p>
+<p>将PV提供的存储空间用于 Pod 对象的存储卷时，用户需要事先使用 PVC在名称空间级别声明所需要的存储空间大小及访问模式并提交给Kubernetes API Server，接下来由PV控制器负责查找与之匹配的PV资源并完成绑定。</p>
+<p><strong>PV 和 PVC 是一对一的关系</strong>：一个 PVC 仅能绑定一个 PV，而一个 PV 在某一时刻也仅可被一个 PVC 所绑定。为了能够让用户更精细地表达存储需求，PV 资源对象的定义支持存储容量、存储类、卷模型和访问模式等属性维度的约束。相应地，PVC 资源能够从访问模式、数据源、存储资源容量需求和限制、标签选择器、存储类名称、卷模型和卷名称等多个不同的维度向PV资源发起匹配请求并完成筛选。</p>
+<h3 id="静态预配static-provisioning">静态预配（static provisioning）</h3>
+<p>PVC 及 PV 将存储资源管理与使用的职责分离至用户和集群管理员两类不同的人群之上，简化了用户对存储资源的使用机制，但也对二者之间的协同能力提出了要求。管理员需要精心预测和规划集群用户的存储使用需求，提前创建出多种规格的PV，以便于在用户声明PVC后能够由PV控制器在集群中找寻到合适的甚至是最佳匹配的PV进行绑定。</p>
+<p>这种通过管理员手动创建 PV 来满足 PVC 需求的静态预配（static provisioning）存在着不少的问题。</p>
+<pre><code class="language-Plain">第一，集群管理员难以预测出用户的真实需求，很容易导致某些类型的PVC无法匹配到PV而被挂起，直到管理员参与到问题的解决过程中。
+第二，那些能够匹配到PV的PVC也很有可能存在资源利用率不佳的状况，例如一个声明使用5G存储空间的PVC绑定到一个20GB的PV之上。
+</code></pre>
+<p>解决方案是一种称为动态预配、按需创建PV的机制。</p>
+<h3 id="动态预配">动态预配</h3>
+<p>动态卷制备允许按需创建存储卷。</p>
+<p>集群管理员要做的仅是事先借助存储类（StorageClass）的API资源创建出一到多个“PV 模板”，并在模板中定义好基于某个存储系统创建 PV 所依赖的存储组件（例如 Ceph RBD 存储映像或 CephfFS 文件系统等）时需要用到的配置参数。创建 PVC 时，用户需要为其指定要使用 PV 模板（StorageClass 资源），而后PV控制器会自动连接相应存储类上定义的目标存储系统的管理接口，请求创建匹配该 PVC 需求的存储组件，并将该存储组件创建为 Kubernetes 集群上可由该 PVC 绑定的 PV 资源。</p>
+<p>如果没有动态制备，集群管理员必须手动地联系他们的云或存储提供商来创建新的存储卷， 然后在 Kubernetes 集群创建 PV 对象来表示这些卷。 动态制备功能消除了集群管理员预先配置存储的需要。相反，它在用户请求时自动制备存储。</p>
+<figure data-type="image" tabindex="2"><img src="https://raw.githubusercontent.com/protream/protream.github.io/images/20240205-k8s-volume/1.png" alt="" loading="lazy"></figure>
+<p>动态卷制备的实现基于 <code>storage.k8s.io</code> API 组中的 <code>StorageClass</code> API 对象。 集群管理员可以根据需要定义多个 <code>StorageClass</code> 对象，每个对象指定一个<strong>卷插件</strong>（又名 <strong>provisioner</strong>）， 卷插件向卷制备商提供在创建卷时需要的数据卷信息及相关参数。</p>
+<h2 id="参数解读">参数解读</h2>
+<h3 id="pv">PV</h3>
+<p>配置示例：</p>
+<pre><code class="language-yaml">apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: pv0003
+spec:
+  capacity:
+    storage: 5Gi
+  volumeMode: Filesystem
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Recycle
+  storageClassName: slow
+  mountOptions:
+    - hard
+    - nfsvers=4.1
+  nfs:
+    path: /tmp
+    server: 172.17.0.2
+</code></pre>
+<p><strong>ACESS MODES</strong></p>
+<ul>
+<li>RWO：卷可以被一个节点以读写方式挂载。 ReadWriteOnce 访问模式仍然可以在同一节点上运行的多个 Pod 访问该卷。</li>
+<li>ROX：卷可以被多个节点以只读方式挂载。</li>
+<li>RWX：卷可以被多个节点以读写方式挂载。</li>
+<li>RWOP：卷可以被单个 Pod 以读写方式挂载。 如果你想确保整个集群中只有一个 Pod 可以读取或写入该 PVC， 请使用 ReadWriteOncePod 访问模式。</li>
+</ul>
+<p><strong>RECLAIM POLICY</strong></p>
+<ul>
+<li>Retain：手动回收</li>
+<li>Recycle：简单擦除（rm -rf /thevolume/*）</li>
+<li>Delete：删除存储卷</li>
+</ul>
+<p><strong>STATUS</strong></p>
+<ul>
+<li>Available：卷是一个空闲资源，尚未绑定到任何申领</li>
+<li>Bound：该卷已经绑定到某申领</li>
+<li>Released:所绑定的申领已被删除，但是关联存储资源尚未被集群回收</li>
+<li>Failed：卷的自动回收操作失败</li>
+</ul>
+<p><strong>VOLUME MODE</strong></p>
+<p>针对 PV 持久卷，Kubernetes 支持两种卷模式（<code>volumeModes</code>）：<code>Filesystem（文件系统）</code> 和 <code>Block（块）</code>。 <code>volumeMode</code> 是一个可选的 API 参数。 如果该参数被省略，默认的卷模式是 <code>Filesystem</code>。<code>volumeMode</code> 属性设置为 <code>Filesystem</code> 的卷会被 Pod <strong>挂载（Mount）</strong> 到某个目录。 如果卷的存储来自某块设备而该设备目前为空，Kuberneretes 会在第一次挂载卷之前在设备上创建文件系统。</p>
+<h3 id="pvc">PVC</h3>
+<p>配置示例：</p>
+<pre><code class="language-yaml">apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: myclaim
+spec:
+  accessModes:
+    - ReadWriteOnce
+  volumeMode: Filesystem
+  resources:
+    requests:
+      storage: 8Gi
+  storageClassName: slow
+  selector:
+    matchLabels:
+      release: &quot;stable&quot;
+    matchExpressions:
+      - {key: environment, operator: In, values: [dev]}
+</code></pre>
+<p><strong>ACESS MODES</strong>：同 PV。</p>
+<p><strong>VOLUME MODE</strong>：同 PV。</p>
+<h3 id="sc">SC</h3>
+<p>配置示例：</p>
+<pre><code class="language-yaml">kind: StorageClass
+metadata:
+  name: standard
+provisioner: kubernetes.io/aws-ebs
+parameters:
+  type: gp2
+reclaimPolicy: Retain
+allowVolumeExpansion: true
+mountOptions:
+  - debug
+volumeBindingMode: Immediate
+</code></pre>
+<p><strong>PROVISIONER</strong></p>
+<p>每个 StorageClass 都有一个制备器（Provisioner），用来决定使用哪个卷插件制备 PV。</p>
+<p><strong>PARAMETERS</strong></p>
+<p>Storage Classes 的参数描述了存储类的卷。</p>
+<p><strong>RECLAIMPOLICY</strong></p>
+<p>由 StorageClass 动态创建的 PersistentVolume 会在类的 <a href="https://kubernetes.io/zh-cn/docs/concepts/storage/persistent-volumes/#reclaiming">reclaimPolicy</a> 字段中指定回收策略，可以是 <code>Delete</code> 或者 <code>Retain</code>。 如果 StorageClass 对象被创建时没有指定 <code>reclaimPolicy</code>，它将默认为 <code>Delete</code>。</p>
+<p><strong>VOLUMEBINDINGMODE</strong></p>
+<p>控制了卷绑定和动态制备应该发生在什么时候。 当未设置时，默认使用 <code>Immediate</code> 模式。</p>
+<p><code>Immediate</code> 模式表示一旦创建了 PersistentVolumeClaim 也就完成了卷绑定和动态制备。 对于由于拓扑限制而非集群所有节点可达的存储后端，PersistentVolume 会在不知道 Pod 调度要求的情况下绑定或者制备。</p>
+<p>集群管理员可以通过指定 <code>WaitForFirstConsumer</code> 模式来解决此问题。 该模式将延迟 PersistentVolume 的绑定和制备，直到使用该 PersistentVolumeClaim 的 Pod 被创建。</p>
+<h2 id="如何配置">如何配置</h2>
+<p>使用卷时, 在 <code>.spec.volumes</code> 字段中设置为 Pod 提供的卷，并在 <code>.spec.containers[*].volumeMounts</code> 字段中声明卷在容器中的挂载位置。</p>
+<h3 id="挂载-pvc">挂载 PVC</h3>
+<pre><code class="language-yaml">apiVersion: v1
+kind: Pod
+metadata:
+  name: mypod
+spec:
+  containers:
+    - name: myfrontend
+      image: nginx
+      volumeMounts:
+      - mountPath: &quot;/var/www/html&quot;
+        name: mypd
+  volumes:
+    - name: mypd
+      persistentVolumeClaim:
+        claimName: myclaim
+</code></pre>
+<h3 id="挂载-configmap">挂载 ConfigMap</h3>
+<p>使用 ConfigMap 填充卷</p>
+<pre><code class="language-yaml">apiVersion: v1
+kind: Pod
+metadata:
+  name: dapi-test-pod
+spec:
+  containers:
+    - name: test-container
+      image: registry.k8s.io/busybox
+      command: [ &quot;/bin/sh&quot;, &quot;-c&quot;, &quot;ls /etc/config/&quot; ]
+      volumeMounts:
+      - name: config-volume
+        mountPath: /etc/config
+  volumes:
+    - name: config-volume
+      configMap:
+        # 提供包含要添加到容器中的文件的 ConfigMap 的名称
+        name: special-config
+  restartPolicy: Never
+</code></pre>
+<h2 id="参考">参考</h2>
+<p>[1] <a href="%5Bhttps://www.cnblogs.com/yaokaka/p/15400151.html%5D(https://www.cnblogs.com/yaokaka/p/15400151.html)">Kubernetes 之 PV 和 PVC</a></p>
+<p>[2] <a href="%5Bhttps://www.cnblogs.com/yaokaka/p/15364427.html%5D(https://www.cnblogs.com/yaokaka/p/15364427.html)">Kubernetes 存储卷</a></p>
+<p>[3] <a href="%5Bhttps://kubernetes.io/zh-cn/docs/concepts/storage/volumes/%5D(https://kubernetes.io/zh-cn/docs/concepts/storage/volumes/)">k8s volumes</a></p>
+<p>[4] <a href="%5Bhttps://kubernetes.io/zh-cn/docs/tasks/configure-pod-container/configure-persistent-volume-storage/#create-a-persistentvolume%5D(https://kubernetes.io/zh-cn/docs/tasks/configure-pod-container/configure-persistent-volume-storage/#create-a-persistentvolume)">配置 Pod 以使用 PersistentVolume 作为存储</a></p>
+<p>[5] <a href="%5Bhttps://kubernetes.io/zh-cn/docs/tasks/configure-pod-container/configure-pod-configmap/%5D(https://kubernetes.io/zh-cn/docs/tasks/configure-pod-container/configure-pod-configmap/)">配置 Pod 使用 ConfigMap</a></p>
+]]></content>
+    </entry>
+    <entry>
+        <title type="html"><![CDATA[k8s 入门 6: 干扰预算]]></title>
+        <id>https://protream.github.io/post/7Cj41vPio/</id>
+        <link href="https://protream.github.io/post/7Cj41vPio/">
+        </link>
+        <updated>2024-01-28T09:32:06.000Z</updated>
+        <summary type="html"><![CDATA[<p>本文介绍什么是干扰预算并举了一个例子加以说明，随后介绍设施干扰预算的方法。</p>
+]]></summary>
+        <content type="html"><![CDATA[<p>本文介绍什么是干扰预算并举了一个例子加以说明，随后介绍设施干扰预算的方法。</p>
+<!-- more -->
+<h2 id="什么是干扰">什么是干扰</h2>
+<p>Pod 不会消失，除非有人（用户或控制器）将其销毁，或者出现了不可避免的硬件或软件系统错误。<br>
+<strong>干扰简单来说就是导致 Pod 消失的因素，可分为自愿的和非自愿的</strong>。</p>
+<p>设置干扰预算在一定程度上提升在 Pod 收到干扰时的可用性保证服务可用性。</p>
+<h3 id="非自愿干扰">非自愿干扰</h3>
+<p>• 节点下层物理机的硬件故障<br>
+• 集群管理员错误地删除虚拟机（实例）<br>
+• 云提供商或虚拟机管理程序中的故障导致的虚拟机消失<br>
+• 内核错误<br>
+• 节点由于集群网络隔离从集群中消失<br>
+• 由于节点资源不足导致 pod 被驱逐。</p>
+<h3 id="自愿干扰">自愿干扰</h3>
+<p>• 删除 Deployment 或其他管理 Pod 的控制器<br>
+• 更新了 Deployment 的 Pod 模板导致 Pod 重启<br>
+• 直接删除 Pod（例如，因为误操作）<br>
+集群管理员操作包括：<br>
+• 排空（drain）节点进行修复或升级。<br>
+• 从集群中排空节点以缩小集群（了解集群自动收缩）。<br>
+• 从节点中移除一个 Pod，以允许其他 Pod 使用该节点。</p>
+<h2 id="应对非自愿干扰">应对非自愿干扰</h2>
+<p>以下是减轻非自愿干扰的一些方法：</p>
+<p>• 确保 Pod 在请求中给出所需资源。<br>
+• 如果需要更高的可用性，请复制应用。 （了解有关运行多副本的无状态 和有状态应用的信息。）<br>
+• 为了在运行复制应用时获得更高的可用性，请跨机架（使用 反亲和性） 或跨区域（如果使用多区域集群）扩展应用。</p>
+<h2 id="什么是干扰预算">什么是干扰预算</h2>
+<p>干扰预算（PDB） 限制在同一时间因自愿干扰导致的多副本应用中发生宕机的 Pod 数量。例如，基于票选机制的应用希望确保运行中的副本数永远不会低于票选所需的数量。 Web 前端可能希望确保提供负载的副本数量永远不会低于总数的某个百分比。</p>
+<p>PDB 无法防止非自愿干扰； 但它们确实计入预算。</p>
+<h2 id="poddisruptionbudget-例子">PodDisruptionBudget 例子</h2>
+<p>假设集群有 3 个节点，<code>node-1</code> 到 <code>node-3</code>。集群上运行了一些应用。 其中一个应用有 3 个副本，分别是 pod-a，pod-b 和 pod-c。 另外，还有一个不带 PDB 的无关 pod pod-x 也同样显示出来。 最初，所有的 Pod 分布如下：</p>
+<figure data-type="image" tabindex="1"><img src="https://github.com/protream/protream.github.io/blob/images/20240128-k8s-pdb/pdb1.jpg?raw=true" alt="" loading="lazy"></figure>
+<p>3 个 Pod 都是 <code>deployment</code> 的一部分，并且共同拥有同一个 PDB，要求 3 个 Pod 中至少有 2 个 Pod 始终处于可用状态。<br>
+例如，假设集群管理员想要重启系统，升级内核版本来修复内核中的缺陷。 集群管理员首先使用 kubectl drain 命令尝试腾空 <code>node-1</code> 节点。 命令尝试驱逐 <code>pod-a</code> 和 <code>pod-x</code>。操作立即就成功了。 两个 Pod 同时进入 <code>terminating</code> 状态。这时的集群处于下面的状态：</p>
+<figure data-type="image" tabindex="2"><img src="https://github.com/protream/protream.github.io/blob/images/20240128-k8s-pdb/pdb2.jpg?raw=true" alt="" loading="lazy"></figure>
+<p>Deployment 控制器观察到其中一个 Pod 正在终止，因此它创建了一个替代 Pod pod-d。 由于 <code>node-1</code> 被封锁（cordon），<code>pod-d</code> 落在另一个节点上。 同样其他控制器也创建了 <code>pod-y</code> 作为 <code>pod-x</code> 的替代品。<br>
+（注意：对于 StatefulSet 来说，<code>pod-a</code>（也称为 <code>pod-0</code>）需要在替换 Pod 创建之前完全终止， 替代它的也称为 <code>pod-0</code>，但是具有不同的 UID。除此之外，此示例也适用于 StatefulSet。）</p>
+<p>当前集群的状态如下：</p>
+<figure data-type="image" tabindex="3"><img src="https://github.com/protream/protream.github.io/blob/images/20240128-k8s-pdb/pdb3.jpg?raw=true" alt="" loading="lazy"></figure>
+<p>在某一时刻，Pod 被终止，集群如下所示：<br>
+<img src="https://github.com/protream/protream.github.io/blob/images/20240128-k8s-pdb/pdb4.jpg?raw=true" alt="" loading="lazy"></p>
+<p>此时，如果一个急躁的集群管理员试图排空（drain）<code>node-2</code> 或 <code>node-3</code>，drain 命令将被阻塞， 因为对于 Deployment 来说只有 2 个可用的 Pod，并且它的 PDB 至少需要 2 个。 经过一段时间，<code>pod-d</code> 变得可用。</p>
+<p>集群状态如下所示：</p>
+<figure data-type="image" tabindex="4"><img src="https://github.com/protream/protream.github.io/blob/images/20240128-k8s-pdb/pdb5.jpg?raw=true" alt="" loading="lazy"></figure>
+<p>现在，集群管理员试图排空（drain）node-2。 drain 命令将尝试按照某种顺序驱逐两个 Pod，假设先是 pod-b，然后是 pod-d。 命令成功驱逐 pod-b，但是当它尝试驱逐 pod-d时将被拒绝，因为对于 Deployment 来说只剩一个可用的 Pod 了。</p>
+<p>Deployment 创建 pod-b 的替代 Pod pod-e。 因为集群中没有足够的资源来调度 pod-e，drain 命令再次阻塞。集群最终将是下面这种状态：</p>
+<figure data-type="image" tabindex="5"><img src="https://github.com/protream/protream.github.io/blob/images/20240128-k8s-pdb/pdb6.jpg?raw=true" alt="" loading="lazy"></figure>
+<p>此时，集群管理员需要增加一个节点到集群中以继续升级操作。</p>
+<p>可以看到 Kubernetes 如何改变干扰发生的速率，根据：</p>
+<p>• 应用需要多少个副本<br>
+• 优雅关闭应用实例需要多长时间<br>
+• 启动应用新实例需要多长时间<br>
+• 控制器的类型<br>
+• 集群的资源能力</p>
+<h2 id="如何设置干扰预算">如何设置干扰预算</h2>
+<p>可以设置干扰预算的对象：<br>
+• Deployment<br>
+• ReplicationController<br>
+• ReplicaSet<br>
+• StatefulSet</p>
+<p>确定在自发干扰时，多少实例可以在短时间内同时关闭。</p>
+<p>• 无状态的前端：<br>
+• 关注：不能降低服务能力 10% 以上。<br>
+• 解决方案：例如，使用 PDB，指定其 minAvailable 值为 90%。<br>
+•  单实例有状态应用：<br>
+• 关注：不要在不通知的情况下终止该应用。<br>
+• 可能的解决方案 1：不使用 PDB，并忍受偶尔的停机。<br>
+• 可能的解决方案 2：设置 maxUnavailable=0 的 PDB。 意为（Kubernetes 范畴之外的）集群操作人员需要在终止应用前与用户协商， 协商后准备停机，然后删除 PDB 表示准备接受干扰，后续再重新创建。<br>
+• 多实例有状态应用，如 Consul、ZooKeeper 或 etcd：<br>
+• 关注：不要将实例数量减少至低于仲裁规模，否则将出现写入失败。<br>
+• 可能的解决方案 1：设置 maxUnavailable 值为 1 (适用于不同规模的应用)。<br>
+• 可能的解决方案 2：设置 minAvailable 值为仲裁规模（例如规模为 5 时设置为 3）。 (允许同时出现更多的干扰)。<br>
+• 可重新启动的批处理任务：<br>
+• 关注：自发干扰的情况下，需要确保任务完成。<br>
+• 可能的解决方案：不创建 PDB。任务控制器会创建一个替换 Pod。</p>
+<h3 id="指定百分比时的舍入逻辑">指定百分比时的舍入逻辑</h3>
+<p>minAvailable 或 maxUnavailable 的值可以表示为整数或百分比。</p>
+<p>• 指定整数值时，它表示 Pod 个数。例如，如果将 minAvailable 设置为 10， 那么即使在干扰期间，也必须始终有 10 个 Pod 可用。</p>
+<p>• 通过将值设置为百分比的字符串表示形式（例如 &quot;50％&quot;）来指定百分比时，它表示占总 Pod 数的百分比。 例如，如果将 minAvailable 设置为 &quot;50％&quot;，则干扰期间至少 50％ 的 Pod 保持可用。<br>
+如果将值指定为百分比，则可能无法映射到确切数量的 Pod。例如，如果你有 7 个 Pod， 并且你将 minAvailable 设置为 &quot;50％&quot;，具体是 3 个 Pod 或 4 个 Pod 必须可用并非显而易见。 Kubernetes 采用向上取整到最接近的整数的办法，因此在这种情况下，必须有 4 个 Pod。 当你将 maxUnavailable 值指定为一个百分比时，Kubernetes 将可以干扰的 Pod 个数向上取整。 因此干扰可以超过你定义的 maxUnavailable 百分比。 你可以检查控制此行为的代码。</p>
+<h3 id="指定-poddisruptionbudget">指定 PodDisruptionBudget</h3>
+<p>一个 PodDisruptionBudget 有 3 个字段：<br>
+• 标签选择算符 .spec.selector 用于指定其所作用的 Pod 集合，该字段为必需字段。<br>
+• .spec.minAvailable 表示驱逐后仍须保证可用的 Pod 数量。即使因此影响到 Pod 驱逐 （即该条件在和 Pod 驱逐发生冲突时优先保证）。 minAvailable 值可以是绝对值，也可以是百分比。<br>
+• .spec.maxUnavailable （Kubernetes 1.7 及更高的版本中可用）表示驱逐后允许不可用的 Pod 的最大数量。其值可以是绝对值或是百分比。<br>
+用户在同一个 PodDisruptionBudget 中只能够指定 maxUnavailable 和 minAvailable 中的一个。</p>
+<h2 id="参考">参考</h2>
+<p>[1] <a href="https://kubernetes.io/zh-cn/docs/concepts/workloads/pods/disruptions/">干扰</a><br>
+[2] <a href="https://kubernetes.io/zh-cn/docs/tasks/run-application/configure-pdb/">配置干扰</a></p>
+]]></content>
+    </entry>
+</feed>
