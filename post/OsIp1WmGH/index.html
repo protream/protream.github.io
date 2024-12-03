@@ -1,0 +1,579 @@
+<html>
+  <head>
+    <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>深入 Python —— 切片（Slice）原理 | Protream&#39;s Notes</title>
+<link rel="shortcut icon" href="https://protream.github.io/favicon.ico?v=1733235889358">
+<link href="https://cdn.jsdelivr.net/npm/remixicon@2.3.0/fonts/remixicon.css" rel="stylesheet">
+<link rel="stylesheet" href="https://protream.github.io/styles/main.css">
+<link rel="alternate" type="application/atom+xml" title="深入 Python —— 切片（Slice）原理 | Protream&#39;s Notes - Atom Feed" href="https://protream.github.io/atom.xml">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Droid+Serif:400,700">
+
+
+
+    <meta name="description" content="在阅读本文前，先来测试一下对切片的掌握情况吧，尝试回答下面几个问题:
+a = [1, 2, 3, 4, 5]
+
+
+获取 [2, 3, 4]
+获取 [2, 4]
+获取 [5, 3, 1]
+a[:-1] = ?
+a[::-1] = ?
+a[-1..." />
+    <meta name="keywords" content="python" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.10.0/katex.min.css">
+    <script src="//cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.5.1/build/highlight.min.js"></script>
+  </head>
+  <body>
+    <div class="main">
+      <div class="main-content">
+        <div class="site-header">
+  <a href="https://protream.github.io">
+  <img class="avatar" src="https://protream.github.io/images/avatar.png?v=1733235889358" alt="">
+  </a>
+  <h1 class="site-title">
+    Protream&#39;s Notes
+  </h1>
+  <p class="site-description">
+    
+  </p>
+  <div class="menu-container">
+    
+      
+        <a href="/" class="menu">
+          首页
+        </a>
+      
+    
+      
+        <a href="/archives" class="menu">
+          归档
+        </a>
+      
+    
+      
+        <a href="/tags" class="menu">
+          标签
+        </a>
+      
+    
+      
+        <a href="/post/about" class="menu">
+          关于
+        </a>
+      
+    
+  </div>
+  <div class="social-container">
+    
+      
+    
+      
+    
+      
+    
+      
+    
+      
+    
+  </div>
+</div>
+
+        <div class="post-detail">
+          <article class="post">
+            <h2 class="post-title">
+              深入 Python —— 切片（Slice）原理
+            </h2>
+            <div class="post-info">
+              <span>
+                2019-04-03
+              </span>
+              <span>
+                13 min read
+              </span>
+              
+                <a href="https://protream.github.io/tag/A0Yg_mO4u/" class="post-tag">
+                  # python
+                </a>
+              
+            </div>
+            
+            <div class="post-content-wrapper">
+              <div class="post-content" v-pre>
+                <p>在阅读本文前，先来测试一下对切片的掌握情况吧，尝试回答下面几个问题:</p>
+<pre><code class="language-py">a = [1, 2, 3, 4, 5]
+</code></pre>
+<ol>
+<li>获取 [2, 3, 4]</li>
+<li>获取 [2, 4]</li>
+<li>获取 [5, 3, 1]</li>
+<li>a[:-1] = ?</li>
+<li>a[::-1] = ?</li>
+<li>a[-1:-2] = ?</li>
+<li>a[6:-1] = ?</li>
+<li>a[👎-1] = ?</li>
+<li>a[1👎0] = ?</li>
+<li>切片返回的是序列的深拷贝还是浅拷贝？</li>
+</ol>
+<!--more-->
+<p>如果在不借助 Python 解释器的情况下你能很快的说出答案，那说明你已经对切片掌握的不错了。相信还是有很多人不能完全解答出来或者对其中的一个或者多个不完全确定。没关系，这篇文章我们就一起来从底层实现层面来彻底掌握切片机制，学完再回过头来看相信这些就不再是问题了。</p>
+<h2 id="从字节码看起">从字节码看起</h2>
+<pre><code class="language-py">In [1]: def test():
+   ...:     a = [1, 2, 3, 4, 5]
+   ...:     b = a[1:-1]
+   ...:
+
+In [2]: import dis
+
+In [3]: dis.dis(test)
+  2           0 LOAD_CONST               1 (1)
+              2 LOAD_CONST               2 (2)
+              4 LOAD_CONST               3 (3)
+              6 LOAD_CONST               4 (4)
+              8 LOAD_CONST               5 (5)
+             10 BUILD_LIST               5
+             12 STORE_FAST               0 (a)
+
+  3          14 LOAD_FAST                0 (a)
+             16 LOAD_CONST               1 (1)
+             18 LOAD_CONST               6 (-1)
+             20 BUILD_SLICE              2
+             22 BINARY_SUBSCR
+             24 STORE_FAST               1 (b)
+</code></pre>
+<p>这段字节码分为俩个部分，上半部分构建列表 a，下半部分通过对 a 切片得到列表 b。和本文主题相关的俩个字节码指令就在下半部分，它们是：</p>
+<ul>
+<li>BUILD_SLICE</li>
+<li>BINARY_SUBSCR</li>
+</ul>
+<h2 id="build_slice">BUILD_SLICE</h2>
+<pre><code class="language-py">16 LOAD_CONST               1 (1)
+18 LOAD_CONST               6 (-1)
+20 BUILD_SLICE              2
+</code></pre>
+<p>在执行 BUILD_SLICE 之前，解释器将 slice 的俩个关键参数 start 和 stop 压入栈，然后执行 BUILD_SLICE 指令，注意，这里传入的参数是 2。2 代表构建 slice 对象的参数只有两个，也就是说并没有是指定第三个参数 step。</p>
+<pre><code class="language-c">  TARGET(BUILD_SLICE) {
+      PyObject *start, *stop, *step, *slice;
+      if (oparg == 3)
+	      step = POP();
+      else
+	      step = NULL;
+      stop = POP();
+      start = TOP();
+      slice = PySlice_New(start, stop, step);
+      Py_DECREF(start);
+      Py_DECREF(stop);
+      Py_XDECREF(step);
+      SET_TOP(slice);
+      if (slice == NULL)
+	      goto error;
+      DISPATCH();
+  }
+</code></pre>
+<p>这段代码比较简单，首先根据传入的参数个数判断 slice 有没有第三个参数 step ，有的话它在 BUILD_SLICE 之前肯定是最后一个被压入栈的，现在从栈中取出的第一个就是 step，没有的话，step 被设为 NULL。然后，继续取出 start 和 stop，将这三个参数传入 <code>PySlice_New</code> 函数创建一个 slice 对象，再将这个对象放回栈中。</p>
+<p>我们可以来看一下 slice 对象到底是什么了：</p>
+<pre><code class="language-c">  typedef struct {
+      PyObject_HEAD
+      PyObject *start, *stop, *step;  /* not NULL */
+  } PySliceObject;
+</code></pre>
+<p>现在明白了吧，<em>slice 对象就是一个记录了 start，stop，step 值（对象）的一个 Python 对象</em>，它的创建过程如下：</p>
+<pre><code class="language-c">  static PySliceObject *slice_cache = NULL;
+  PyObject *
+  PySlice_New(PyObject *start, PyObject *stop, PyObject *step)
+  {
+      PySliceObject *obj;
+      if (slice_cache != NULL) {
+  		 /* 为了效率，Python 会缓存一个 slice 对象，有缓存就省得申请内存了 */
+          obj = slice_cache;
+          slice_cache = NULL;
+          _Py_NewReference((PyObject *)obj);
+      } else {
+          obj = PyObject_GC_New(PySliceObject, &amp;PySlice_Type);
+          if (obj == NULL)
+              return NULL;
+      }
+
+      /* step start stop 为设置会被置为 None */
+      if (step == NULL) step = Py_None;
+      Py_INCREF(step);
+      if (start == NULL) start = Py_None;
+      Py_INCREF(start);
+      if (stop == NULL) stop = Py_None;
+      Py_INCREF(stop);
+
+      /* 设置 slice 对象的 step start stop */
+      obj-&gt;step = step;
+      obj-&gt;start = start;
+      obj-&gt;stop = stop;
+
+      _PyObject_GC_TRACK(obj);
+      return (PyObject *) obj;
+  }
+</code></pre>
+<p>现在我们明白了一点，当我们对一个序列进行切片时，解释器会根据传入的 start，stop，step 创建一个 slice 对象，<em>slice 对象和你要切片的原序列并没有直接的关系</em>。</p>
+<p>Python 提供了 <code>slice</code> 内建函数来创建 slice 对象：</p>
+<pre><code class="language-py">In [68]: s = slice(1, -1, 2)
+
+In [69]: type(s)
+Out[69]: slice
+In [70]: s.start
+Out[70]: 1
+
+In [71]: s.stop
+Out[71]: -1
+
+In [72]: s.step
+Out[72]: 2
+</code></pre>
+<p>下面的俩种获取切片的方式是等价的：</p>
+<pre><code class="language-py">In [73]: a = [1, 2, 3, 4, 5]
+
+In [74]: a[1:-1:2]
+Out[74]: [2, 4]
+
+In [75]: a[slice(1, -1, 2)]
+Out[75]: [2, 4]
+</code></pre>
+<h2 id="binary_subscr">BINARY_SUBSCR</h2>
+<p>这个指令翻译过来叫二元下标， a[0] 这种方式是一元下标，可以猜测一下，通过 slice 对象对序列切片和通过 index 对序列取值直接是不是有什么联系呢？我们继续往下看源码：</p>
+<pre><code class="language-c">  TARGET(BINARY_SUBSCR) {
+      PyObject *sub = POP();
+      PyObject *container = TOP();
+      PyObject *res = PyObject_GetItem(container, sub);
+      Py_DECREF(container);
+      Py_DECREF(sub);
+      SET_TOP(res);
+      if (res == NULL)
+          goto error;
+      DISPATCH();
+  }
+</code></pre>
+<p>这里从栈中取出来给 sub 的对象就是我们前面构建的 slice 对象，而 container 对象就是我们要切片的原列表，它们被传给了 <code>PyObject_GetItem</code>。</p>
+<p>答案是不是呼之欲出了？二元下标也就是切片是通过 <code>PyObject_GetItem</code> 这个函数处理的，它也是用来处理一元下标的！</p>
+<pre><code class="language-c">  PyObject *
+  PyObject_GetItem(PyObject *o, PyObject *key)
+  {
+      PyMappingMethods *m;
+
+      if (o == NULL || key == NULL) {
+          return null_error();
+      }
+
+      m = o-&gt;ob_type-&gt;tp_as_mapping;
+      if (m &amp;&amp; m-&gt;mp_subscript) {
+          PyObject *item = m-&gt;mp_subscript(o, key);
+          assert((item != NULL) ^ (PyErr_Occurred() != NULL));
+          return item;
+      }
+
+      if (o-&gt;ob_type-&gt;tp_as_sequence) {
+          if (PyIndex_Check(key)) {
+              Py_ssize_t key_value;
+              key_value = PyNumber_AsSsize_t(key, PyExc_IndexError);
+              if (key_value == -1 &amp;&amp; PyErr_Occurred())
+                  return NULL;
+              return PySequence_GetItem(o, key_value);
+          }
+          else if (o-&gt;ob_type-&gt;tp_as_sequence-&gt;sq_item)
+              return type_error(&quot;sequence index must &quot;
+                                &quot;be integer, not '%.200s'&quot;, key);
+      }
+
+      return type_error(&quot;'%.200s' object is not subscriptable&quot;, o);
+ }
+</code></pre>
+<p><code>PyObject_GetItem</code> 是用来实现多态的，它根据要切片对象的不同，调用对象的特定函数做出不同的处理。我们后面会讲在列表列表的处理，现在我们需要明白，<em>序列的下标可以是 int 对象或者是 slice 对象，处理它们的函数接口是一样的</em>。</p>
+<pre><code class="language-py">In [76]: a = [1, 2, 3, 4, 5]
+
+In [77]: a.__getitem__(1)
+Out[77]: 2
+
+In [78]: a.__getitem__(slice(1, -1, 2))
+Out[78]: [2, 4]
+
+In [80]: s = 'python'
+
+In [81]: s.__getitem__(1)
+Out[81]: 'y'
+
+In [82]: s.__getitem__(slice(1, -1, 2))
+Out[82]: 'yh'
+</code></pre>
+<h2 id="切片参数的处理">切片参数的处理</h2>
+<p>start 、stop 和 step 的值可以是整数，可以是负数，start 和 stop 的值还可能超过列表的长度，对于特殊 step、stop 值的处理也就决定了切片的结果，而这些处理正是在<code>PySlice_GetIndicesEx</code> 这个函数中完成的，理解切片行为的核心就是要理解这个函数的逻辑。我们拆开来看这个函数是怎么处理 start stop step 的。</p>
+<ol>
+<li>step 的处理</li>
+</ol>
+<pre><code class="language-c"> if (r-&gt;step == Py_None) {
+		 /* step 默认是 1，这不难理解 */
+      *step = 1;
+  } else {
+      if (!_PyEval_SliceIndex(r-&gt;step, step)) return -1;
+		 /* step 不能为零，否则报 ValueError，要注意的是，这个异常是在执行 BINARY_SUBSCR 才报出来，
+       * 在创建 slice 对象时如果 step 为 0 并不会报错 */
+      if (*step == 0) {
+          PyErr_SetString(PyExc_ValueError, &quot;slice step cannot be zero&quot;);
+          return -1;
+      }
+      /* step 的最小值，他是根据 size_t 来定义的
+       * #define PY_SSIZE_T_MAX ((Py_ssize_t)(((size_t)-1)&gt;&gt;1))
+       * 所以在 32 为系统上就是 -2147483647 */
+      if (*step &lt; -PY_SSIZE_T_MAX)
+          *step = -PY_SSIZE_T_MAX;
+  }
+</code></pre>
+<ol start="2">
+<li>start 的处理</li>
+</ol>
+<pre><code class="language-c">  /* 当 start 未设置时的默认值，length 是序列的长度
+   * 如果切片从序列头部开始（step &gt; 0），start = 0
+   * 如果切片从序列末尾开始（step &lt; 0），start = length - 1 */
+  defstart = *step &lt; 0 ? length-1 : 0;
+  if (r-&gt;start == Py_None) {
+      *start = defstart;
+  }
+  else {
+      if (!_PyEval_SliceIndex(r-&gt;start, start)) return -1;
+      /* 如果 start 是负数，其实是通过加上序列长度转化成正数的 a[-1:] &lt;=&gt; a[4:] */
+      if (*start &lt; 0) *start += length;
+      /* 如果加上 length 还是小于 0，也就是 -start 超出了序列长度，这时候会根据 step 的正负将start
+       * 设置为序列的开始（0）或结束（-1）位置
+       * a[-6:-1]    &lt;=&gt; a[0:-1]
+       * a[-6:-1:-1] &lt;=&gt; a[-1:-1:-1] */
+      if (*start &lt; 0) *start = (*step &lt; 0) ? -1 : 0;
+		/* start 超出了序列长度，这时候会根据 step 的正负将start
+       * 设置为序列的长度或序列长度减 1（最后一个元素）
+       * a[6:-1]    &lt;=&gt; a[5:-1]
+       * a[6:-1:-1] &lt;=&gt; a[4:-1:-1] */
+      if (*start &gt;= length)
+          *start = (*step &lt; 0) ? length - 1 : length;
+  }
+</code></pre>
+<ol start="3">
+<li>stop 的处理</li>
+</ol>
+<pre><code class="language-c">  /* 当 stop 未设置时的默认值，length 是序列的长度
+   * 如果切片从序列头部开始（step &gt; 0），stop = length，比最后一个元素的下标多 1
+   * 如果切片从序列末尾开始（step &lt; 0），start = -1，比第一个元素的下标少 1 */
+ defstop = *step &lt; 0 ? -1 : length;
+ if (r-&gt;stop == Py_None) {
+      *stop = defstop;
+  } else {
+      if (!_PyEval_SliceIndex(r-&gt;stop, stop)) return -1;
+      /* 如果 stop 是负数，其实是通过加上序列长度转化成正数的 a[:-1] &lt;=&gt; a[:4] */
+      if (*stop &lt; 0) *stop += length;
+      /* 如果加上 length 还是小于 0，也就是 -stop 超出了序列长度，这时候会根据 step 的正负将 stop
+       * 设置为序列的开始（0）或结束（-1）位置
+       * a[3:-6]    &lt;=&gt; a[3:0]
+       * a[3:-6:-1] &lt;=&gt; a[3::-1] */
+      if (*stop &lt; 0) *stop = (*step &lt; 0) ? -1 : 0;
+      if (*stop &gt;= length)
+          *stop = (*step &lt; 0) ? length - 1 : length;
+  }
+
+</code></pre>
+<ol start="4">
+<li>slicelength 的处理，slicelength 是切片结果的长度</li>
+</ol>
+<pre><code class="language-c">  /* 如：a[6:1]      处理后 start = 6 stop = 1 start &gt; stop
+   *    a[6:-1]     处理后 start = 6 stop = 4 start &gt; stop
+   *    a[2:3:-1]   处理后 start = 2 stop = 3 stop &gt;= start
+   *    a[-3:-2:-1] 处理后 start = 2 stop = 3 stop &gt;= start */
+  if ((*step &lt; 0 &amp;&amp; *stop &gt;= *start)
+      || (*step &gt; 0 &amp;&amp; *start &gt;= *stop)) {
+      *slicelength = 0;
+  }
+  else if (*step &lt; 0) {
+      *slicelength = (*stop-*start+1)/(*step)+1;
+  }
+  else {
+      *slicelength = (*stop-*start-1)/(*step)+1;
+  }
+</code></pre>
+<p>记住几点：</p>
+<ul>
+<li>切片结果是通过 start、stop 处理后的值决定的，从 start 开始止于 stop 不包括 stop，[start, stop)</li>
+<li>如果 step &gt; 0，从 start 位置往后，每 step 取一个值，如果 start &gt;= stop，结果为空</li>
+<li>如果 step &lt; 0，从 start 位置往前，每 step 取一个值，如果 start &lt;= stop，结果为空</li>
+<li>start 或 stop 为负数时，如果绝对值在 length 内，那么和 length + start 或 stop 等价</li>
+<li>start 或 stop 为负数时，如果绝对值超过 length ，那么就要根据切片方向将 start 或 stop 转换为边界值</li>
+</ul>
+<h2 id="列表切片">列表切片</h2>
+<p>切片可以作用于所有序列对象：列表，字符串，元组。我们日常最常用的就是列表切片，这里就深入看下列表切片的处理，其他俩种处理方式应该也类似。</p>
+<pre><code class="language-c"> static PyMappingMethods list_as_mapping = {
+      ...
+      (binaryfunc)list_subscript,
+		...
+ }
+
+ static PyMethodDef list_methods[] = {
+		{&quot;__getitem__&quot;, (PyCFunction)list_subscript, METH_O|METH_COEXIST, getitem_doc},
+		...
+ }
+</code></pre>
+<p>深入到 list 对象的源码后发现， <code>o-&gt;ob_type-&gt;tp_as_mapping-&gt;mp_subscript</code>（回看 PyObject_GetItem 的逻辑）和 <code>list.__getitem__</code> 都指向了同一个函数——<code>list_subscript</code>，list 的切片正是在这里处理的：</p>
+<pre><code class="language-c">  static PyObject *list_subscript(PyListObject* self, PyObject* item)
+  {
+		...
+		/* 如果下标是 slice 对象 */
+      if (PySlice_Check(item)) {
+          Py_ssize_t start, stop, step, slicelength, cur, i;
+          PyObject* result;
+          PyObject* it;
+          PyObject **src, **dest;
+
+			 /* 从 slice 对象解析并处理 start stop step 和 slicelength */
+          if (PySlice_GetIndicesEx(item, Py_SIZE(self),
+                           &amp;start, &amp;stop, &amp;step, &amp;slicelength) &lt; 0) {
+              return NULL;
+          }
+
+			 /* 从 start stop step 计算出切片结果的长度小于等于 0，返回空列表 */
+          if (slicelength &lt;= 0) {
+              return PyList_New(0);
+          }
+          /* 结果长度大于 0 而 step = 1，交给 list_slice 处理 */
+          else if (step == 1) {
+              return list_slice(self, start, stop);
+          }
+          else {
+              /* 创建一个与结果长度相等的列表对象 */
+              result = PyList_New(slicelength);
+              if (!result) return NULL;
+
+              src = self-&gt;ob_item;
+              dest = ((PyListObject *)result)-&gt;ob_item;
+              /* 从 start 开始，每次前进 step，开始 copy 列表元素 */
+              for (cur = start, i = 0; i &lt; slicelength;
+                   cur += (size_t)step, i++) {
+                  /* 从这里可以看出，从原列表拷贝元素到切片，只是一个简单的赋值，所以切片是浅拷贝 */
+                  it = src[cur];
+                  Py_INCREF(it);
+                  dest[i] = it;
+              }
+
+              return result;
+      }
+		...
+ }
+</code></pre>
+<p>其中的 <code>list_slice</code> 函数像是 <code>list_subscript</code> 当 step 等于 1 时的简化版：</p>
+<pre><code class="language-c">  static PyObject *
+  list_slice(PyListObject *a, Py_ssize_t ilow, Py_ssize_t ihigh)
+  {
+      PyListObject *np;
+      PyObject **src, **dest;
+      Py_ssize_t i, len;
+      if (ilow &lt; 0)
+          ilow = 0;
+      else if (ilow &gt; Py_SIZE(a))
+          ilow = Py_SIZE(a);
+      if (ihigh &lt; ilow)
+          ihigh = ilow;
+      else if (ihigh &gt; Py_SIZE(a))
+          ihigh = Py_SIZE(a);
+      len = ihigh - ilow;
+      np = (PyListObject *) PyList_New(len);
+      if (np == NULL)
+          return NULL;
+
+      src = a-&gt;ob_item + ilow;
+      dest = np-&gt;ob_item;
+      for (i = 0; i &lt; len; i++) {
+          PyObject *v = src[i];
+          Py_INCREF(v);
+          dest[i] = v;
+      }
+      return (PyObject *)np;
+  }
+</code></pre>
+<h2 id="总结">总结</h2>
+<p>本文从源码层面剖析了什么是 slice 对象，切片中对 start、stop、step 值的处理，及虚拟机生成一个列表切片的整个过程。弄懂了 Python 对 start、stop、step 的处理逻辑后，文章开始处的几道题也就不能得出答案了。</p>
+
+              </div>
+              <div class="toc-container">
+                <ul class="markdownIt-TOC">
+<li>
+<ul>
+<li><a href="#%E4%BB%8E%E5%AD%97%E8%8A%82%E7%A0%81%E7%9C%8B%E8%B5%B7">从字节码看起</a></li>
+<li><a href="#build_slice">BUILD_SLICE</a></li>
+<li><a href="#binary_subscr">BINARY_SUBSCR</a></li>
+<li><a href="#%E5%88%87%E7%89%87%E5%8F%82%E6%95%B0%E7%9A%84%E5%A4%84%E7%90%86">切片参数的处理</a></li>
+<li><a href="#%E5%88%97%E8%A1%A8%E5%88%87%E7%89%87">列表切片</a></li>
+<li><a href="#%E6%80%BB%E7%BB%93">总结</a></li>
+</ul>
+</li>
+</ul>
+
+              </div>
+            </div>
+          </article>
+        </div>
+
+        
+          <div class="next-post">
+            <div class="next">下一篇</div>
+            <a href="https://protream.github.io/post/yong-python-xie-yi-ge-ming-ling-xing-huo-che-piao-cha-kan-qi/">
+              <h3 class="post-title">
+                用 Python 写一个命令行火车票查看器
+              </h3>
+            </a>
+          </div>
+        
+
+        
+
+        <div class="site-footer">
+  Powered by <a href="https://github.com/getgridea/gridea" target="_blank">&nbsp;Gridea</a>
+  <a class="rss" href="https://protream.github.io/atom.xml" target="_blank">
+    <i class="ri-rss-line"></i> RSS
+  </a>
+</div>
+
+      </div>
+    </div>
+
+    <script>
+      hljs.initHighlightingOnLoad()
+
+      let mainNavLinks = document.querySelectorAll(".markdownIt-TOC a");
+
+      // This should probably be throttled.
+      // Especially because it triggers during smooth scrolling.
+      // https://lodash.com/docs/4.17.10#throttle
+      // You could do like...
+      // window.addEventListener("scroll", () => {
+      //    _.throttle(doThatStuff, 100);
+      // });
+      // Only not doing it here to keep this Pen dependency-free.
+
+      window.addEventListener("scroll", event => {
+        let fromTop = window.scrollY;
+
+        mainNavLinks.forEach((link, index) => {
+          let section = document.getElementById(decodeURI(link.hash).substring(1));
+          let nextSection = null
+          if (mainNavLinks[index + 1]) {
+            nextSection = document.getElementById(decodeURI(mainNavLinks[index + 1].hash).substring(1));
+          }
+          if (section.offsetTop <= fromTop) {
+            if (nextSection) {
+              if (nextSection.offsetTop > fromTop) {
+                link.classList.add("current");
+              } else {
+                link.classList.remove("current");    
+              }
+            } else {
+              link.classList.add("current");
+            }
+          } else {
+            link.classList.remove("current");
+          }
+        });
+      });
+
+    </script>
+  </body>
+</html>

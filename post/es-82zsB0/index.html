@@ -1,0 +1,1304 @@
+<html>
+  <head>
+    <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>k8s operator 入门 | Protream&#39;s Notes</title>
+<link rel="shortcut icon" href="https://protream.github.io/favicon.ico?v=1733235889358">
+<link href="https://cdn.jsdelivr.net/npm/remixicon@2.3.0/fonts/remixicon.css" rel="stylesheet">
+<link rel="stylesheet" href="https://protream.github.io/styles/main.css">
+<link rel="alternate" type="application/atom+xml" title="k8s operator 入门 | Protream&#39;s Notes - Atom Feed" href="https://protream.github.io/atom.xml">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Droid+Serif:400,700">
+
+
+
+    <meta name="description" content="
+The operator design pattern defines how to manage application and infrastructure resources using domain-specific knowle..." />
+    <meta name="keywords" content="k8s" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.10.0/katex.min.css">
+    <script src="//cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.5.1/build/highlight.min.js"></script>
+  </head>
+  <body>
+    <div class="main">
+      <div class="main-content">
+        <div class="site-header">
+  <a href="https://protream.github.io">
+  <img class="avatar" src="https://protream.github.io/images/avatar.png?v=1733235889358" alt="">
+  </a>
+  <h1 class="site-title">
+    Protream&#39;s Notes
+  </h1>
+  <p class="site-description">
+    
+  </p>
+  <div class="menu-container">
+    
+      
+        <a href="/" class="menu">
+          首页
+        </a>
+      
+    
+      
+        <a href="/archives" class="menu">
+          归档
+        </a>
+      
+    
+      
+        <a href="/tags" class="menu">
+          标签
+        </a>
+      
+    
+      
+        <a href="/post/about" class="menu">
+          关于
+        </a>
+      
+    
+  </div>
+  <div class="social-container">
+    
+      
+    
+      
+    
+      
+    
+      
+    
+      
+    
+  </div>
+</div>
+
+        <div class="post-detail">
+          <article class="post">
+            <h2 class="post-title">
+              k8s operator 入门
+            </h2>
+            <div class="post-info">
+              <span>
+                2024-08-28
+              </span>
+              <span>
+                31 min read
+              </span>
+              
+                <a href="https://protream.github.io/tag/k8s/" class="post-tag">
+                  # k8s
+                </a>
+              
+            </div>
+            
+            <div class="post-content-wrapper">
+              <div class="post-content" v-pre>
+                <blockquote>
+<p>The operator design pattern defines how to manage application and infrastructure resources using domain-specific knowledge and declarative state. The goal of the pattern is to reduce the amount of manual imperative work (how to backup, scale, upgrade...) which is required to keep an application in a healthy and well-maintained state, by capturing that domain specific knowledge in code and exposing it using a declarative API.</p>
+</blockquote>
+<p>Kubernetes Operator 是一种用于打包、部署和管理 Kubernetes 应用的方法。它是一个应用特定的控制器,扩展了 Kubernetes 的功能,使复杂的、有状态的应用能够像简单的无状态应用一样易于部署和管理。</p>
+<p>Operator 模式由 CoreOS 公司在 2016 年首次提出。这个概念源于以下需求:</p>
+<ul>
+<li>需要一种方法来扩展 Kubernetes 的能力,以管理复杂的有状态应用。</li>
+<li>希望将人类操作员的知识自动化,减少人为错误和提高效率。</li>
+<li>寻求一种标准化的方式来部署和管理复杂的分布式系统。</li>
+</ul>
+<p>CoreOS 最初创建 Operator 是为了管理 etcd 集群,后来这个概念被广泛采用,应用于各种复杂系统的管理。</p>
+<!-- more -->
+<p>Operator 的主要应用包括:</p>
+<p>1、Install an Application / Take Ownership of an Application。</p>
+<p>2、Upgrade an Application。</p>
+<p>3、Backup</p>
+<p>4、Revovery from backup</p>
+<p>5、Auto-Remediation</p>
+<p>6、Monitoring/Metrics - Observability</p>
+<p>7、Scaling</p>
+<p>8、Auto-Scaling</p>
+<p>9、Auto-Configuation tuning</p>
+<p>10、Uninstalling / Disconnect</p>
+<h2 id="核心概念">核心概念</h2>
+<h3 id="controller">Controller</h3>
+<p>负责调整和维护资源状态，使得和期望的状态一直。</p>
+<blockquote>
+<p>Technically, there is no difference between a typical controller and an operator. Often the difference referred to is the operational knowledge that is included in the operator. Therefore, a controller is the implementation, and the operator is the pattern of using custom controllers with CRDs and automation is what is looking to be achieved with this.</p>
+</blockquote>
+<p>Operator 是一种模式，controller 是实现，差异是知识，也就是 CRD。</p>
+<blockquote>
+<p>It’s a controller’s job to ensure that, for any given object, the actual state of the world (both the cluster state, and potentially external state like running containers for Kubelet or loadbalancers for a cloud provider) matches the desired state in the object. Each controller focuses on one <em>root</em> Kind, but may interact with other Kinds.</p>
+</blockquote>
+<p>控制器的工作是确保，对于任何给定对象，世界的实际状态（集群状态，以及潜在的外部状态，如 Kubelet 的运行容器或云提供商的负载均衡器）与对象中的所需状态匹配。每个控制器都专注于一个根种类，但可以与其他种类交互。</p>
+<h3 id="groups-and-versions">Groups and Versions</h3>
+<blockquote>
+<p>An <em>API Group</em> in Kubernetes is simply a collection of related functionality. Each group has one or more <em>versions</em>, which, as the name suggests, allow us to change how an API works over time.</p>
+</blockquote>
+<p>API 组是是相关功能的江南，每个组有一个或者多个版本。</p>
+<h3 id="kind">Kind</h3>
+<p>每个 API 组版本都包含一个或多个 API 类型，称之为 Kind。</p>
+<h3 id="resources">Resources</h3>
+<blockquote>
+<p>A resource is simply a use of a Kind in the API. Often, there’s a one-to-one mapping between Kinds and resources. For instance, the <code>pods</code> resource corresponds to the <code>Pod</code> Kind. However, sometimes, the same Kind may be returned by multiple resources. For instance, the <code>Scale</code> Kind is returned by all scale subresources, like <code>deployments/scale</code> or <code>replicasets/scale</code>. This is what allows the Kubernetes HorizontalPodAutoscaler to interact with different resources. With CRDs, however, each Kind will correspond to a single resource.</p>
+</blockquote>
+<p>资源只是在 Kind 的使用。资源和 Kind 通常是一对一的。例如，<code>pods</code> 资源对应 <code>Pod</code> Kind。有时，一个 Kind 对应多个资源，如 <code>Scale</code> Kind 对应的资源有 <code>deployments/scale</code> 或 <code>replicasets/scale</code> 。对于 CRD ，每个 Kind 对应一个资源。</p>
+<h3 id="gvk-and-gvr">GVK and GVR</h3>
+<blockquote>
+<p>When we refer to a kind in a particular group-version, we’ll call it a <em>GroupVersionKind</em>, or GVK for short. Same with resources and GVR. As we’ll see shortly, each GVK corresponds to a given root Go type in a package.</p>
+</blockquote>
+<p>特定组版本中的一个类型或资源，每个 GVK 对应一个 Go type。</p>
+<h2 id="工作原理">工作原理</h2>
+<p>Operator 的工作原理基于 Kubernetes 的核心概念和扩展机制。主要包括以下几个关键组件和过程:</p>
+<h3 id="自定义资源-custom-resources-crs">自定义资源 (Custom Resources, CRs)</h3>
+<ul>
+<li>定义: 自定义资源是 Kubernetes API 的扩展,允许用户定义特定于应用的对象。</li>
+<li>作用: CRs 代表了应用的期望状态,包含了配置、规格等信息。</li>
+<li>示例: 对于一个数据库 Operator,CR 可能包含数据库的版本、副本数、存储配置等。</li>
+</ul>
+<h3 id="自定义资源定义-custom-resource-definitions-crds">自定义资源定义 (Custom Resource Definitions, CRDs)</h3>
+<ul>
+<li>定义: CRD 是自定义资源的模式定义,描述了 CR 的结构和验证规则。</li>
+<li>作用: 告诉 Kubernetes 如何解释和处理自定义资源。</li>
+<li>示例: 数据库 CRD 可能定义字段如 <code>spec.version</code>, <code>spec.replicas</code>, <code>spec.storage</code> 等。</li>
+</ul>
+<h3 id="控制器-controller">控制器 (Controller)</h3>
+<ul>
+<li>定义: 控制器是 Operator 的核心,是一个持续运行的循环程序。</li>
+<li>作用: 观察集群的当前状态,将其与 CR 中定义的期望状态进行比较,并采取行动使实际状态与期望状态一致。</li>
+<li>工作流程:
+<ol>
+<li>观察 (Watch): 监听与其负责的 CR 相关的事件。</li>
+<li>分析 (Analyze): 比较当前状态与期望状态的差异。</li>
+<li>调谐 (Reconcile): 执行必要的操作以达成期望状态。</li>
+</ol>
+</li>
+</ul>
+<h3 id="调谐循环-reconciliation-loop">调谐循环 (Reconciliation Loop)</h3>
+<ul>
+<li>定义: 调谐循环是控制器的核心逻辑,持续执行以确保系统状态与期望状态一致。</li>
+<li>过程:
+<ol>
+<li>获取 CR 实例的最新状态。</li>
+<li>观察相关资源的实际状态。</li>
+<li>比较实际状态与期望状态。</li>
+<li>执行必要的操作以消除差异。</li>
+<li>更新 CR 的状态。</li>
+</ol>
+</li>
+</ul>
+<h3 id="operator-sdk-和-kubebuilder">Operator SDK 和 Kubebuilder</h3>
+<ul>
+<li>作用: 这些工具简化了 Operator 的开发过程,提供了脚手架和常用功能。</li>
+<li>功能: 生成代码框架、处理常见的 Kubernetes 交互、提供测试工具等。</li>
+</ul>
+<h3 id="工作流程示例">工作流程示例</h3>
+<p>以数据库 Operator 为例:</p>
+<ol>
+<li>用户创建一个描述所需数据库配置的 CR。</li>
+<li>Operator 的控制器检测到新的 CR 被创建。</li>
+<li>控制器分析 CR 并开始调谐过程:
+<ul>
+<li>创建必要的 Kubernetes 资源(如 Pods, Services, ConfigMaps)。</li>
+<li>配置数据库软件。</li>
+<li>设置监控和备份。4. 控制器持续监控数据库状态,执行自动化操作(如扩缩容、备份、升级)。</li>
+</ul>
+</li>
+<li>当 CR 被更新时,控制器检测变化并进行相应调整。</li>
+</ol>
+<h3 id="状态报告">状态报告</h3>
+<ul>
+<li>Operator 通过更新 CR 的 status 字段来报告应用的当前状态。</li>
+<li>这允许用户和其他系统组件了解应用的运行情况。</li>
+</ul>
+<h3 id="错误处理和重试机制">错误处理和重试机制</h3>
+<ul>
+<li>Operator 实现了错误处理和重试逻辑,以处理临时故障和异常情况。</li>
+<li>复杂的 Operator 还可能实现自我修复和故障转移机制。</li>
+</ul>
+<h3 id="扩展-kubernetes-api">扩展 Kubernetes API</h3>
+<ul>
+<li>Operator 通过 CRD 和自定义控制器扩展了 Kubernetes API。</li>
+<li>这使得复杂应用可以像内置资源一样使用 kubectl 和其他 Kubernetes 工具进行管理。</li>
+</ul>
+<p>通过这些机制,Operator 能够自动化复杂应用的管理,将人类操作员的知识编码到软件中。这不仅提高了效率和可靠性,还标准化了复杂应用的部署和管理流程。</p>
+<h2 id="reconsile-机制">Reconsile 机制</h2>
+<p>调谐循环的具体实现过程:</p>
+<h3 id="触发机制">触发机制</h3>
+<p>调谐循环可以通过以下方式触发:</p>
+<ul>
+<li>资源变更: 当相关的自定义资源(CR)被创建、更新或删除时。</li>
+<li>周期性调度: 控制器定期触发调谐,即使没有明显的变化。</li>
+<li>外部事件: 如集群状态变化、定时任务等。</li>
+</ul>
+<h3 id="获取资源状态">获取资源状态</h3>
+<pre><code class="language-go">func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+    // 获取 CR 实例
+    var cr myapp.MyCustomResource
+    if err := r.Get(ctx, req.NamespacedName, &amp;cr); err != nil {
+        // 处理错误,如资源不存在
+        return ctrl.Result{}, client.IgnoreNotFound(err)
+    }
+
+    // ... 后续步骤
+}
+
+</code></pre>
+<h3 id="状态比对">状态比对</h3>
+<p>比较 CR 中定义的期望状态与实际观察到的集群状态:</p>
+<pre><code class="language-go">// 检查所需的 Deployment 是否存在
+deployment := &amp;appsv1.Deployment{}
+err := r.Get(ctx, types.NamespacedName{Name: cr.Name, Namespace: cr.Namespace}, deployment)
+if err != nil &amp;&amp; errors.IsNotFound(err) {
+    // Deployment 不存在,需要创建
+    return r.createDeployment(ctx, cr)
+} else if err != nil {
+    // 其他错误
+    return ctrl.Result{}, err
+}
+
+// 比较 Deployment 规格
+if !reflect.DeepEqual(deployment.Spec, desiredDeploymentSpec(cr)) {
+    // 需要更新 Deployment
+    return r.updateDeployment(ctx, cr, deployment)
+}
+</code></pre>
+<h3 id="执行调谐操作">执行调谐操作</h3>
+<p>根据状态比对结果,执行必要的操作:</p>
+<pre><code class="language-go">func (r *Reconciler) createDeployment(ctx context.Context, cr *myapp.MyCustomResource) (ctrl.Result, error) {
+    deployment := &amp;appsv1.Deployment{
+        ObjectMeta: metav1.ObjectMeta{
+            Name:      cr.Name,
+            Namespace: cr.Namespace,
+        },
+        Spec: desiredDeploymentSpec(cr),
+    }
+    if err := r.Create(ctx, deployment); err != nil {
+        return ctrl.Result{}, err
+    }
+    return ctrl.Result{Requeue: true}, nil
+}
+
+func (r *Reconciler) updateDeployment(ctx context.Context, cr *myapp.MyCustomResource, deployment *appsv1.Deployment) (ctrl.Result, error) {
+    deployment.Spec = desiredDeploymentSpec(cr)
+    if err := r.Update(ctx, deployment); err != nil {
+        return ctrl.Result{}, err
+    }
+    return ctrl.Result{Requeue: true}, nil
+}
+</code></pre>
+<h3 id="更新状态">更新状态</h3>
+<p>操作完成后,更新 CR 的状态:</p>
+<pre><code class="language-go">func (r *Reconciler) updateStatus(ctx context.Context, cr *myapp.MyCustomResource) error {
+    cr.Status.Phase = &quot;Reconciled&quot;
+    cr.Status.ObservedGeneration = cr.Generation
+    return r.Status().Update(ctx, cr)
+}
+</code></pre>
+<h3 id="错误处理和重试">错误处理和重试</h3>
+<p>实现错误处理和重试逻辑:</p>
+<pre><code class="language-go">if err != nil {
+    // 记录错误
+    r.Log.Error(err, &quot;Reconciliation failed&quot;)
+    // 重新入队以便稍后重试
+    return ctrl.Result{Requeue: true, RequeueAfter: time.Second * 30}, err
+}
+</code></pre>
+<h3 id="返回结果">返回结果</h3>
+<p>调谐函数返回一个 Result 和一个错误:</p>
+<ul>
+<li><code>Result.Requeue</code>: 是否需要重新入队。</li>
+<li><code>Result.RequeueAfter</code>: 多长时间后重新调谐。</li>
+<li>返回的错误: 如果非nil,控制器会自动重新入队。</li>
+</ul>
+<pre><code class="language-go">return ctrl.Result{}, nil // 成功,无需立即重新调谐
+// 或
+return ctrl.Result{Requeue: true}, nil // 需要立即重新调谐
+// 或
+return ctrl.Result{RequeueAfter: time.Minute * 5}, nil // 5分钟后重新调谐
+</code></pre>
+<h3 id="并发和线程安全">并发和线程安全</h3>
+<p>确保调谐逻辑是幂等的和线程安全的,因为可能会并发执行多个调谐循环。</p>
+<h3 id="性能考虑">性能考虑</h3>
+<ul>
+<li>使用索引和缓存来提高查询效率。</li>
+<li>实现合理的重试策略,避免不必要的调谐。</li>
+</ul>
+<h3 id="监控和日志">监控和日志</h3>
+<p>在调谐过程中添加适当的日志和监控指标:</p>
+<pre><code class="language-go">r.Log.Info(&quot;Reconciling MyCustomResource&quot;, &quot;name&quot;, cr.Name, &quot;namespace&quot;, cr.Namespace)
+// ... 调谐逻辑 ...
+r.Metrics.ReconcileCount.Inc() // 增加调谐计数指标
+</code></pre>
+<h2 id="并发处理">并发处理</h2>
+<h3 id="使用乐观锁optimistic-locking">使用乐观锁（Optimistic Locking）</h3>
+<p>Kubernetes 使用 ResourceVersion 来实现乐观锁。每次更新资源时，都应该包含资源的当前版本：</p>
+<pre><code class="language-go">func (r *Reconciler) updateResource(ctx context.Context, resource *myapp.MyResource) error {
+    // 获取当前资源版本
+    currentResource := &amp;myapp.MyResource{}
+    if err := r.Get(ctx, types.NamespacedName{Name: resource.Name, Namespace: resource.Namespace}, currentResource); err != nil {
+        return err
+    }
+
+    // 更新资源
+    resource.ResourceVersion = currentResource.ResourceVersion
+    if err := r.Update(ctx, resource); err != nil {
+        if errors.IsConflict(err) {
+            // 处理冲突，可能需要重试
+            return &amp;RetryError{Err: err}
+        }
+        return err
+    }
+    return nil
+}
+</code></pre>
+<h3 id="实现幂等操作">实现幂等操作</h3>
+<p>确保调谐操作是幂等的，即多次执行相同的操作不会产生不同的结果：</p>
+<pre><code class="language-go">func (r *Reconciler) ensureDeployment(ctx context.Context, cr *myapp.MyCustomResource) error {
+    deployment := &amp;appsv1.Deployment{}
+    err := r.Get(ctx, types.NamespacedName{Name: cr.Name, Namespace: cr.Namespace}, deployment)
+    if err != nil &amp;&amp; errors.IsNotFound(err) {
+        // 创建 Deployment
+        newDeployment := r.newDeploymentForCR(cr)
+        return r.Create(ctx, newDeployment)
+    } else if err != nil {
+        return err
+    }
+
+    // 检查是否需要更新
+    if !reflect.DeepEqual(deployment.Spec, r.desiredDeploymentSpec(cr)) {
+        deployment.Spec = r.desiredDeploymentSpec(cr)
+        return r.Update(ctx, deployment)
+    }
+
+    return nil // 不需要任何操作
+</code></pre>
+<h3 id="使用状态机">使用状态机</h3>
+<p>实现清晰的状态机来管理资源的生命周期，这有助于处理并发操作：</p>
+<pre><code class="language-go">
+复制
+func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+    cr := &amp;myapp.MyCustomResource{}
+    if err := r.Get(ctx, req.NamespacedName, cr); err != nil {
+        return ctrl.Result{}, client.IgnoreNotFound(err)
+    }
+
+    switch cr.Status.Phase {
+    case &quot;&quot;:
+        return r.handleInitialPhase(ctx, cr)
+    case &quot;Pending&quot;:
+        return r.handlePendingPhase(ctx, cr)
+    case &quot;Running&quot;:
+        return r.handleRunningPhase(ctx, cr)
+    // ... 其他阶段
+    }
+
+    return ctrl.Result{}, nil
+}
+</code></pre>
+<h3 id="使用-finalizers">使用 Finalizers</h3>
+<p>Finalizers 可以确保在资源被删除之前执行必要的清理操作：</p>
+<pre><code class="language-go">const myFinalizerName = &quot;myapp.example.com/finalizer&quot;
+
+func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+    cr := &amp;myapp.MyCustomResource{}
+    if err := r.Get(ctx, req.NamespacedName, cr); err != nil {
+        return ctrl.Result{}, client.IgnoreNotFound(err)
+    }
+
+    if cr.ObjectMeta.DeletionTimestamp.IsZero() {
+        // 对象未被标记为删除，确保 finalizer 存在
+        if !containsString(cr.ObjectMeta.Finalizers, myFinalizerName) {
+            cr.ObjectMeta.Finalizers = append(cr.ObjectMeta.Finalizers, myFinalizerName)
+            if err := r.Update(ctx, cr); err != nil {
+                return ctrl.Result{}, err
+            }
+        }
+    } else {
+        // 对象被标记为删除
+        if containsString(cr.ObjectMeta.Finalizers, myFinalizerName) {
+            if err := r.finalizeResource(ctx, cr); err != nil {
+                return ctrl.Result{}, err
+            }
+            cr.ObjectMeta.Finalizers = removeString(cr.ObjectMeta.Finalizers, myFinalizerName)
+            if err := r.Update(ctx, cr); err != nil {
+                return ctrl.Result{}, err
+            }
+        }
+        return ctrl.Result{}, nil
+    }
+
+    // ... 正常的调谐逻辑
+}
+</code></pre>
+<h3 id="使用-owner-references">使用 Owner References</h3>
+<p>Owner References 可以帮助管理资源之间的依赖关系，并确保子资源随父资源的删除而删除：</p>
+<pre><code class="language-go">func (r *Reconciler) createChildResource(ctx context.Context, cr *myapp.MyCustomResource) error {
+    child := &amp;someapi.ChildResource{
+        ObjectMeta: metav1.ObjectMeta{
+            Name:      cr.Name + &quot;-child&quot;,
+            Namespace: cr.Namespace,
+            OwnerReferences: []metav1.OwnerReference{
+                *metav1.NewControllerRef(cr, myapp.GroupVersion.WithKind(&quot;MyCustomResource&quot;)),
+            },
+        },
+        Spec: someapi.ChildResourceSpec{
+            // ... 设置规格
+        },
+    }
+    return r.Create(ctx, child)
+}
+</code></pre>
+<h3 id="实现合适的重试逻辑">实现合适的重试逻辑</h3>
+<p>对于可能因并发问题而失败的操作，实现适当的重试逻辑：</p>
+<pre><code class="language-go">func (r *Reconciler) retryOperation(ctx context.Context, operation func() error) error {
+    return retry.RetryOnConflict(retry.DefaultRetry, func() error {
+        err := operation()
+        if errors.IsConflict(err) {
+            // 冲突时重试
+            return err
+        }
+        return nil
+    })
+}
+</code></pre>
+<h3 id="使用分布式锁">使用分布式锁</h3>
+<p>对于某些关键操作，可能需要使用分布式锁来确保在集群范围内的互斥：</p>
+<pre><code class="language-go">import &quot;github.com/kubernetes-sigs/controller-runtime/pkg/client/apiutil&quot;
+
+func (r *Reconciler) performCriticalOperation(ctx context.Context, cr *myapp.MyCustomResource) error {
+    // 创建一个锁对象
+    lock := &amp;coordinationv1.Lease{
+        ObjectMeta: metav1.ObjectMeta{
+            Name:      &quot;my-critical-operation-lock&quot;,
+            Namespace: cr.Namespace,
+        },
+    }
+
+    // 尝试获取锁
+    err := r.Create(ctx, lock)
+    if err != nil &amp;&amp; !errors.IsAlreadyExists(err) {
+        return err
+    }
+
+    if err == nil {
+        // 成功获取锁，执行操作
+        defer r.Delete(ctx, lock) // 确保操作完成后释放锁
+        return r.doCriticalOperation(ctx, cr)
+    }
+
+    // 锁已被其他实例持有，可以选择等待或跳过
+    return nil
+}
+</code></pre>
+<h2 id="informer-机制">Informer 机制</h2>
+<pre><code class="language-go">+----------------+     List/Watch     +-------------+
+|                | &lt;----------------&gt; |             |
+|   API Server   |                    |  Reflector  |
+|                | &lt;----------------&gt; |             |
++----------------+     Watch Events   +------+------+
+                                             |
+                                             | Add Deltas
+                                             |
+                                             v
+                       +--------------------+
+                       |                    |
+                       |     DeltaFIFO      |
+                       |                    |
+                       +--------------------+
+                                 ^
+                                 |
+                                 | Pop Deltas
+                                 |
+              +------------------+-----------------+
+              |                                    |
+              |         Shared Informer            |
+              |                                    |
+              +------------------+-----------------+
+                                 |
+                   Update Cache  |  Trigger Handlers
+                                 |
+    +--------------------+     +-v-------------+
+    |                    |     |               |
+    |      Indexer       |     | Event Handlers|
+    |     (Cache)        |     |               |
+    |                    |     |               |
+    +--------------------+     +---------------+
+              ^                        ^
+              |                        |
+              |                        |
+    +---------+------------------------+----------------+
+    |                                                   |
+    |               Custom Controller                   |
+    |                                                   |
+    |  +-------------------+  +----------------------+  |
+    |  |   Reconcile Loop  |  |  Resource Event      |  |
+    |  |                   |  |  Handlers            |  |
+    |  | +---------------+ |  |                      |  |
+    |  | | Get from Cache| |  | +------------------+ |  |
+    |  | +---------------+ |  | | OnAdd Handler    | |  |
+    |  |                   |  | +------------------+ |  |
+    |  | +---------------+ |  | +------------------+ |  |
+    |  | | Update Status | |  | | OnUpdate Handler | |  |
+    |  | +---------------+ |  | +------------------+ |  |
+    |  |                   |  | +------------------+ |  |
+    |  | +---------------+ |  | | OnDelete Handler | |  |
+    |  | | Create/Update | |  | +------------------+ |  |
+    |  | +---------------+ |  |                      |  |
+    |  |                   |  |                      |  |
+    |  +-------------------+  +----------------------+  |
+    |                                                   |
+    +---------------------------------------------------+
+</code></pre>
+<p>Informer 机制是 Kubernetes 客户端中用于高效监视和缓存资源对象的核心组件。它允许客户端(如控制器或 Operator)以一种高效、可扩展的方式跟踪 Kubernetes 资源的变化。</p>
+<p>Shared Informer：</p>
+<ul>
+<li>这是 client-go 库提供的标准 Informer 实现。</li>
+<li>它管理 Reflector、DeltaFIFO、和 Indexer。</li>
+<li>多个 controller 可以共享同一个 Informer，以减少资源消耗。</li>
+</ul>
+<p>Custom Controller：</p>
+<ul>
+<li>这是自定义 controller。</li>
+<li>它包含两个主要部分：Reconcile Loop 和 Resource Event Handlers。</li>
+</ul>
+<p>Reconcile Loop：</p>
+<ul>
+<li>这是 controller 的核心逻辑，负责协调资源的实际状态和期望状态。</li>
+<li>从 Indexer（缓存）中获取资源信息，而不是直接查询 API Server。</li>
+<li>执行必要的创建、更新或删除操作。</li>
+<li>更新资源的状态。</li>
+</ul>
+<p>Resource Event Handlers：</p>
+<ul>
+<li>这些是回调函数，用于响应资源的添加、更新和删除事件。</li>
+<li>通常，这些处理器会将资源的 key 加入到工作队列中，以便 Reconcile Loop 处理。</li>
+</ul>
+<p>工作流程：</p>
+<ul>
+<li>Shared Informer 监听 API Server 的变化。</li>
+<li>当资源发生变化时，Shared Informer 更新本地缓存（Indexer）。</li>
+<li>同时，Shared Informer 触发相应的 Event Handler。</li>
+<li>Event Handler 将资源的 key 加入工作队列。</li>
+<li>Reconcile Loop 从工作队列中获取 key，然后从缓存中读取资源信息。</li>
+<li>Reconcile Loop 执行必要的操作，如创建、更新或删除资源。</li>
+<li>操作完成后，Reconcile Loop 更新资源状态。</li>
+</ul>
+<p>优势：</p>
+<ul>
+<li>减少对 API Server 的直接访问，提高性能。</li>
+<li>提供一致的资源视图。</li>
+<li>允许多个 controller 共享同一个 Informer，节省资源。</li>
+<li>支持事件驱动的编程模型。</li>
+</ul>
+<h2 id="错误处理和重试-2">错误处理和重试</h2>
+<p>在 Reconcile Loop 中正确处理错误和实现有效的重试机制是确保 controller 稳定性和可靠性的关键。以下是一些处理错误和实现重试机制的策略和最佳实践：</p>
+<h3 id="错误分类">错误分类</h3>
+<p>首先，将错误分为不同的类别：</p>
+<p>a) 临时错误：可能会自行解决的错误，如网络抖动。<br>
+b) 永久错误：需要人工干预的错误，如配置错误。<br>
+c) 不可恢复错误：无法解决的错误，如资源不存在。</p>
+<h3 id="实现重试逻辑">实现重试逻辑</h3>
+<p>对于临时错误，实现指数退避重试：</p>
+<pre><code class="language-go">import (
+    &quot;time&quot;
+    &quot;k8s.io/apimachinery/pkg/util/wait&quot;
+    ctrl &quot;sigs.k8s.io/controller-runtime&quot;
+)
+
+func (r *MyReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+    // ... 其他逻辑 ...
+
+    err := wait.ExponentialBackoff(wait.Backoff{
+        Duration: time.Second,
+        Factor:   2,
+        Jitter:   0.1,
+        Steps:    5,
+    }, func() (bool, error) {
+        err := r.doSomething(ctx)
+        if err != nil {
+            // 检查是否是临时错误
+            if isTemporaryError(err) {
+                return false, nil // 继续重试
+            }
+            return false, err // 永久错误，停止重试
+        }
+        return true, nil // 成功，停止重试
+    })
+
+    if err != nil {
+        // 处理最终错误
+        return ctrl.Result{}, err
+    }
+
+    return ctrl.Result{}, nil
+}
+
+func isTemporaryError(err error) bool {
+    // 实现逻辑来判断是否为临时错误
+    // 例如，检查错误类型或错误消息
+}
+</code></pre>
+<h3 id="使用-resultrequeueafter">使用 Result.RequeueAfter</h3>
+<p>对于需要延迟重试的情况，使用 <code>Result.RequeueAfter</code>：</p>
+<pre><code class="language-go">func (r *MyReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+    // ... 其他逻辑 ...
+
+    if someCondition {
+        // 5分钟后重新入队
+        return ctrl.Result{RequeueAfter: time.Minute * 5}, nil
+    }
+
+    return ctrl.Result{}, nil
+}
+</code></pre>
+<h3 id="错误记录和度量">错误记录和度量</h3>
+<p>记录错误并收集度量信息，以便于监控和调试：</p>
+<pre><code class="language-go">import (
+    &quot;github.com/go-logr/logr&quot;
+    &quot;sigs.k8s.io/controller-runtime/pkg/metrics&quot;
+    &quot;github.com/prometheus/client_golang/prometheus&quot;
+)
+
+var (
+    reconcileErrors = prometheus.NewCounterVec(
+        prometheus.CounterOpts{
+            Name: &quot;reconcile_errors_total&quot;,
+            Help: &quot;Total number of reconciliation errors&quot;,
+        },
+        []string{&quot;error_type&quot;},
+    )
+)
+
+func init() {
+    metrics.Registry.MustRegister(reconcileErrors)
+}
+
+func (r *MyReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+    log := logr.FromContext(ctx)
+
+    // ... 其他逻辑 ...
+
+    if err != nil {
+        log.Error(err, &quot;Reconciliation error&quot;, &quot;name&quot;, req.Name, &quot;namespace&quot;, req.Namespace)
+        reconcileErrors.WithLabelValues(categorizeError(err)).Inc()
+        return ctrl.Result{}, err
+    }
+
+    return ctrl.Result{}, nil
+}
+
+func categorizeError(err error) string {
+    // 实现错误分类逻辑
+    // 返回 &quot;temporary&quot;, &quot;permanent&quot;, 或其他分类
+}
+</code></pre>
+<h3 id="状态更新和错误处理">状态更新和错误处理</h3>
+<p>在更新资源状态时处理错误：</p>
+<pre><code class="language-go">func (r *MyReconciler) updateStatus(ctx context.Context, instance *myapiv1.MyResource, status string) error {
+    instance.Status.State = status
+    if err := r.Status().Update(ctx, instance); err != nil {
+        return fmt.Errorf(&quot;failed to update status: %w&quot;, err)
+    }
+    return nil
+}
+
+func (r *MyReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+    instance := &amp;myapiv1.MyResource{}
+    if err := r.Get(ctx, req.NamespacedName, instance); err != nil {
+        return ctrl.Result{}, client.IgnoreNotFound(err)
+    }
+
+    // ... 主要逻辑 ...
+
+    if err := r.updateStatus(ctx, instance, &quot;Reconciled&quot;); err != nil {
+        return ctrl.Result{}, err
+    }
+
+    return ctrl.Result{}, nil
+}
+</code></pre>
+<h3 id="使用-finalizer-处理删除操作">使用 finalizer 处理删除操作</h3>
+<p>确保在资源被删除前执行必要的清理操作：</p>
+<pre><code class="language-go">const myFinalizerName = &quot;myresource.finalizers.myapp.com&quot;
+
+func (r *MyReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+    instance := &amp;myapiv1.MyResource{}
+    if err := r.Get(ctx, req.NamespacedName, instance); err != nil {
+        return ctrl.Result{}, client.IgnoreNotFound(err)
+    }
+
+    if instance.ObjectMeta.DeletionTimestamp.IsZero() {
+        // 资源没有被标记为删除
+        if !containsString(instance.ObjectMeta.Finalizers, myFinalizerName) {
+            instance.ObjectMeta.Finalizers = append(instance.ObjectMeta.Finalizers, myFinalizerName)
+            if err := r.Update(ctx, instance); err != nil {
+                return ctrl.Result{}, err
+            }
+        }
+    } else {
+        // 资源被标记为删除
+        if containsString(instance.ObjectMeta.Finalizers, myFinalizerName) {
+            if err := r.deleteExternalResources(ctx, instance); err != nil {
+                return ctrl.Result{}, err
+            }
+
+            instance.ObjectMeta.Finalizers = removeString(instance.ObjectMeta.Finalizers, myFinalizerName)
+            if err := r.Update(ctx, instance); err != nil {
+                return ctrl.Result{}, err
+            }
+        }
+        return ctrl.Result{}, nil
+    }
+
+    // ... 主要逻辑 ...
+
+    return ctrl.Result{}, nil
+}
+
+func (r *MyReconciler) deleteExternalResources(ctx context.Context, instance *myapiv1.MyResource) error {
+    // 实现删除外部资源的逻辑
+    return nil
+}
+</code></pre>
+<h3 id="处理并发更新">处理并发更新</h3>
+<p>使用 <code>Update</code> 或 <code>Patch</code> 操作时，处理可能的并发更新冲突：</p>
+<pre><code class="language-go">import &quot;k8s.io/client-go/util/retry&quot;
+
+func (r *MyReconciler) updateResource(ctx context.Context, instance *myapiv1.MyResource) error {
+    return retry.RetryOnConflict(retry.DefaultRetry, func() error {
+        // 获取最新版本的资源
+        if err := r.Get(ctx, client.ObjectKeyFromObject(instance), instance); err != nil {
+            return err
+        }
+
+        // 进行必要的更新
+        instance.Spec.SomeField = &quot;new value&quot;
+
+        // 尝试更新
+        if err := r.Update(ctx, instance); err != nil {
+            return err
+        }
+        return nil
+    })
+}
+</code></pre>
+<h2 id="状态更新最佳实践">状态更新最佳实践</h2>
+<h3 id="使用子资源状态更新">使用子资源状态更新</h3>
+<p>Kubernetes 提供了 <code>/status</code> 子资源，允许你独立于主资源更新状态。这样可以分离状态更新和规格更新的权限，并减少更新冲突。</p>
+<pre><code class="language-go">func (r *MyReconciler) updateStatus(ctx context.Context, instance *myapiv1.MyResource) error {
+    return r.Status().Update(ctx, instance)
+}
+</code></pre>
+<h3 id="实现乐观并发控制">实现乐观并发控制</h3>
+<p>使用 <code>retry.RetryOnConflict</code> 来处理可能的并发更新冲突：</p>
+<pre><code class="language-go">import (
+    &quot;k8s.io/client-go/util/retry&quot;
+    &quot;sigs.k8s.io/controller-runtime/pkg/client&quot;
+)
+
+func (r *MyReconciler) updateStatus(ctx context.Context, instance *myapiv1.MyResource) error {
+    return retry.RetryOnConflict(retry.DefaultRetry, func() error {
+        // 获取最新版本的资源
+        if err := r.Get(ctx, client.ObjectKeyFromObject(instance), instance); err != nil {
+            return err
+        }
+        
+        // 更新状态字段
+        instance.Status.Phase = &quot;Running&quot;
+        instance.Status.LastUpdateTime = metav1.Now()
+        
+        // 尝试更新状态
+        return r.Status().Update(ctx, instance)
+    })
+}
+</code></pre>
+<h3 id="使用部分更新patch">使用部分更新（Patch）</h3>
+<p>对于大型资源或频繁更新的情况，考虑使用 Patch 操作而不是完整的 Update：</p>
+<pre><code class="language-go">import &quot;sigs.k8s.io/controller-runtime/pkg/client&quot;
+
+func (r *MyReconciler) patchStatus(ctx context.Context, instance *myapiv1.MyResource) error {
+    patch := client.MergeFrom(instance.DeepCopy())
+    instance.Status.Phase = &quot;Running&quot;
+    instance.Status.LastUpdateTime = metav1.Now()
+    return r.Status().Patch(ctx, instance, patch)
+}
+</code></pre>
+<h3 id="实现状态条件">实现状态条件</h3>
+<p>使用条件（Conditions）来表示资源的详细状态，而不是简单的字符串状态：</p>
+<pre><code class="language-go">import (
+    metav1 &quot;k8s.io/apimachinery/pkg/apis/meta/v1&quot;
+)
+
+type MyResourceStatus struct {
+    Conditions []metav1.Condition `json:&quot;conditions,omitempty&quot;`
+}
+
+func (r *MyReconciler) updateCondition(instance *myapiv1.MyResource, conditionType string, status metav1.ConditionStatus, reason, message string) {
+    newCondition := metav1.Condition{
+        Type:               conditionType,
+        Status:             status,
+        Reason:             reason,
+        Message:            message,
+        LastTransitionTime: metav1.Now(),
+    }
+
+    // 更新或添加条件
+    for i, condition := range instance.Status.Conditions {
+        if condition.Type == conditionType {
+            if condition.Status != status {
+                instance.Status.Conditions[i] = newCondition
+            }
+            return
+        }
+    }
+    instance.Status.Conditions = append(instance.Status.Conditions, newCondition)
+}
+</code></pre>
+<h3 id="最小化状态更新">最小化状态更新</h3>
+<p>只在状态实际发生变化时才进行更新，以减少不必要的 API 调用：</p>
+<pre><code class="language-go">func (r *MyReconciler) updateStatusIfChanged(ctx context.Context, instance *myapiv1.MyResource, newStatus myapiv1.MyResourceStatus) error {
+    if !reflect.DeepEqual(instance.Status, newStatus) {
+        instance.Status = newStatus
+        return r.updateStatus(ctx, instance)
+    }
+    return nil
+}
+</code></pre>
+<h3 id="使用结构化日志记录状态变化">使用结构化日志记录状态变化</h3>
+<p>记录状态变化，以便于调试和监控：</p>
+<pre><code class="language-go">import &quot;github.com/go-logr/logr&quot;
+
+func (r *MyReconciler) logStatusChange(log logr.Logger, instance *myapiv1.MyResource, oldStatus, newStatus myapiv1.MyResourceStatus) {
+    log.Info(&quot;Status changed&quot;,
+        &quot;name&quot;, instance.Name,
+        &quot;namespace&quot;, instance.Namespace,
+        &quot;oldPhase&quot;, oldStatus.Phase,
+        &quot;newPhase&quot;, newStatus.Phase,
+    )
+}
+</code></pre>
+<h3 id="实现状态聚合">实现状态聚合</h3>
+<p>如果你的资源有子资源，考虑实现状态聚合：</p>
+<pre><code class="language-go">
+复制
+func (r *MyReconciler) aggregateStatus(ctx context.Context, instance *myapiv1.MyResource) error {
+    // 获取子资源
+    childList := &amp;myapiv1.ChildResourceList{}
+    if err := r.List(ctx, childList, client.InNamespace(instance.Namespace), client.MatchingFields{&quot;parentName&quot;: instance.Name}); err != nil {
+        return err
+    }
+
+    // 聚合子资源状态
+    readyCount := 0
+    for _, child := range childList.Items {
+        if child.Status.Phase == &quot;Ready&quot; {
+            readyCount++
+        }
+    }
+
+    // 更新父资源状态
+    instance.Status.ReadyChildren = readyCount
+    instance.Status.TotalChildren = len(childList.Items)
+
+    if readyCount == len(childList.Items) {
+        instance.Status.Phase = &quot;Ready&quot;
+    } else {
+        instance.Status.Phase = &quot;Progressing&quot;
+    }
+
+    return r.updateStatus(ctx, instance)
+}
+</code></pre>
+<h3 id="实现状态校验">实现状态校验</h3>
+<p>在更新状态之前，实现校验逻辑以确保状态的一致性：</p>
+<pre><code class="language-go">func (r *MyReconciler) validateStatus(status *myapiv1.MyResourceStatus) error {
+    if status.ReadyChildren &gt; status.TotalChildren {
+        return fmt.Errorf(&quot;ready children count cannot be greater than total children&quot;)
+    }
+    // 其他校验逻辑...
+    return nil
+}
+</code></pre>
+<h3 id="使用-finalizer-确保状态更新">使用 finalizer 确保状态更新</h3>
+<p>在资源被删除之前，使用 finalizer 确保最终状态被正确更新：</p>
+<pre><code class="language-go">const myFinalizerName = &quot;myresource.finalizers.example.com&quot;
+
+func (r *MyReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+    instance := &amp;myapiv1.MyResource{}
+    if err := r.Get(ctx, req.NamespacedName, instance); err != nil {
+        return ctrl.Result{}, client.IgnoreNotFound(err)
+    }
+
+    if instance.ObjectMeta.DeletionTimestamp.IsZero() {
+        // 资源未被标记为删除
+        if !containsString(instance.ObjectMeta.Finalizers, myFinalizerName) {
+            instance.ObjectMeta.Finalizers = append(instance.ObjectMeta.Finalizers, myFinalizerName)
+            if err := r.Update(ctx, instance); err != nil {
+                return ctrl.Result{}, err
+            }
+        }
+    } else {
+        // 资源已被标记为删除
+        if containsString(instance.ObjectMeta.Finalizers, myFinalizerName) {
+            // 执行清理操作
+            if err := r.finalizeResource(ctx, instance); err != nil {
+                return ctrl.Result{}, err
+            }
+
+            // 更新最终状态
+            instance.Status.Phase = &quot;Terminating&quot;
+            if err := r.updateStatus(ctx, instance); err != nil {
+                return ctrl.Result{}, err
+            }
+
+            // 移除 finalizer
+            instance.ObjectMeta.Finalizers = removeString(instance.ObjectMeta.Finalizers, myFinalizerName)
+            if err := r.Update(ctx, instance); err != nil {
+                return ctrl.Result{}, err
+            }
+        }
+        return ctrl.Result{}, nil
+    }
+
+    // ... 主要的 reconcile 逻辑 ...
+
+    return ctrl.Result{}, nil
+}
+</code></pre>
+<h3 id="实现状态恢复机制">实现状态恢复机制</h3>
+<p>在 controller 重启或出现异常情况时，实现状态恢复机制：</p>
+<pre><code class="language-go">
+func (r *MyReconciler) recoverStatus(ctx context.Context, instance *myapiv1.MyResource) error {
+    // 检查实际状态并更新资源状态
+    actualStatus, err := r.checkActualStatus(ctx, instance)
+    if err != nil {
+        return err
+    }
+
+    if !reflect.DeepEqual(instance.Status, actualStatus) {
+        instance.Status = actualStatus
+        return r.updateStatus(ctx, instance)
+    }
+    return nil
+}
+</code></pre>
+<h2 id="status-conditions">Status Conditions</h2>
+<p>状态条件（Status Conditions）是 Kubernetes 中表示资源详细状态的一种标准方式。它们提供了比简单的状态字符串更丰富的信息，使得资源的状态更易于理解和处理。以下是如何实现状态条件的详细说明：</p>
+<h3 id="定义状态条件">定义状态条件</h3>
+<p>首先，在你的自定义资源（CRD）定义中添加条件字段：</p>
+<pre><code class="language-go">import metav1 &quot;k8s.io/apimachinery/pkg/apis/meta/v1&quot;
+
+type MyResourceStatus struct {
+    // 其他状态字段...
+    Conditions []metav1.Condition `json:&quot;conditions,omitempty&quot;`
+}
+</code></pre>
+<h3 id="定义条件类型">定义条件类型</h3>
+<p>为你的资源定义一组标准的条件类型：</p>
+<pre><code class="language-go">const (
+    TypeAvailable   = &quot;Available&quot;
+    TypeProgressing = &quot;Progressing&quot;
+    TypeDegraded    = &quot;Degraded&quot;
+    // 其他条件类型...
+)
+</code></pre>
+<h3 id="实现更新条件的函数">实现更新条件的函数</h3>
+<p>创建一个辅助函数来更新或添加条件：</p>
+<pre><code class="language-go">func setCondition(conditions *[]metav1.Condition, conditionType string, status metav1.ConditionStatus, reason, message string) {
+    now := metav1.Now()
+    for i := range *conditions {
+        if (*conditions)[i].Type == conditionType {
+            if (*conditions)[i].Status != status {
+                (*conditions)[i].Status = status
+                (*conditions)[i].LastTransitionTime = now
+            }
+            (*conditions)[i].Reason = reason
+            (*conditions)[i].Message = message
+            return
+        }
+    }
+
+    // 如果条件不存在，添加新条件
+    *conditions = append(*conditions, metav1.Condition{
+        Type:               conditionType,
+        Status:             status,
+        LastTransitionTime: now,
+        Reason:             reason,
+        Message:            message,
+    })
+}
+</code></pre>
+<h3 id="在-reconcile-loop-中使用条件">在 Reconcile Loop 中使用条件</h3>
+<p>在你的 Reconcile 函数中，根据资源的实际状态更新条件：</p>
+<pre><code class="language-go">func (r *MyReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+    instance := &amp;myapiv1.MyResource{}
+    if err := r.Get(ctx, req.NamespacedName, instance); err != nil {
+        return ctrl.Result{}, client.IgnoreNotFound(err)
+    }
+
+    // 检查资源是否可用
+    isAvailable, err := r.checkAvailability(ctx, instance)
+    if err != nil {
+        return ctrl.Result{}, err
+    }
+
+    if isAvailable {
+        setCondition(&amp;instance.Status.Conditions, TypeAvailable, metav1.ConditionTrue, &quot;ResourceAvailable&quot;, &quot;The resource is available&quot;)
+    } else {
+        setCondition(&amp;instance.Status.Conditions, TypeAvailable, metav1.ConditionFalse, &quot;ResourceUnavailable&quot;, &quot;The resource is not available&quot;)
+    }
+
+    // 检查资源是否正在进行中
+    isProgressing, err := r.checkProgress(ctx, instance)
+    if err != nil {
+        return ctrl.Result{}, err
+    }
+
+    if isProgressing {
+        setCondition(&amp;instance.Status.Conditions, TypeProgressing, metav1.ConditionTrue, &quot;InProgress&quot;, &quot;The resource is being processed&quot;)
+    } else {
+        setCondition(&amp;instance.Status.Conditions, TypeProgressing, metav1.ConditionFalse, &quot;Completed&quot;, &quot;The resource processing is complete&quot;)
+    }
+
+    // 更新状态
+    if err := r.Status().Update(ctx, instance); err != nil {
+        return ctrl.Result{}, err
+    }
+
+    return ctrl.Result{}, nil
+}
+</code></pre>
+<h3 id="实现获取条件的辅助函数">实现获取条件的辅助函数</h3>
+<p>为了方便检查特定条件的状态，可以实现一个辅助函数：</p>
+<pre><code class="language-go">func getCondition(conditions []metav1.Condition, conditionType string) *metav1.Condition {
+    for i := range conditions {
+        if conditions[i].Type == conditionType {
+            return &amp;conditions[i]
+        }
+    }
+    return nil
+}
+</code></pre>
+<h3 id="使用条件来决定资源的整体状态">使用条件来决定资源的整体状态</h3>
+<p>可以基于多个条件来决定资源的整体状态：</p>
+<pre><code class="language-go">func (r *MyReconciler) determineOverallStatus(instance *myapiv1.MyResource) {
+    availableCondition := getCondition(instance.Status.Conditions, TypeAvailable)
+    progressingCondition := getCondition(instance.Status.Conditions, TypeProgressing)
+    degradedCondition := getCondition(instance.Status.Conditions, TypeDegraded)
+
+    if availableCondition != nil &amp;&amp; availableCondition.Status == metav1.ConditionTrue {
+        instance.Status.Phase = &quot;Available&quot;
+    } else if degradedCondition != nil &amp;&amp; degradedCondition.Status == metav1.ConditionTrue {
+        instance.Status.Phase = &quot;Degraded&quot;
+    } else if progressingCondition != nil &amp;&amp; progressingCondition.Status == metav1.ConditionTrue {
+        instance.Status.Phase = &quot;Progressing&quot;
+    } else {
+        instance.Status.Phase = &quot;Unknown&quot;
+    }
+}
+</code></pre>
+<h3 id="实现条件的观察者模式">实现条件的观察者模式</h3>
+<p>如果你的资源有子资源或依赖其他资源，可以实现一个观察者模式来传播条件：</p>
+<pre><code class="language-go">func (r *MyReconciler) propagateConditions(ctx context.Context, instance *myapiv1.MyResource) error {
+    // 获取依赖资源
+    dep := &amp;appsv1.Deployment{}
+    err := r.Get(ctx, types.NamespacedName{Name: instance.Spec.DeploymentName, Namespace: instance.Namespace}, dep)
+    if err != nil {
+        return err
+    }
+
+    // 检查 Deployment 的条件并传播到自定义资源
+    for _, cond := range dep.Status.Conditions {
+        switch cond.Type {
+        case appsv1.DeploymentAvailable:
+            setCondition(&amp;instance.Status.Conditions, TypeAvailable, cond.Status, cond.Reason, cond.Message)
+        case appsv1.DeploymentProgressing:
+            setCondition(&amp;instance.Status.Conditions, TypeProgressing, cond.Status, cond.Reason, cond.Message)
+        }
+    }
+
+    return nil
+}
+</code></pre>
+<h3 id="实现条件的-ttltime-to-live">实现条件的 TTL（Time to Live）</h3>
+<p>对于某些条件，可能需要实现 TTL 机制，以确保旧的条件不会永久存在：</p>
+<pre><code class="language-go">func (r *MyReconciler) cleanupOldConditions(instance *myapiv1.MyResource) {
+    now := time.Now()
+    for i := len(instance.Status.Conditions) - 1; i &gt;= 0; i-- {
+        cond := instance.Status.Conditions[i]
+        if now.Sub(cond.LastTransitionTime.Time) &gt; 24*time.Hour {
+            // 移除超过24小时的条件
+            instance.Status.Conditions = append(instance.Status.Conditions[:i], instance.Status.Conditions[i+1:]...)
+        }
+    }
+}
+</code></pre>
+<h2 id="参考">参考</h2>
+<p>[1] <a href="%5Bhttps://github.com/cncf/tag-app-delivery/blob/163962c4b1cd70d085107fc579e3e04c2e14d59c/operator-whitepaper/v1/Operator-WhitePaper_v1-0.md%5D(https://github.com/cncf/tag-app-delivery/blob/163962c4b1cd70d085107fc579e3e04c2e14d59c/operator-whitepaper/v1/Operator-WhitePaper_v1-0.md)">Operator 白皮书</a></p>
+<p>[2] <a href="%5Bhttps://chinalhr.github.io/post/kubernetes-crd-operator-1/%5D(https://chinalhr.github.io/post/kubernetes-crd-operator-1/)">Kubernetes-Operator：扩展Kubernetes API Resource与Custom Controller (上)</a></p>
+<p>[3] <a href="%5Bhttps://developer.aliyun.com/article/798703%5D(https://developer.aliyun.com/article/798703)">Kubernetes Operator 开发教程</a></p>
+<p>[4] <a href="%5Bhttps://www.zhaohuabing.com/post/2023-03-09-how-to-create-a-k8s-controller/%5D(https://www.zhaohuabing.com/post/2023-03-09-how-to-create-a-k8s-controller/)">Kubernetes Controller 机制详解（一）</a></p>
+<p>[5] <a href="%5Bhttps://kubernetes.io/docs/concepts/extend-kubernetes/operator/%5D(https://kubernetes.io/docs/concepts/extend-kubernetes/operator/)">Kubernetes Operator</a></p>
+
+              </div>
+              <div class="toc-container">
+                <ul class="markdownIt-TOC">
+<li>
+<ul>
+<li><a href="#%E6%A0%B8%E5%BF%83%E6%A6%82%E5%BF%B5">核心概念</a>
+<ul>
+<li><a href="#controller">Controller</a></li>
+<li><a href="#groups-and-versions">Groups and Versions</a></li>
+<li><a href="#kind">Kind</a></li>
+<li><a href="#resources">Resources</a></li>
+<li><a href="#gvk-and-gvr">GVK and GVR</a></li>
+</ul>
+</li>
+<li><a href="#%E5%B7%A5%E4%BD%9C%E5%8E%9F%E7%90%86">工作原理</a>
+<ul>
+<li><a href="#%E8%87%AA%E5%AE%9A%E4%B9%89%E8%B5%84%E6%BA%90-custom-resources-crs">自定义资源 (Custom Resources, CRs)</a></li>
+<li><a href="#%E8%87%AA%E5%AE%9A%E4%B9%89%E8%B5%84%E6%BA%90%E5%AE%9A%E4%B9%89-custom-resource-definitions-crds">自定义资源定义 (Custom Resource Definitions, CRDs)</a></li>
+<li><a href="#%E6%8E%A7%E5%88%B6%E5%99%A8-controller">控制器 (Controller)</a></li>
+<li><a href="#%E8%B0%83%E8%B0%90%E5%BE%AA%E7%8E%AF-reconciliation-loop">调谐循环 (Reconciliation Loop)</a></li>
+<li><a href="#operator-sdk-%E5%92%8C-kubebuilder">Operator SDK 和 Kubebuilder</a></li>
+<li><a href="#%E5%B7%A5%E4%BD%9C%E6%B5%81%E7%A8%8B%E7%A4%BA%E4%BE%8B">工作流程示例</a></li>
+<li><a href="#%E7%8A%B6%E6%80%81%E6%8A%A5%E5%91%8A">状态报告</a></li>
+<li><a href="#%E9%94%99%E8%AF%AF%E5%A4%84%E7%90%86%E5%92%8C%E9%87%8D%E8%AF%95%E6%9C%BA%E5%88%B6">错误处理和重试机制</a></li>
+<li><a href="#%E6%89%A9%E5%B1%95-kubernetes-api">扩展 Kubernetes API</a></li>
+</ul>
+</li>
+<li><a href="#reconsile-%E6%9C%BA%E5%88%B6">Reconsile 机制</a>
+<ul>
+<li><a href="#%E8%A7%A6%E5%8F%91%E6%9C%BA%E5%88%B6">触发机制</a></li>
+<li><a href="#%E8%8E%B7%E5%8F%96%E8%B5%84%E6%BA%90%E7%8A%B6%E6%80%81">获取资源状态</a></li>
+<li><a href="#%E7%8A%B6%E6%80%81%E6%AF%94%E5%AF%B9">状态比对</a></li>
+<li><a href="#%E6%89%A7%E8%A1%8C%E8%B0%83%E8%B0%90%E6%93%8D%E4%BD%9C">执行调谐操作</a></li>
+<li><a href="#%E6%9B%B4%E6%96%B0%E7%8A%B6%E6%80%81">更新状态</a></li>
+<li><a href="#%E9%94%99%E8%AF%AF%E5%A4%84%E7%90%86%E5%92%8C%E9%87%8D%E8%AF%95">错误处理和重试</a></li>
+<li><a href="#%E8%BF%94%E5%9B%9E%E7%BB%93%E6%9E%9C">返回结果</a></li>
+<li><a href="#%E5%B9%B6%E5%8F%91%E5%92%8C%E7%BA%BF%E7%A8%8B%E5%AE%89%E5%85%A8">并发和线程安全</a></li>
+<li><a href="#%E6%80%A7%E8%83%BD%E8%80%83%E8%99%91">性能考虑</a></li>
+<li><a href="#%E7%9B%91%E6%8E%A7%E5%92%8C%E6%97%A5%E5%BF%97">监控和日志</a></li>
+</ul>
+</li>
+<li><a href="#%E5%B9%B6%E5%8F%91%E5%A4%84%E7%90%86">并发处理</a>
+<ul>
+<li><a href="#%E4%BD%BF%E7%94%A8%E4%B9%90%E8%A7%82%E9%94%81optimistic-locking">使用乐观锁（Optimistic Locking）</a></li>
+<li><a href="#%E5%AE%9E%E7%8E%B0%E5%B9%82%E7%AD%89%E6%93%8D%E4%BD%9C">实现幂等操作</a></li>
+<li><a href="#%E4%BD%BF%E7%94%A8%E7%8A%B6%E6%80%81%E6%9C%BA">使用状态机</a></li>
+<li><a href="#%E4%BD%BF%E7%94%A8-finalizers">使用 Finalizers</a></li>
+<li><a href="#%E4%BD%BF%E7%94%A8-owner-references">使用 Owner References</a></li>
+<li><a href="#%E5%AE%9E%E7%8E%B0%E5%90%88%E9%80%82%E7%9A%84%E9%87%8D%E8%AF%95%E9%80%BB%E8%BE%91">实现合适的重试逻辑</a></li>
+<li><a href="#%E4%BD%BF%E7%94%A8%E5%88%86%E5%B8%83%E5%BC%8F%E9%94%81">使用分布式锁</a></li>
+</ul>
+</li>
+<li><a href="#informer-%E6%9C%BA%E5%88%B6">Informer 机制</a></li>
+<li><a href="#%E9%94%99%E8%AF%AF%E5%A4%84%E7%90%86%E5%92%8C%E9%87%8D%E8%AF%95-2">错误处理和重试</a>
+<ul>
+<li><a href="#%E9%94%99%E8%AF%AF%E5%88%86%E7%B1%BB">错误分类</a></li>
+<li><a href="#%E5%AE%9E%E7%8E%B0%E9%87%8D%E8%AF%95%E9%80%BB%E8%BE%91">实现重试逻辑</a></li>
+<li><a href="#%E4%BD%BF%E7%94%A8-resultrequeueafter">使用 Result.RequeueAfter</a></li>
+<li><a href="#%E9%94%99%E8%AF%AF%E8%AE%B0%E5%BD%95%E5%92%8C%E5%BA%A6%E9%87%8F">错误记录和度量</a></li>
+<li><a href="#%E7%8A%B6%E6%80%81%E6%9B%B4%E6%96%B0%E5%92%8C%E9%94%99%E8%AF%AF%E5%A4%84%E7%90%86">状态更新和错误处理</a></li>
+<li><a href="#%E4%BD%BF%E7%94%A8-finalizer-%E5%A4%84%E7%90%86%E5%88%A0%E9%99%A4%E6%93%8D%E4%BD%9C">使用 finalizer 处理删除操作</a></li>
+<li><a href="#%E5%A4%84%E7%90%86%E5%B9%B6%E5%8F%91%E6%9B%B4%E6%96%B0">处理并发更新</a></li>
+</ul>
+</li>
+<li><a href="#%E7%8A%B6%E6%80%81%E6%9B%B4%E6%96%B0%E6%9C%80%E4%BD%B3%E5%AE%9E%E8%B7%B5">状态更新最佳实践</a>
+<ul>
+<li><a href="#%E4%BD%BF%E7%94%A8%E5%AD%90%E8%B5%84%E6%BA%90%E7%8A%B6%E6%80%81%E6%9B%B4%E6%96%B0">使用子资源状态更新</a></li>
+<li><a href="#%E5%AE%9E%E7%8E%B0%E4%B9%90%E8%A7%82%E5%B9%B6%E5%8F%91%E6%8E%A7%E5%88%B6">实现乐观并发控制</a></li>
+<li><a href="#%E4%BD%BF%E7%94%A8%E9%83%A8%E5%88%86%E6%9B%B4%E6%96%B0patch">使用部分更新（Patch）</a></li>
+<li><a href="#%E5%AE%9E%E7%8E%B0%E7%8A%B6%E6%80%81%E6%9D%A1%E4%BB%B6">实现状态条件</a></li>
+<li><a href="#%E6%9C%80%E5%B0%8F%E5%8C%96%E7%8A%B6%E6%80%81%E6%9B%B4%E6%96%B0">最小化状态更新</a></li>
+<li><a href="#%E4%BD%BF%E7%94%A8%E7%BB%93%E6%9E%84%E5%8C%96%E6%97%A5%E5%BF%97%E8%AE%B0%E5%BD%95%E7%8A%B6%E6%80%81%E5%8F%98%E5%8C%96">使用结构化日志记录状态变化</a></li>
+<li><a href="#%E5%AE%9E%E7%8E%B0%E7%8A%B6%E6%80%81%E8%81%9A%E5%90%88">实现状态聚合</a></li>
+<li><a href="#%E5%AE%9E%E7%8E%B0%E7%8A%B6%E6%80%81%E6%A0%A1%E9%AA%8C">实现状态校验</a></li>
+<li><a href="#%E4%BD%BF%E7%94%A8-finalizer-%E7%A1%AE%E4%BF%9D%E7%8A%B6%E6%80%81%E6%9B%B4%E6%96%B0">使用 finalizer 确保状态更新</a></li>
+<li><a href="#%E5%AE%9E%E7%8E%B0%E7%8A%B6%E6%80%81%E6%81%A2%E5%A4%8D%E6%9C%BA%E5%88%B6">实现状态恢复机制</a></li>
+</ul>
+</li>
+<li><a href="#status-conditions">Status Conditions</a>
+<ul>
+<li><a href="#%E5%AE%9A%E4%B9%89%E7%8A%B6%E6%80%81%E6%9D%A1%E4%BB%B6">定义状态条件</a></li>
+<li><a href="#%E5%AE%9A%E4%B9%89%E6%9D%A1%E4%BB%B6%E7%B1%BB%E5%9E%8B">定义条件类型</a></li>
+<li><a href="#%E5%AE%9E%E7%8E%B0%E6%9B%B4%E6%96%B0%E6%9D%A1%E4%BB%B6%E7%9A%84%E5%87%BD%E6%95%B0">实现更新条件的函数</a></li>
+<li><a href="#%E5%9C%A8-reconcile-loop-%E4%B8%AD%E4%BD%BF%E7%94%A8%E6%9D%A1%E4%BB%B6">在 Reconcile Loop 中使用条件</a></li>
+<li><a href="#%E5%AE%9E%E7%8E%B0%E8%8E%B7%E5%8F%96%E6%9D%A1%E4%BB%B6%E7%9A%84%E8%BE%85%E5%8A%A9%E5%87%BD%E6%95%B0">实现获取条件的辅助函数</a></li>
+<li><a href="#%E4%BD%BF%E7%94%A8%E6%9D%A1%E4%BB%B6%E6%9D%A5%E5%86%B3%E5%AE%9A%E8%B5%84%E6%BA%90%E7%9A%84%E6%95%B4%E4%BD%93%E7%8A%B6%E6%80%81">使用条件来决定资源的整体状态</a></li>
+<li><a href="#%E5%AE%9E%E7%8E%B0%E6%9D%A1%E4%BB%B6%E7%9A%84%E8%A7%82%E5%AF%9F%E8%80%85%E6%A8%A1%E5%BC%8F">实现条件的观察者模式</a></li>
+<li><a href="#%E5%AE%9E%E7%8E%B0%E6%9D%A1%E4%BB%B6%E7%9A%84-ttltime-to-live">实现条件的 TTL（Time to Live）</a></li>
+</ul>
+</li>
+<li><a href="#%E5%8F%82%E8%80%83">参考</a></li>
+</ul>
+</li>
+</ul>
+
+              </div>
+            </div>
+          </article>
+        </div>
+
+        
+          <div class="next-post">
+            <div class="next">下一篇</div>
+            <a href="https://protream.github.io/post/vzZzy3P9V/">
+              <h3 class="post-title">
+                显卡直通技术原理
+              </h3>
+            </a>
+          </div>
+        
+
+        
+
+        <div class="site-footer">
+  Powered by <a href="https://github.com/getgridea/gridea" target="_blank">&nbsp;Gridea</a>
+  <a class="rss" href="https://protream.github.io/atom.xml" target="_blank">
+    <i class="ri-rss-line"></i> RSS
+  </a>
+</div>
+
+      </div>
+    </div>
+
+    <script>
+      hljs.initHighlightingOnLoad()
+
+      let mainNavLinks = document.querySelectorAll(".markdownIt-TOC a");
+
+      // This should probably be throttled.
+      // Especially because it triggers during smooth scrolling.
+      // https://lodash.com/docs/4.17.10#throttle
+      // You could do like...
+      // window.addEventListener("scroll", () => {
+      //    _.throttle(doThatStuff, 100);
+      // });
+      // Only not doing it here to keep this Pen dependency-free.
+
+      window.addEventListener("scroll", event => {
+        let fromTop = window.scrollY;
+
+        mainNavLinks.forEach((link, index) => {
+          let section = document.getElementById(decodeURI(link.hash).substring(1));
+          let nextSection = null
+          if (mainNavLinks[index + 1]) {
+            nextSection = document.getElementById(decodeURI(mainNavLinks[index + 1].hash).substring(1));
+          }
+          if (section.offsetTop <= fromTop) {
+            if (nextSection) {
+              if (nextSection.offsetTop > fromTop) {
+                link.classList.add("current");
+              } else {
+                link.classList.remove("current");    
+              }
+            } else {
+              link.classList.add("current");
+            }
+          } else {
+            link.classList.remove("current");
+          }
+        });
+      });
+
+    </script>
+  </body>
+</html>

@@ -1,0 +1,424 @@
+<html>
+  <head>
+    <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Bazel 基本使用 | Protream&#39;s Notes</title>
+<link rel="shortcut icon" href="https://protream.github.io/favicon.ico?v=1733235889358">
+<link href="https://cdn.jsdelivr.net/npm/remixicon@2.3.0/fonts/remixicon.css" rel="stylesheet">
+<link rel="stylesheet" href="https://protream.github.io/styles/main.css">
+<link rel="alternate" type="application/atom+xml" title="Bazel 基本使用 | Protream&#39;s Notes - Atom Feed" href="https://protream.github.io/atom.xml">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Droid+Serif:400,700">
+
+
+
+    <meta name="description" content="本文是 Bazel 学习笔记，记录了 Bazel 的一些核心概念和基本使用方法，构建目标为 Go 语言项目。
+
+概念
+Target（目标）
+目标是Bazel构建系统中的基本单元，它代表构建过程中的一个输出文件或一个可运行的程序。每个目标都有..." />
+    <meta name="keywords" content="tools" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.10.0/katex.min.css">
+    <script src="//cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.5.1/build/highlight.min.js"></script>
+  </head>
+  <body>
+    <div class="main">
+      <div class="main-content">
+        <div class="site-header">
+  <a href="https://protream.github.io">
+  <img class="avatar" src="https://protream.github.io/images/avatar.png?v=1733235889358" alt="">
+  </a>
+  <h1 class="site-title">
+    Protream&#39;s Notes
+  </h1>
+  <p class="site-description">
+    
+  </p>
+  <div class="menu-container">
+    
+      
+        <a href="/" class="menu">
+          首页
+        </a>
+      
+    
+      
+        <a href="/archives" class="menu">
+          归档
+        </a>
+      
+    
+      
+        <a href="/tags" class="menu">
+          标签
+        </a>
+      
+    
+      
+        <a href="/post/about" class="menu">
+          关于
+        </a>
+      
+    
+  </div>
+  <div class="social-container">
+    
+      
+    
+      
+    
+      
+    
+      
+    
+      
+    
+  </div>
+</div>
+
+        <div class="post-detail">
+          <article class="post">
+            <h2 class="post-title">
+              Bazel 基本使用
+            </h2>
+            <div class="post-info">
+              <span>
+                2024-03-29
+              </span>
+              <span>
+                8 min read
+              </span>
+              
+                <a href="https://protream.github.io/tag/tools/" class="post-tag">
+                  # tools
+                </a>
+              
+            </div>
+            
+            <div class="post-content-wrapper">
+              <div class="post-content" v-pre>
+                <p>本文是 Bazel 学习笔记，记录了 Bazel 的一些核心概念和基本使用方法，构建目标为 Go 语言项目。</p>
+<!-- more -->
+<h2 id="概念">概念</h2>
+<h3 id="target目标">Target（目标）</h3>
+<p>目标是Bazel构建系统中的基本单元，它代表构建过程中的一个输出文件或一个可运行的程序。每个目标都有一个名称和一组属性，例如源文件、依赖项和构建规则。</p>
+<h3 id="rule规则">Rule（规则）</h3>
+<p>规则定义了如何构建一个目标。规则包括目标类型、名称、属性和构建命令。Bazel提供了许多内置规则，例如cc_library 和 cc_binary，以支持不同类型的目标。</p>
+<h3 id="workspace工作区">Workspace（工作区）</h3>
+<p>工作区是Bazel构建系统的最高级别的概念，它包含一个或多个项目。工作区由一个或多个目录组成，每个目录包含一个BUILD文件和其他相关文件。</p>
+<h3 id="package包">Package（包）</h3>
+<p>包是Bazel构建系统中的一个逻辑单元，它包含一个或多个相关的目标和规则。每个包都有一个名称和一个相对路径，例如//myproject/mypackage。</p>
+<h3 id="label标签">Label（标签）</h3>
+<p>标签是Bazel中唯一标识一个目标或规则的方式，它由包名和目标名组成，例如//myproject/mypackage:mytarget。</p>
+<h3 id="dependency依赖">Dependency（依赖）</h3>
+<p>依赖是指一个目标需要另一个目标才能构建的情况。Bazel使用依赖关系来自动构建和管理项目中的依赖项。</p>
+<h3 id="configuration配置">Configuration（配置）</h3>
+<p>配置是指构建过程中的一组参数，例如编译器选项、库路径和环境变量。Bazel支持多个配置，例如debug和release，以便在不同的环境中构建项目。</p>
+<h2 id="文件">文件</h2>
+<h3 id="workspace">WORKSPACE</h3>
+<p>用于将目录及其内容标识为 Bazel 工作区，并位于项目目录结构的根目录中。Bazel 构建项目时，所有输入都必须位于同一工作区中。除非链接，否则位于不同工作区中的文件彼此独立。</p>
+<h3 id="buildbazel">BUILD.bazel</h3>
+<p>用于告知 Bazel 如何构建项目的不同部分。工作区中包含 <code>BUILD</code> 文件的目录就是一个软件包。每个 <code>BUILD</code> 文件至少需要一条规则（即一组指令），用于告知 Bazel 如何构建所需的输出，例如可执行二进制文件或库。<code>BUILD</code> 文件中构建规则的每个实例都称为目标，指向一组特定的源文件和依赖项。目标还可以指向其他目标。</p>
+<p>示例：</p>
+<pre><code class="language-yaml">cc_binary(
+    name = &quot;hello-world&quot;,
+    srcs = [&quot;hello-world.cc&quot;],
+)
+</code></pre>
+<h3 id="bazelrc">.bazelrc</h3>
+<p>bazel 是 Java 开发的，可以在该文件中设置 JVM，此外，可以配置 go 代理，可以配置目标系统等。</p>
+<pre><code class="language-yaml"># 设置JVM
+startup --host_jvm_args=-XX:+UseParallelGC --host_jvm_args=-Xmx6g --host_jvm_args=-Xms1g
+# 设置CoreDump
+startup --unlimit_coredumps
+
+# 设置GOPROXY
+test --action_env=GOPROXY=https://goproxy.cn
+build --action_env=GOPROXY=https://goproxy.cn
+run --action_env=GOPROXY=https://goproxy.cn
+
+# 设置GOSUMDB
+test --action_env=GOSUMDB=goproxy.cn/sumdb/sum.golang.org
+build --action_env=GOSUMDB=goproxy.cn/sumdb/sum.golang.org
+run --action_env=GOSUMDB=goproxy.cn/sumdb/sum.golang.org
+
+# 设置编译目标平台
+build --platforms=@io_bazel_rules_go//go/toolchain:linux_amd64
+run --platforms=@io_bazel_rules_go//go/toolchain:linux_amd64
+</code></pre>
+<h3 id="自定义-rule-bzl">自定义 rule (*.bzl)</h3>
+<p>如果你的项目有一些复杂构造逻辑、或者一些需要复用的构造逻辑，那么可以将这些逻辑以函数形式保存在 <code>.bzl</code> 文件，供 <code>WORKSPACE</code> 或者 <code>BUILD</code> 文件调用。其语法跟 Python 类似：</p>
+<pre><code class="language-yaml">def download_package():
+    # 下载 Bazel Go语言 规则集
+    if not native.existing_rule(&quot;io_bazel_rules_go&quot;):
+        http_archive(
+            name = &quot;io_bazel_rules_go&quot;,
+            sha256 = &quot;56d8c5a5c91e1af73eca71a6fab2ced959b67c86d12ba37feedb0a2dfea441a6&quot;,
+            urls = [
+                &quot;https://mirror.bazel.build/github.com/bazelbuild/rules_go/releases/download/v0.37.0/rules_go-v0.37.0.zip&quot;,
+                &quot;https://github.com/bazelbuild/rules_go/releases/download/v0.37.0/rules_go-v0.37.0.zip&quot;,
+            ],
+        )
+
+    # 下载 Bazel Gazelle 规则集
+    if not native.existing_rule(&quot;bazel_gazelle&quot;):
+        http_archive(
+            name = &quot;bazel_gazelle&quot;,
+            sha256 = &quot;ecba0f04f96b4960a5b250c8e8eeec42281035970aa8852dda73098274d14a1d&quot;,
+            urls = [
+                &quot;https://mirror.bazel.build/github.com/bazelbuild/bazel-gazelle/releases/download/v0.29.0/bazel-gazelle-v0.29.0.tar.gz&quot;,
+                &quot;https://github.com/bazelbuild/bazel-gazelle/releases/download/v0.29.0/bazel-gazelle-v0.29.0.tar.gz&quot;,
+            ],
+        )
+</code></pre>
+<h3 id="bazelversion">.bazelversion</h3>
+<p>配置 bazel 版本。</p>
+<h2 id="步骤">步骤</h2>
+<h3 id="设置-workspace">设置 WORKSPACE</h3>
+<pre><code class="language-yaml">workspace(name = &quot;go-bazel&quot;)
+
+load(&quot;@bazel_tools//tools/build_defs/repo:http.bzl&quot;, &quot;http_archive&quot;)
+
+http_archive(
+    name = &quot;io_bazel_rules_go&quot;,
+    sha256 = &quot;c8035e8ae248b56040a65ad3f0b7434712e2037e5dfdcebfe97576e620422709&quot;,
+    urls = [
+        &quot;https://github.com/bazelbuild/rules_go/releases/download/v0.44.0/rules_go-v0.44.0.zip&quot;,
+        &quot;https://mirror.bazel.build/github.com/bazelbuild/rules_go/releases/download/v0.44.0/rules_go-v0.44.0.zip&quot;,
+    ],
+)
+
+http_archive(
+    name = &quot;bazel_gazelle&quot;,
+    sha256 = &quot;32938bda16e6700063035479063d9d24c60eda8d79fd4739563f50d331cb3209&quot;,
+    urls = [
+        &quot;https://github.com/bazelbuild/bazel-gazelle/releases/download/v0.35.0/bazel-gazelle-v0.35.0.tar.gz&quot;,
+        &quot;https://mirror.bazel.build/github.com/bazelbuild/bazel-gazelle/releases/download/v0.35.0/bazel-gazelle-v0.35.0.tar.gz&quot;,
+    ],
+)
+
+load(&quot;@bazel_gazelle//:deps.bzl&quot;, &quot;gazelle_dependencies&quot;)
+load(&quot;@com_google_protobuf//:protobuf_deps.bzl&quot;, &quot;protobuf_deps&quot;)
+load(&quot;@io_bazel_rules_go//go:deps.bzl&quot;, &quot;go_register_toolchains&quot;, &quot;go_rules_dependencies&quot;)
+
+############################################################
+# Define your own dependencies here using go_repository.
+# Else, dependencies declared by rules_go/gazelle will be used.
+# The first declaration of an external repository &quot;wins&quot;.
+############################################################
+
+# gazelle:repository go_repository name=org_golang_x_xerrors importpath=golang.org/x/xerrors
+
+load(&quot;//:deps.bzl&quot;, &quot;go_dependencies&quot;)
+
+# gazelle:repository_macro deps.bzl%go_dependencies
+go_dependencies()
+
+go_rules_dependencies()
+
+go_register_toolchains(version = &quot;1.21.5&quot;)
+
+gazelle_dependencies()
+</code></pre>
+<p>其中，Gazelle 是一个自动生成 Bazel 编译文件的工具，包括给 <code>WORKSPACE</code> 添加外部依赖、扫描源文件依赖自动生成<code>BUILD.bazel</code>文件等。Gazelle 原生支持Go和 protobuf。</p>
+<h3 id="protobuf">Protobuf</h3>
+<p>需要在 WORKSPACE 中添加：</p>
+<pre><code class="language-yaml">http_archive(
+    name = &quot;com_google_protobuf&quot;,
+    sha256 = &quot;d0f5f605d0d656007ce6c8b5a82df3037e1d8fe8b121ed42e536f569dec16113&quot;,
+    strip_prefix = &quot;protobuf-3.14.0&quot;,
+    urls = [
+        &quot;https://github.com/protocolbuffers/protobuf/archive/v3.14.0.tar.gz&quot;,
+        &quot;https://mirror.bazel.build/github.com/protocolbuffers/protobuf/archive/v3.14.0.tar.gz&quot;,
+    ],
+)
+
+protobuf_deps()
+</code></pre>
+<h2 id="命令">命令</h2>
+<p>使用 Gazelle 构建 <code>BUILD.bazel</code>：</p>
+<pre><code class="language-yaml">bazel run //:gazelle
+</code></pre>
+<p>更新 golang 依赖：</p>
+<pre><code class="language-yaml">bazel run //:gazelle-update-repos
+</code></pre>
+<p>跑测试：</p>
+<pre><code class="language-yaml">bazel test //...
+</code></pre>
+<p>构建项目：</p>
+<pre><code class="language-yaml">bazel build //...
+</code></pre>
+<h2 id="docker-镜像">Docker 镜像</h2>
+<p>在 WORKSPACE 中添加：</p>
+<pre><code class="language-yaml">http_archive(
+    name = &quot;io_bazel_rules_docker&quot;,
+    sha256 = &quot;b1e80761a8a8243d03ebca8845e9cc1ba6c82ce7c5179ce2b295cd36f7e394bf&quot;,
+    urls = [&quot;https://github.com/bazelbuild/rules_docker/releases/download/v0.25.0/rules_docker-v0.25.0.tar.gz&quot;],
+)
+
+load(
+    &quot;@io_bazel_rules_docker//repositories:repositories.bzl&quot;,
+    container_repositories = &quot;repositories&quot;,
+)
+
+container_repositories()
+
+load(&quot;@io_bazel_rules_docker//repositories:deps.bzl&quot;, container_deps = &quot;deps&quot;)
+
+container_deps()
+
+</code></pre>
+<h3 id="基础镜像">基础镜像</h3>
+<p>在 WOKRSPACE 中拉取：</p>
+<pre><code class="language-yaml">
+load(&quot;@io_bazel_rules_docker//container:pull.bzl&quot;, &quot;container_pull&quot;)
+
+container_pull(
+    name = &quot;alpine_linux_amd64&quot;,
+    registry = &quot;index.docker.io&quot;,
+    repository = &quot;library/alpine&quot;,
+    tag = &quot;latest&quot;,
+)
+</code></pre>
+<h3 id="构建镜像">构建镜像</h3>
+<p>在 BUILD 中：</p>
+<pre><code class="language-yaml">container_image(
+    name = &quot;image&quot;,
+    base = &quot;@alpine_linux_amd64//image&quot;,
+    entrypoint = [&quot;/servicea&quot;],
+    files = [
+        &quot;:servicea&quot;,
+    ],
+)
+</code></pre>
+<h3 id="推送镜像">推送镜像</h3>
+<p>在 BUILD 中：</p>
+<pre><code class="language-yaml">container_push(
+    name = &quot;image-push&quot;,
+    format = &quot;Docker&quot;,
+    image = &quot;:image&quot;,
+    registry = &quot;registry.cn-hangzhou.aliyuncs.com&quot;,
+    repository = &quot;bazel/greeter&quot;,
+    tag = &quot;latest&quot;,
+)
+
+</code></pre>
+<h2 id="参考">参考</h2>
+<p>[1] <a href="%5Bhttps://bazel.build/start/cpp?hl=zh-cn%5D(https://bazel.build/start/cpp?hl=zh-cn)">Bazel 教程：构建 C++ 项目</a></p>
+<p>[2] <a href="%5Bhttps://developer.aliyun.com/article/1150284%5D(https://developer.aliyun.com/article/1150284)">Kratos微服务工程Bazel构建指南</a></p>
+<p>[3] <a href="%5Bhttps://github.com/jankremlacek/go-bazel/tree/main%5D(https://github.com/jankremlacek/go-bazel/tree/main)">go-bazel</a></p>
+<p>[4] <a href="%5Bhttps://github.com/bazelbuild/bazel-gazelle%5D(https://github.com/bazelbuild/bazel-gazelle)">bazel-gazelle</a></p>
+
+              </div>
+              <div class="toc-container">
+                <ul class="markdownIt-TOC">
+<li>
+<ul>
+<li><a href="#%E6%A6%82%E5%BF%B5">概念</a>
+<ul>
+<li><a href="#target%E7%9B%AE%E6%A0%87">Target（目标）</a></li>
+<li><a href="#rule%E8%A7%84%E5%88%99">Rule（规则）</a></li>
+<li><a href="#workspace%E5%B7%A5%E4%BD%9C%E5%8C%BA">Workspace（工作区）</a></li>
+<li><a href="#package%E5%8C%85">Package（包）</a></li>
+<li><a href="#label%E6%A0%87%E7%AD%BE">Label（标签）</a></li>
+<li><a href="#dependency%E4%BE%9D%E8%B5%96">Dependency（依赖）</a></li>
+<li><a href="#configuration%E9%85%8D%E7%BD%AE">Configuration（配置）</a></li>
+</ul>
+</li>
+<li><a href="#%E6%96%87%E4%BB%B6">文件</a>
+<ul>
+<li><a href="#workspace">WORKSPACE</a></li>
+<li><a href="#buildbazel">BUILD.bazel</a></li>
+<li><a href="#bazelrc">.bazelrc</a></li>
+<li><a href="#%E8%87%AA%E5%AE%9A%E4%B9%89-rule-bzl">自定义 rule (*.bzl)</a></li>
+<li><a href="#bazelversion">.bazelversion</a></li>
+</ul>
+</li>
+<li><a href="#%E6%AD%A5%E9%AA%A4">步骤</a>
+<ul>
+<li><a href="#%E8%AE%BE%E7%BD%AE-workspace">设置 WORKSPACE</a></li>
+<li><a href="#protobuf">Protobuf</a></li>
+</ul>
+</li>
+<li><a href="#%E5%91%BD%E4%BB%A4">命令</a></li>
+<li><a href="#docker-%E9%95%9C%E5%83%8F">Docker 镜像</a>
+<ul>
+<li><a href="#%E5%9F%BA%E7%A1%80%E9%95%9C%E5%83%8F">基础镜像</a></li>
+<li><a href="#%E6%9E%84%E5%BB%BA%E9%95%9C%E5%83%8F">构建镜像</a></li>
+<li><a href="#%E6%8E%A8%E9%80%81%E9%95%9C%E5%83%8F">推送镜像</a></li>
+</ul>
+</li>
+<li><a href="#%E5%8F%82%E8%80%83">参考</a></li>
+</ul>
+</li>
+</ul>
+
+              </div>
+            </div>
+          </article>
+        </div>
+
+        
+          <div class="next-post">
+            <div class="next">下一篇</div>
+            <a href="https://protream.github.io/post/Zq6cxvh7A/">
+              <h3 class="post-title">
+                Tmux 基本用法
+              </h3>
+            </a>
+          </div>
+        
+
+        
+
+        <div class="site-footer">
+  Powered by <a href="https://github.com/getgridea/gridea" target="_blank">&nbsp;Gridea</a>
+  <a class="rss" href="https://protream.github.io/atom.xml" target="_blank">
+    <i class="ri-rss-line"></i> RSS
+  </a>
+</div>
+
+      </div>
+    </div>
+
+    <script>
+      hljs.initHighlightingOnLoad()
+
+      let mainNavLinks = document.querySelectorAll(".markdownIt-TOC a");
+
+      // This should probably be throttled.
+      // Especially because it triggers during smooth scrolling.
+      // https://lodash.com/docs/4.17.10#throttle
+      // You could do like...
+      // window.addEventListener("scroll", () => {
+      //    _.throttle(doThatStuff, 100);
+      // });
+      // Only not doing it here to keep this Pen dependency-free.
+
+      window.addEventListener("scroll", event => {
+        let fromTop = window.scrollY;
+
+        mainNavLinks.forEach((link, index) => {
+          let section = document.getElementById(decodeURI(link.hash).substring(1));
+          let nextSection = null
+          if (mainNavLinks[index + 1]) {
+            nextSection = document.getElementById(decodeURI(mainNavLinks[index + 1].hash).substring(1));
+          }
+          if (section.offsetTop <= fromTop) {
+            if (nextSection) {
+              if (nextSection.offsetTop > fromTop) {
+                link.classList.add("current");
+              } else {
+                link.classList.remove("current");    
+              }
+            } else {
+              link.classList.add("current");
+            }
+          } else {
+            link.classList.remove("current");
+          }
+        });
+      });
+
+    </script>
+  </body>
+</html>

@@ -1,0 +1,1116 @@
+<html>
+  <head>
+    <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Golang 1：基础 | Protream&#39;s Notes</title>
+<link rel="shortcut icon" href="https://protream.github.io/favicon.ico?v=1733235889358">
+<link href="https://cdn.jsdelivr.net/npm/remixicon@2.3.0/fonts/remixicon.css" rel="stylesheet">
+<link rel="stylesheet" href="https://protream.github.io/styles/main.css">
+<link rel="alternate" type="application/atom+xml" title="Golang 1：基础 | Protream&#39;s Notes - Atom Feed" href="https://protream.github.io/atom.xml">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Droid+Serif:400,700">
+
+
+
+    <meta name="description" content="本文总结了 Golang 的基本使用。
+
+Hello World
+package main
+​
+import &quot;fmt&quot;
+​
+func main() {
+    fmt.Println(&quot;Hello, Worl..." />
+    <meta name="keywords" content="go" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.10.0/katex.min.css">
+    <script src="//cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.5.1/build/highlight.min.js"></script>
+  </head>
+  <body>
+    <div class="main">
+      <div class="main-content">
+        <div class="site-header">
+  <a href="https://protream.github.io">
+  <img class="avatar" src="https://protream.github.io/images/avatar.png?v=1733235889358" alt="">
+  </a>
+  <h1 class="site-title">
+    Protream&#39;s Notes
+  </h1>
+  <p class="site-description">
+    
+  </p>
+  <div class="menu-container">
+    
+      
+        <a href="/" class="menu">
+          首页
+        </a>
+      
+    
+      
+        <a href="/archives" class="menu">
+          归档
+        </a>
+      
+    
+      
+        <a href="/tags" class="menu">
+          标签
+        </a>
+      
+    
+      
+        <a href="/post/about" class="menu">
+          关于
+        </a>
+      
+    
+  </div>
+  <div class="social-container">
+    
+      
+    
+      
+    
+      
+    
+      
+    
+      
+    
+  </div>
+</div>
+
+        <div class="post-detail">
+          <article class="post">
+            <h2 class="post-title">
+              Golang 1：基础
+            </h2>
+            <div class="post-info">
+              <span>
+                2022-09-10
+              </span>
+              <span>
+                17 min read
+              </span>
+              
+                <a href="https://protream.github.io/tag/go/" class="post-tag">
+                  # go
+                </a>
+              
+            </div>
+            
+            <div class="post-content-wrapper">
+              <div class="post-content" v-pre>
+                <p>本文总结了 Golang 的基本使用。</p>
+<!-- more -->
+<h3 id="hello-world">Hello World</h3>
+<pre><code class="language-go">package main
+​
+import &quot;fmt&quot;
+​
+func main() {
+    fmt.Println(&quot;Hello, World&quot;)
+}
+</code></pre>
+<h3 id="语法基础">语法基础</h3>
+<h4 id="包">包</h4>
+<ol>
+<li>Go 程序由 package 组成</li>
+<li>入口在 main package</li>
+<li>在程序中引入包的方式：<br>
+a. &quot;fmt&quot;<br>
+b. &quot;math/rand&quot;</li>
+<li>按照惯例包的名称是包路径的最后一个元素，如 &quot;manth/rand&quot; 的名称为 &quot;rand&quot;</li>
+<li>Import<br>
+import &quot;fmt&quot;<br>
+import &quot;math&quot;</li>
+</ol>
+<p>等价于<br>
+import (<br>
+   &quot;fmt&quot;<br>
+   &quot;math&quot;<br>
+)</p>
+<ol start="6">
+<li>在一个 package 中，以大写字母开头的属性或者函数是公开的；已小写字母开头的属性或者非法是私有的。</li>
+</ol>
+<h4 id="函数">函数</h4>
+<ol>
+<li>
+<p>定义<br>
+func add(x int, y int) int {<br>
+   return x + y<br>
+}</p>
+</li>
+<li>
+<p>相邻参数的类型如果是一样的，可以只写一次类型<br>
+func add(x, y int) int {<br>
+   return x + y<br>
+}</p>
+</li>
+<li>
+<p>函数可以有多个返回值<br>
+func swap(x, y int) (int, int) {<br>
+   return y, x<br>
+}</p>
+</li>
+<li>
+<p>可以命名返回值，命名的参数会被当做定义在函数顶部的变量，提示返回值的含义，没有参数的 return 语句返回命名返回值变量，称为裸 return，只应该在短的函数使用，在长函数中不利于阅读。<br>
+func split(sum int) (x, y int) {<br>
+   x = sum * 4 / 9<br>
+   y = sum - x<br>
+   return<br>
+}</p>
+</li>
+<li>
+<p>命名参数会被初始化为类型的零值</p>
+</li>
+</ol>
+<h4 id="变量">变量</h4>
+<ol>
+<li>Var 声明 package 和 function 级别的变量：var x, y int</li>
+<li>Var 声明变量时可以指定初始值：var x, y int = 1, 2</li>
+<li>Var 声明变量时指定初始值可以省略类型：var x, y, z = 1, true, &quot;jack&quot;</li>
+<li>函数内部可以用 := 声明变量，外部不行</li>
+<li>变量类型</li>
+</ol>
+<pre><code class="language-go">bool
+string
+​
+int int8 int16 int32 int64
+uint uint8 uint16 uint32 uint64
+​
+byte // alias for int8
+rune // alias for int32
+​
+     // represents a Unicode code point
+​
+float32 float64
+​
+complex64 complex128
+</code></pre>
+<ol>
+<li>变量的零值：</li>
+<li>数值型：0</li>
+<li>布尔型：false</li>
+<li>字符串型：&quot;&quot;</li>
+<li>类型转换：T(v)</li>
+<li>类型推导：变量没有声明类型时，由赋予值时右边值的类型决定</li>
+</ol>
+<h4 id="常量">常量</h4>
+<ol>
+<li>常量用 const 声明，不能用 :=</li>
+<li>多个常量可以用 cont () 一次声明</li>
+</ol>
+<h4 id="循环结构">循环结构</h4>
+<ol>
+<li>基本结构</li>
+</ol>
+<pre><code class="language-go">package main
+​
+import &quot;fmt&quot;
+​
+func main() {
+    for i := 0; i &lt; 10; i++ {
+        fmt.Println(i)
+    }
+}
+</code></pre>
+<ol start="2">
+<li>初始和后置条件可以为空</li>
+</ol>
+<pre><code class="language-go">package main
+​
+import &quot;fmt&quot;
+​
+func main() {
+        sum := 1
+        for ; sum &lt; 1000; {
+                sum += sum
+        }
+        fmt.Println(sum)
+}
+</code></pre>
+<ol start="3">
+<li>可以省略 ;，相当于c语言中的 while 结构</li>
+</ol>
+<pre><code class="language-go">package main
+​
+import &quot;fmt&quot;
+​
+func main() {
+        sum := 1
+        for sum &lt; 1000 {
+                sum += sum
+        }
+        fmt.Println(sum)
+}
+</code></pre>
+<ol start="4">
+<li>无限循环</li>
+</ol>
+<pre><code>package main
+​
+​func main() {
+        for {
+​
+        }
+}
+</code></pre>
+<h4 id="判断结构">判断结构</h4>
+<ol>
+<li>条件可以不用在括号内：if conditon {}</li>
+<li>条件判断前可以有前置的语句，语句中变量的作用域只在 if 内，包括 else</li>
+</ol>
+<h4 id="选择结构">选择结构</h4>
+<ol>
+<li>每个 case 后面默认加了 break</li>
+<li>每个 case 里面可以是语句</li>
+</ol>
+<pre><code class="language-go">package main
+​
+import (
+        &quot;fmt&quot;
+        &quot;runtime&quot;
+)
+​
+func main() {
+        fmt.Print(&quot;Go runs on &quot;)
+        switch os := runtime.GOOS; os {
+        case &quot;darwin&quot;:
+                fmt.Println(&quot;OS X.&quot;)
+        case &quot;linux&quot;:
+                fmt.Println(&quot;Linux.&quot;)
+        default:
+                // freebsd, openbsd,
+                // plan9, windows...
+                fmt.Printf(&quot;%s.\n&quot;, os)
+        }
+}
+</code></pre>
+<ol>
+<li>从上往下执行，满足条件时停止</li>
+<li>Switch 可以可以不更条件语句，相当于 switch true</li>
+</ol>
+<pre><code class="language-go">package main
+​
+import (
+        &quot;fmt&quot;
+        &quot;time&quot;
+)
+​
+func main() {
+        t := time.Now()
+        switch {
+        case t.Hour() &lt; 12:
+                fmt.Println(&quot;Good morning!&quot;)
+        case t.Hour() &lt; 17:
+                fmt.Println(&quot;Good afternoon.&quot;)
+        default:
+                fmt.Println(&quot;Good evening.&quot;)
+        }
+}
+</code></pre>
+<h4 id="defer">defer</h4>
+<ol>
+<li>将函数的执行延迟到 return 之前</li>
+<li>函数的参数是立刻执行的</li>
+<li>多个 defer 是栈存储的，last in fast out</li>
+</ol>
+<h4 id="指针">指针</h4>
+<ol>
+<li>*T 代表 T 值的一个指针，指针的零值是 nil</li>
+<li>&amp; 取指针，* 取指针的值，和C语言一样</li>
+<li>不支持指针预算，和C语言不一样</li>
+</ol>
+<h4 id="结构体">结构体</h4>
+<ol>
+<li>结构体是 fields 的集合</li>
+</ol>
+<pre><code class="language-go">package main
+​
+import &quot;fmt&quot;
+​
+// 声明
+​
+struct Point {
+    X int
+    Y int
+}
+​
+func main() {
+    p := Point{1, 2}
+    fmt.Println(p) // 创建
+    fmt.Println(p.X) // 取值
+}
+</code></pre>
+<ol start="2">
+<li>结构体可以通过指针引用</li>
+</ol>
+<pre><code class="language-go">package main
+
+import &quot;fmt&quot;
+​
+// 声明
+struct Point {
+    X int
+    Y int
+}
+​
+func main() {
+    v := Point{1, 2}
+​    p := &amp;v
+    fmt.Println(p.X) // 取值, 等价于 (*p).X
+}
+
+1. 结构体的字面量
+package main
+​
+import &quot;fmt&quot;
+​
+type Vertex struct {
+        X, Y int
+}
+​
+var (
+        v1 = Vertex{1, 2}  // has type Vertex
+        v2 = Vertex{X: 1}  // Y:0 is implicit​
+        v3 = Vertex{}      // X:0 and Y:0
+        p  = &amp;Vertex{1, 2} // has type *Vertex
+)
+​
+func main() {
+        fmt.Println(v1, p, v2, v3)
+}
+​
+// {1 2} &amp;{1 2} {1 0} {0 0}
+</code></pre>
+<h4 id="数组">数组</h4>
+<ol>
+<li>声明：[n]T，如 var a [10]int</li>
+<li>a [5]int := {1, 2, 3, 4, 5}</li>
+<li>数组的长度是类型的一部分，不能重新指定长度</li>
+</ol>
+<h4 id="切片">切片</h4>
+<ol>
+<li>
+<p>声明：[]T</p>
+</li>
+<li>
+<p>A 是一个数组，那么，A[low:high] 构成一个切片，包括low，不包括high</p>
+</li>
+<li>
+<p>切片不存储具体的数据，它只是描述底层数组的一部分，像是数组的一个引用</p>
+</li>
+<li>
+<p>修改切片的数据，会修改相应的底层数组的数据，该数组的其他切片可以看到修改</p>
+</li>
+<li>
+<p>数组和切片的区别<br>
+func main() {<br>
+   x := [3]int{1, 2, 3} // 数组<br>
+   y := []int{1, 2, 3}  // 像上面一样构建一个数组，然后创建一个切片引用它<br>
+}</p>
+</li>
+<li>
+<p>切片的 low 和 hight 可以省略，和 Python 的切片一样</p>
+</li>
+<li>
+<p>切片有legth和capacity两个属性，length是切片中元素的个数；capacity是切片对应的底层数据的元组个数，从切片的第一个元素开始计数</p>
+</li>
+<li>
+<p>len(s) 和 cap(s)</p>
+</li>
+<li>
+<p>切片的零值是 nil，nil 切片的 length 和 capacity 都是零，没有底层数组</p>
+</li>
+<li>
+<p>用 make 函数创建切片，make 会创建一个零值的数组，返回一个指向数组的切片</p>
+</li>
+</ol>
+<pre><code class="language-go">package main
+​​
+func main() {
+    a := make([]int, 5) // len(a) = 5
+    b := make([]int, 0, 5) // len(b) = 0, cap(b) = 5
+}
+</code></pre>
+<ol start="6">
+<li>切片可以包含任意类型，包括其他的切片</li>
+</ol>
+<pre><code class="language-go">package main
+​
+func main() {
+    x := [][]int{
+        []int{1, 2},
+        {}int{3, 4}
+    }
+}
+</code></pre>
+<ol start="7">
+<li>往切片添加元素：append([]T, vs ...T)</li>
+</ol>
+<pre><code class="language-go">package main
+​
+​
+func main() {
+​
+    x := []int{1, 2, 3}
+    x = append(x, 4) 
+    // 如果底层数组放不下添加的元素，那么会创建一个新的数组返回一个切片指向它
+}
+</code></pre>
+<ol start="7">
+<li>切片的遍历：range</li>
+</ol>
+<pre><code class="language-go">package main
+​
+​
+​
+func main() {
+    x := []int{1, 2, 3}
+​
+    for i, v := range x {
+        // ...
+    }
+​
+    // 省略 index
+    for _, v := range x {
+        // ...
+​    }
+​
+    // 只要index
+    for i := range x {​
+        // ...
+    }
+}
+</code></pre>
+<h4 id="字典">字典</h4>
+<ol>
+<li>字典的零值是nil，不包含任何 key，也不能添加 key</li>
+<li>用make创建一个指定类型的数组 var m ma[string]int</li>
+<li>字典的字面值</li>
+</ol>
+<pre><code class="language-go">package main
+
+import &quot;fmt&quot;
+​
+type Vertex struct {
+        Lat, Long float64
+}
+​
+​
+​
+var m = map[string]Vertex{
+        &quot;Bell Labs&quot;: Vertex{​
+                40.68433, -74.39967,
+        },
+        &quot;Google&quot;: Vertex{
+                37.42202, -122.08408,
+        },
+        // Vertex 可以省略​
+}
+​
+​
+​
+func main() {
+        fmt.Println(m)
+}
+</code></pre>
+<ol start="4">
+<li>操作字典</li>
+</ol>
+<pre><code class="language-go">package main
+​
+func main() {
+    var m = make(map[string]int)
+
+    m['a'] = 1
+    m['b'] = 2
+
+    v := m['b']
+    delete(m, 'b')
+
+    // 'a' in m, ok is true
+    if e1, ok := m['a'] {
+        // ...
+    }
+​
+    // 'b' not in m, ok is false, e2 是 0
+    if e2, ok := m['b'] {
+        // ...
+    }
+}
+</code></pre>
+<h4 id="高阶函数">高阶函数</h4>
+<ol>
+<li>函数可以作为值传递给另外一个函数</li>
+</ol>
+<pre><code class="language-go">package main
+
+​
+func compute(fn func(int, int) int) int {
+​    return fn(1, 2)
+}
+​
+​
+func main() {
+​
+    fn := func(x int, y int) int {
+        return x + y
+    }
+​
+    compute(fn)
+​
+}
+</code></pre>
+<ol>
+<li>函数可以作为返回值，实现闭包</li>
+</ol>
+<pre><code class="language-go">//A closure is a function value that references variables from outside its body.
+//The function may access and assign to the referenced variables; 
+//in this sense the function is &quot;bound&quot; to the variables.
+package main
+​
+// fibonacci is a function that returns
+// a function that returns an int.
+func fibonacci() func() int {
+        a, b := 0, 1​
+        return func() int {
+                r := a
+                a, b = b, a + b
+                return r
+        }
+}
+​​
+func main() {
+        f := fibonacci()
+        for i := 0; i &lt; 10; i++ {​
+                fmt.Println(f())
+        }
+}
+</code></pre>
+<h4 id="方法">方法</h4>
+<ol>
+<li>Go 没有类，但可以在类型上定义方法</li>
+<li>方法是有一个 receiver 参数的函数</li>
+</ol>
+<pre><code class="language-go">package main
+​
+import (
+    &quot;fmt&quot;
+    &quot;math&quot;
+)
+​
+struct Vertex {
+    X, Y int
+}
+​
+func (v Vertex) Abs() float64 {
+    return math.Sqrt(v.X * v.X + v.Y * v.Y)
+}
+​
+// 谨记：方法只是一个有 receiver 参数的方法
+func Abs(v Vertex) float64 {
+    return math.Sqrt(v.X * v.X + v.Y * v.Y)
+}
+</code></pre>
+<ol start="3">
+<li>可以为非 struct 类型定义方法</li>
+</ol>
+<pre><code class="language-go">package main
+​
+type MyFloat float64
+​
+func (f MyFloat) Abs() MyFloat {
+        if f &lt; 0 {
+                return float64(-f)
+        }
+        return float64(f)
+}
+</code></pre>
+<ol>
+<li>方法的 reveiver 可以使类型T的指针*T</li>
+<li>指针可以修改值</li>
+<li>值reveiver和函数参数一样，操作的值的拷贝</li>
+</ol>
+<pre><code class="language-go">package main
+​
+import (
+​        &quot;fmt&quot;
+        &quot;math&quot;
+)
+​
+type Vertex struct {
+        X, Y float64
+}
+​
+func (v Vertex) Abs() float64 {
+        return math.Sqrt(v.X*v.X + v.Y*v.Y)
+}
+​
+func (v *Vertex) Scale(f float64) {
+        v.X = v.X * f
+        v.Y = v.Y * f
+}
+​
+func main() {
+        v := Vertex{3, 4}
+        v.Scale(10) // ok，go 翻译成 (&amp;v).Scale(10)
+        p := &amp;v
+        p.Scale(100) //ok
+        fmt.Println(v.Abs())
+}
+</code></pre>
+<ol start="4">
+<li>函数的指针参数必须传指针</li>
+<li>方法的指针 receiver 传入的既可以是值，也可以使指针；方法的值receiver 传入的既可以是值，也可以使指针</li>
+<li>使用指针 receiver 的两个原因：</li>
+<li>修改 receiver 指向的值</li>
+<li>避免每次调用方法都copy一份receiver，当 receiver 是一个很大的结构体时，值 receiver 会比较低效率</li>
+</ol>
+<h4 id="接口">接口</h4>
+<ol>
+<li>接口类型是一组函数签名的集合</li>
+<li>接口类型的值可以接收任意实现了接口方法的值</li>
+<li>实现接口是隐式的，方法中并没有实现相关的字眼</li>
+<li>接口值可以看出是一个包含接口值和一个具体类型的元组：(value, type)，通过接口调一个方法执行的是具体类型上的同名方法</li>
+<li>接口里面的具体值可以是nil，方法的可以在 receiver 为 nil 时调用</li>
+</ol>
+<pre><code class="language-go">package main
+​
+
+import &quot;fmt&quot;
+​
+​
+type I interface {
+        M()
+}
+​
+​
+type T struct {
+​
+        S string
+​
+}
+​
+
+func (t *T) M() {
+        if t == nil {
+​
+                fmt.Println(&quot;&lt;nil&gt;&quot;)
+​
+                return
+​
+        }
+        fmt.Println(t.S)
+}
+​
+​
+​
+func main() {
+        var i I
+​
+        var t *T
+        i = t
+        describe(i)
+        i.M()
+​
+​
+        i = &amp;T{&quot;hello&quot;}
+        describe(i)
+        i.M()
+}
+​
+​
+​
+func describe(i I) {
+        fmt.Printf(&quot;(%v, %T)\n&quot;, i, i)
+}
+​
+​
+​
+/*
+​
+(&lt;nil&gt;, *main.T)
+​
+&lt;nil&gt;
+​
+(&amp;{hello}, *main.T)
+​
+hello
+​
+*/
+</code></pre>
+<ol start="6">
+<li>接口的具体类型不能是nil，如果类型是nil，再对一个nil接口调用方法，会触发运行时错误</li>
+</ol>
+<pre><code>package main
+
+import &quot;fmt&quot;
+​
+type I interface {
+        M()
+}
+​
+func main() {​
+        var i I
+        describe(i)​
+        i.M()
+}
+​​
+func describe(i I) {
+        fmt.Printf(&quot;(%v, %T)\n&quot;, i, i)
+}
+
+//panic: runtime error: invalid memory address or nil pointer dereference
+</code></pre>
+<ol start="7">
+<li>没有定义方法的接口是一个空接口：interface{}</li>
+<li>空接口可以接收任何类型</li>
+<li>用来接收不知道具体类型的值，如函数参数可以接收多个类型的值（print）</li>
+<li>类型断言（Type Assertions）</li>
+<li>获取一个接口值的底层具体值：t := i.(T)，断言接口值 i 的底层具体值类型是 T，如果不是T，触发一个 panic</li>
+<li>测验一个接口值的类型是否是T：t, ok := i.(T)，是则t是底层具体值，ok 为 true；否则t为类型T的零值，ok 为 false</li>
+<li>多个类型断言的处理方式：</li>
+</ol>
+<pre><code class="language-go">switch v := i.(type) {  // 注意这里是 type
+case T:
+    // here v has type T
+case S:
+    // here v has type S
+default:
+    // no match; here v has the same type as i
+}
+</code></pre>
+<ol start="14">
+<li>最常见的接口：</li>
+</ol>
+<pre><code class="language-go">type Stringer interface {
+    String() string
+}
+​
+type Person struct {
+        Name string
+        Age  int
+}
+​
+func (p Person) String() string {
+        return fmt.Sprintf(&quot;%v (%v years)&quot;, p.Name, p.Age)
+}
+</code></pre>
+<h4 id="异常">异常</h4>
+<ol>
+<li>Golang 使用 error 表示错误，error 类型是一个内建的接口类型</li>
+</ol>
+<pre><code class="language-go">type error interface {
+​
+    Error() string
+​
+}
+</code></pre>
+<ol start="2">
+<li>函数有时会返回 error 值，程序中需要对非 nil 的 error 做出处理，error 为 nil 表示成功</li>
+</ol>
+<pre><code class="language-go">i, err := strconv.Atoi(&quot;42&quot;)
+if err != nil {
+    fmt.Printf(&quot;couldn't convert number: %v\n&quot;, err)
+    return
+}
+fmt.Println(&quot;Converted integer:&quot;, i)
+</code></pre>
+<ol start="3">
+<li>
+<p>Reader 接口：填充给定的 byte 切片返回填充的数量和 error，当 stream 结束时返回 io.EOF error<br>
+func (T) Read(b []byte) (n int, err error)</p>
+</li>
+<li>
+<p>TODO: 实现一个 reader</p>
+</li>
+<li>
+<p>TODO:rot13Reader</p>
+</li>
+<li>
+<p>Image 接口</p>
+</li>
+</ol>
+<h4 id="goroutines">Goroutines</h4>
+<ol>
+<li>
+<p>Goroutine 是在相同的地址空间跑的，访问共享内存是需要同步，可以使用 sync 模块的原语</p>
+</li>
+<li>
+<p>Channels 是有类型的管道，通过它可以接收和发送值<br>
+ch := make(chan int) // 创建 channel<br>
+​<br>
+ch &lt;- 1 // 发送值<br>
+​<br>
+v := &lt;-ch // 接收值</p>
+</li>
+<li>
+<p>管道的收发方必须处于 ready 状态，使用这个特性可以实现同步而不需要使用锁或者条件变量</p>
+</li>
+</ol>
+<pre><code class="language-go">package main
+​​
+import &quot;fmt&quot;
+​
+​
+func sum(s []int, c chan int) {
+        sum := 0
+        for _, v := range s {
+                sum += v
+        }
+        c &lt;- sum // send sum to c
+}
+​
+func main() {
+        s := []int{7, 2, 8, -9, 4, 0}
+
+        c := make(chan int)
+        go sum(s[:len(s)/2], c)
+        go sum(s[len(s)/2:], c)
+        x, y := &lt;-c, &lt;-c // receive from c
+​
+        fmt.Println(x, y, x+y)
+}
+</code></pre>
+<ol start="4">
+<li>
+<p>Channel 可以缓存</p>
+</li>
+<li>
+<p>只有缓存未满时可以往里面发送值</p>
+</li>
+<li>
+<p>Channel 为空值，取值方会阻塞</p>
+</li>
+<li>
+<p>Buffer over flow：fatal error: all goroutines are asleep - deadlock!<br>
+ch := make(chan int, 100)</p>
+</li>
+<li>
+<p>发送方可以对 ch 调用 close 方法表示没有更多的值发送了；接收方可以用 v, ok := &lt;-ch 测试是否还有值，ok 为 false 是表示没有值了；for i := range ch 也可以；</p>
+</li>
+<li>
+<p>只有发送方可以关闭channel，往关闭了的channel发送值会panic</p>
+</li>
+<li>
+<p>管道的关闭不像文件，不是必须关闭的，只有当必须要告诉接收方没有值了才用</p>
+</li>
+<li>
+<p>Select 可以同时操作多个管道，select 会阻塞直到有一个 case 可以执行，如果有多个可以执行，select 会随机选择一个</p>
+</li>
+</ol>
+<pre><code class="language-go">package main
+​
+import &quot;fmt&quot;
+
+​
+func fibonacci(c, quit chan int) {
+        x, y := 0, 1
+        for {
+                select {
+                case c &lt;- x:
+                        x, y = y, x+y
+                case &lt;-quit:
+                        fmt.Println(&quot;quit&quot;)
+                        return
+                }​
+        }​
+}
+​
+func main() {
+        c := make(chan int)
+        quit := make(chan int)
+        go func() {
+                for i := 0; i &lt; 10; i++ {
+                        fmt.Println(&lt;-c)
+                }
+​
+                quit &lt;- 0
+        }()
+        fibonacci(c, quit)​
+}
+</code></pre>
+<ol start="12">
+<li>Select 中的 default 会在没有其他 case 可执行时执行</li>
+</ol>
+<pre><code class="language-go">select {
+case i := &lt;-c:
+    // use i
+default:
+    // receiving from c would block​
+}
+</code></pre>
+<ol start="13">
+<li>使用 sync.Mutex 实现互斥锁，mu.Lock 加锁，mu.Unlock 解锁，可以 defer 确保解锁</li>
+</ol>
+<h3 id="how-to-write-go-code">How to Write Go Code</h3>
+<h4 id="代码组织">代码组织</h4>
+<ol>
+<li>Go 代码是按包组织的</li>
+<li>包是同一目录下的一组源文件集合，它们在一起编译</li>
+<li>同一个包下的不同源文件中的函数、类型、变量和常量是相互可见的</li>
+<li>一个仓库通常只有一个模块，位于仓库的根目录下，一个模块包含多个包，同级目录下会有一个go.mod描述模块的路径：模块中所有包的导入前缀</li>
+<li>模块的路径不只是导入的前缀，也是模块的下载地址</li>
+<li>导入路径就是模块的路径加上导入包的子路径，如：github.com/google/go-cmp/cmp</li>
+<li>标准库的包没有模块的路径前缀</li>
+<li>Go 代码源文件第一行必须指定包</li>
+</ol>
+<h4 id="go-mod">go mod</h4>
+<ol>
+<li>使用 go mod init + module_path 初始化模块，如：go mod init example.com/my/hello</li>
+<li>使用 go install + module 安装模块，如：go install example.com/my/hello</li>
+<li>模块的安装目录由<br>
+GOPATH</li>
+</ol>
+<p>and<br>
+GOBIN</p>
+<p>这两个环境变量控制</p>
+<ol>
+<li>使用 go env 查看 go 相关的环境变量，go env -w 设置变量，go env -u 取消设置</li>
+<li>安装当前目录下的包可以简写为 go install . 或者 go install</li>
+<li>使用 go env -w GOPROXY=https://goproxy.io 设置代理</li>
+<li>使用 go mod tidy 安装依赖包，移除不再使用的包</li>
+<li>移除所有下载的包：go clean -modcache</li>
+</ol>
+<h4 id="测试">测试</h4>
+<ol>
+<li>使用 testing 模块</li>
+<li>文件的命名：want_test.go</li>
+<li>测试用例的命名：TestFunction(t *testing.T)</li>
+</ol>
+<pre><code class="language-go">package morestrings
+​
+import &quot;testing&quot;
+​
+func TestReverseRunes(t *testing.T) {
+        cases := []struct {
+                in, want string
+        }{
+                {&quot;Hello, world&quot;, &quot;dlrow ,olleH&quot;},
+                {&quot;Hello, 世界&quot;, &quot;界世 ,olleH&quot;},
+                {&quot;&quot;, &quot;&quot;},
+        }
+​
+        for _, c := range cases {
+                got := ReverseRunes(c.in)
+                if got != c.want {
+                        t.Errorf(&quot;ReverseRunes(%q) == %q, want %q&quot;, c.in, got, c.want)
+                }
+        }
+}
+</code></pre>
+
+              </div>
+              <div class="toc-container">
+                <ul class="markdownIt-TOC">
+<li>
+<ul>
+<li>
+<ul>
+<li><a href="#hello-world">Hello World</a></li>
+<li><a href="#%E8%AF%AD%E6%B3%95%E5%9F%BA%E7%A1%80">语法基础</a>
+<ul>
+<li><a href="#%E5%8C%85">包</a></li>
+<li><a href="#%E5%87%BD%E6%95%B0">函数</a></li>
+<li><a href="#%E5%8F%98%E9%87%8F">变量</a></li>
+<li><a href="#%E5%B8%B8%E9%87%8F">常量</a></li>
+<li><a href="#%E5%BE%AA%E7%8E%AF%E7%BB%93%E6%9E%84">循环结构</a></li>
+<li><a href="#%E5%88%A4%E6%96%AD%E7%BB%93%E6%9E%84">判断结构</a></li>
+<li><a href="#%E9%80%89%E6%8B%A9%E7%BB%93%E6%9E%84">选择结构</a></li>
+<li><a href="#defer">defer</a></li>
+<li><a href="#%E6%8C%87%E9%92%88">指针</a></li>
+<li><a href="#%E7%BB%93%E6%9E%84%E4%BD%93">结构体</a></li>
+<li><a href="#%E6%95%B0%E7%BB%84">数组</a></li>
+<li><a href="#%E5%88%87%E7%89%87">切片</a></li>
+<li><a href="#%E5%AD%97%E5%85%B8">字典</a></li>
+<li><a href="#%E9%AB%98%E9%98%B6%E5%87%BD%E6%95%B0">高阶函数</a></li>
+<li><a href="#%E6%96%B9%E6%B3%95">方法</a></li>
+<li><a href="#%E6%8E%A5%E5%8F%A3">接口</a></li>
+<li><a href="#%E5%BC%82%E5%B8%B8">异常</a></li>
+<li><a href="#goroutines">Goroutines</a></li>
+</ul>
+</li>
+<li><a href="#how-to-write-go-code">How to Write Go Code</a>
+<ul>
+<li><a href="#%E4%BB%A3%E7%A0%81%E7%BB%84%E7%BB%87">代码组织</a></li>
+<li><a href="#go-mod">go mod</a></li>
+<li><a href="#%E6%B5%8B%E8%AF%95">测试</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+              </div>
+            </div>
+          </article>
+        </div>
+
+        
+          <div class="next-post">
+            <div class="next">下一篇</div>
+            <a href="https://protream.github.io/post/hyyi6XBex/">
+              <h3 class="post-title">
+                基于 SQLAlchemy 批量更新数据
+              </h3>
+            </a>
+          </div>
+        
+
+        
+
+        <div class="site-footer">
+  Powered by <a href="https://github.com/getgridea/gridea" target="_blank">&nbsp;Gridea</a>
+  <a class="rss" href="https://protream.github.io/atom.xml" target="_blank">
+    <i class="ri-rss-line"></i> RSS
+  </a>
+</div>
+
+      </div>
+    </div>
+
+    <script>
+      hljs.initHighlightingOnLoad()
+
+      let mainNavLinks = document.querySelectorAll(".markdownIt-TOC a");
+
+      // This should probably be throttled.
+      // Especially because it triggers during smooth scrolling.
+      // https://lodash.com/docs/4.17.10#throttle
+      // You could do like...
+      // window.addEventListener("scroll", () => {
+      //    _.throttle(doThatStuff, 100);
+      // });
+      // Only not doing it here to keep this Pen dependency-free.
+
+      window.addEventListener("scroll", event => {
+        let fromTop = window.scrollY;
+
+        mainNavLinks.forEach((link, index) => {
+          let section = document.getElementById(decodeURI(link.hash).substring(1));
+          let nextSection = null
+          if (mainNavLinks[index + 1]) {
+            nextSection = document.getElementById(decodeURI(mainNavLinks[index + 1].hash).substring(1));
+          }
+          if (section.offsetTop <= fromTop) {
+            if (nextSection) {
+              if (nextSection.offsetTop > fromTop) {
+                link.classList.add("current");
+              } else {
+                link.classList.remove("current");    
+              }
+            } else {
+              link.classList.add("current");
+            }
+          } else {
+            link.classList.remove("current");
+          }
+        });
+      });
+
+    </script>
+  </body>
+</html>

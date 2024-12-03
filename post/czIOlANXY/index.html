@@ -1,0 +1,392 @@
+<html>
+  <head>
+    <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>k8s 入门 7：Volume | Protream&#39;s Notes</title>
+<link rel="shortcut icon" href="https://protream.github.io/favicon.ico?v=1733235889358">
+<link href="https://cdn.jsdelivr.net/npm/remixicon@2.3.0/fonts/remixicon.css" rel="stylesheet">
+<link rel="stylesheet" href="https://protream.github.io/styles/main.css">
+<link rel="alternate" type="application/atom+xml" title="k8s 入门 7：Volume | Protream&#39;s Notes - Atom Feed" href="https://protream.github.io/atom.xml">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Droid+Serif:400,700">
+
+
+
+    <meta name="description" content="容器中的文件在磁盘上是临时存放的，这给在容器中运行较重要的应用带来一些问题。 当容器崩溃或停止时会出现一个问题。此时容器状态未保存， 因此在容器生命周期内创建或修改的所有文件都将丢失。 在崩溃期间，kubelet 会以干净的状态重新启动容器..." />
+    <meta name="keywords" content="k8s" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.10.0/katex.min.css">
+    <script src="//cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.5.1/build/highlight.min.js"></script>
+  </head>
+  <body>
+    <div class="main">
+      <div class="main-content">
+        <div class="site-header">
+  <a href="https://protream.github.io">
+  <img class="avatar" src="https://protream.github.io/images/avatar.png?v=1733235889358" alt="">
+  </a>
+  <h1 class="site-title">
+    Protream&#39;s Notes
+  </h1>
+  <p class="site-description">
+    
+  </p>
+  <div class="menu-container">
+    
+      
+        <a href="/" class="menu">
+          首页
+        </a>
+      
+    
+      
+        <a href="/archives" class="menu">
+          归档
+        </a>
+      
+    
+      
+        <a href="/tags" class="menu">
+          标签
+        </a>
+      
+    
+      
+        <a href="/post/about" class="menu">
+          关于
+        </a>
+      
+    
+  </div>
+  <div class="social-container">
+    
+      
+    
+      
+    
+      
+    
+      
+    
+      
+    
+  </div>
+</div>
+
+        <div class="post-detail">
+          <article class="post">
+            <h2 class="post-title">
+              k8s 入门 7：Volume
+            </h2>
+            <div class="post-info">
+              <span>
+                2024-02-05
+              </span>
+              <span>
+                11 min read
+              </span>
+              
+                <a href="https://protream.github.io/tag/k8s/" class="post-tag">
+                  # k8s
+                </a>
+              
+            </div>
+            
+            <div class="post-content-wrapper">
+              <div class="post-content" v-pre>
+                <p>容器中的文件在磁盘上是临时存放的，这给在容器中运行较重要的应用带来一些问题。 当容器崩溃或停止时会出现一个问题。此时容器状态未保存， 因此在容器生命周期内创建或修改的所有文件都将丢失。 在崩溃期间，kubelet 会以干净的状态重新启动容器。 当多个容器在一个 Pod 中运行并且需要共享文件时，会出现另一个问题。 跨所有容器设置和访问共享文件系统具有一定的挑战性。</p>
+<p>卷要解决的问题：</p>
+<p>1、 <strong>文件的持久化存储</strong>；</p>
+<p>2、<strong>多个容器在一个 Pod 中运行需要共享文件</strong>；</p>
+<!-- more -->
+<h2 id="卷的分类">卷的分类</h2>
+<p>卷的核心是一个目录，其中可能存有数据，Pod 中的容器可以访问该目录中的数据。所采用的特定的卷类型将决定该目录如何形成的、使用何种介质保存数据以及目录中存放的内容。</p>
+<p>卷主要可以分为以下几类。</p>
+<h3 id="临时卷ephemeral-volume">临时卷（Ephemeral Volume）</h3>
+<p>临时卷的生命周期和 Pod 想同。</p>
+<p>有些应用程序需要额外的存储，但并不关心数据在重启后是否仍然可用。 例如，缓存服务经常受限于内存大小，而且可以将不常用的数据转移到比内存慢的存储中，对总体性能的影响并不大。</p>
+<p>另有些应用程序需要以文件形式注入的只读数据，比如配置数据或密钥。</p>
+<p><strong>临时卷</strong> 就是为此类用例设计的。因为卷会遵从 Pod 的生命周期，与 Pod 一起创建和删除， 所以停止和重新启动 Pod 时，不会受持久卷在何处可用的限制。</p>
+<p>临时卷主要有以下几种分类：</p>
+<ul>
+<li>
+<p><a href="https://kubernetes.io/zh-cn/docs/concepts/storage/volumes/#emptydir">emptyDir</a>： Pod 启动时为空，存储空间来自本地的 kubelet 根目录（通常是根磁盘）或内存</p>
+</li>
+<li>
+<p><a href="https://kubernetes.io/zh-cn/docs/concepts/storage/volumes/#configmap">configMap</a>、 <a href="https://kubernetes.io/zh-cn/docs/concepts/storage/volumes/#downwardapi">downwardAPI</a>、 <a href="https://kubernetes.io/zh-cn/docs/concepts/storage/volumes/#secret">secret</a>： 将不同类型的 Kubernetes 数据注入到 Pod 中</p>
+</li>
+<li>
+<p><a href="https://kubernetes.io/zh-cn/docs/concepts/storage/ephemeral-volumes/#csi-ephemeral-volumes">CSI 临时卷</a>： 类似于前面的卷类型，但由专门<a href="https://kubernetes-csi.github.io/docs/ephemeral-local-volumes.html">支持此特性</a> 的指定 <a href="https://kubernetes.io/zh-cn/docs/concepts/storage/volumes/#csi">CSI</a> 驱动程序提供</p>
+</li>
+<li>
+<p><a href="https://kubernetes.io/zh-cn/docs/concepts/storage/ephemeral-volumes/#generic-ephemeral-volumes">通用临时卷</a>： 它可以由所有支持持久卷的存储驱动程序提供</p>
+</li>
+</ul>
+<h3 id="持久卷persistent-volume">持久卷（Persistent Volume）</h3>
+<p>持久卷的生命周期长于 Pod，Pod 销毁后持久卷依然存在。</p>
+<p>持久卷有两个核心概念：PV 和 PVC：</p>
+<p><strong>持久卷（PersistentVolume，PV）</strong> 是集群中的一块存储，可以由管理员事先制备， 或者使用<a href="https://kubernetes.io/zh-cn/docs/concepts/storage/storage-classes/">存储类（Storage Class）</a>来动态制备。 持久卷是集群资源，就像节点也是集群资源一样。PV 持久卷和普通的 Volume 一样， 也是使用卷插件来实现的，只是它们拥有独立于任何使用 PV 的 Pod 的生命周期。 此 API 对象中记述了存储的实现细节，无论其背后是 NFS、iSCSI 还是特定于云平台的存储系统。</p>
+<p><strong>持久卷申领（PersistentVolumeClaim，PVC）</strong> 表达的是用户对存储的请求。概念上与 Pod 类似。 Pod 会耗用节点资源，而 PVC 申领会耗用 PV 资源。Pod 可以请求特定数量的资源（CPU 和内存）。同样 PVC 申领也可以请求特定的大小和访问模式 （例如，可以挂载为 ReadWriteOnce、ReadOnlyMany、ReadWriteMany 或 ReadWriteOncePod， 请参阅<a href="https://kubernetes.io/zh-cn/docs/concepts/storage/persistent-volumes/#access-modes">访问模式</a>）。</p>
+<h3 id="投射卷projected-volumes">投射卷**（Projected Volumes）**</h3>
+<p><code>projected</code> 卷可以将若干现有的卷源映射到同一个目录之上。</p>
+<h2 id="pv-pvc-和-sc">PV、PVC 和 SC</h2>
+<h3 id="pv-和-pvc-的关系">PV 和 PVC 的关系</h3>
+<figure data-type="image" tabindex="1"><img src="https://raw.githubusercontent.com/protream/protream.github.io/images/20240205-k8s-volume/1.png" alt="" loading="lazy"></figure>
+<p>PV 将存储系统之上的存储空间抽象为 Kubernetes 系统全局级别的 API 资源，由集群管理员负责管理和维护。</p>
+<p>将PV提供的存储空间用于 Pod 对象的存储卷时，用户需要事先使用 PVC在名称空间级别声明所需要的存储空间大小及访问模式并提交给Kubernetes API Server，接下来由PV控制器负责查找与之匹配的PV资源并完成绑定。</p>
+<p><strong>PV 和 PVC 是一对一的关系</strong>：一个 PVC 仅能绑定一个 PV，而一个 PV 在某一时刻也仅可被一个 PVC 所绑定。为了能够让用户更精细地表达存储需求，PV 资源对象的定义支持存储容量、存储类、卷模型和访问模式等属性维度的约束。相应地，PVC 资源能够从访问模式、数据源、存储资源容量需求和限制、标签选择器、存储类名称、卷模型和卷名称等多个不同的维度向PV资源发起匹配请求并完成筛选。</p>
+<h3 id="静态预配static-provisioning">静态预配（static provisioning）</h3>
+<p>PVC 及 PV 将存储资源管理与使用的职责分离至用户和集群管理员两类不同的人群之上，简化了用户对存储资源的使用机制，但也对二者之间的协同能力提出了要求。管理员需要精心预测和规划集群用户的存储使用需求，提前创建出多种规格的PV，以便于在用户声明PVC后能够由PV控制器在集群中找寻到合适的甚至是最佳匹配的PV进行绑定。</p>
+<p>这种通过管理员手动创建 PV 来满足 PVC 需求的静态预配（static provisioning）存在着不少的问题。</p>
+<pre><code class="language-Plain">第一，集群管理员难以预测出用户的真实需求，很容易导致某些类型的PVC无法匹配到PV而被挂起，直到管理员参与到问题的解决过程中。
+第二，那些能够匹配到PV的PVC也很有可能存在资源利用率不佳的状况，例如一个声明使用5G存储空间的PVC绑定到一个20GB的PV之上。
+</code></pre>
+<p>解决方案是一种称为动态预配、按需创建PV的机制。</p>
+<h3 id="动态预配">动态预配</h3>
+<p>动态卷制备允许按需创建存储卷。</p>
+<p>集群管理员要做的仅是事先借助存储类（StorageClass）的API资源创建出一到多个“PV 模板”，并在模板中定义好基于某个存储系统创建 PV 所依赖的存储组件（例如 Ceph RBD 存储映像或 CephfFS 文件系统等）时需要用到的配置参数。创建 PVC 时，用户需要为其指定要使用 PV 模板（StorageClass 资源），而后PV控制器会自动连接相应存储类上定义的目标存储系统的管理接口，请求创建匹配该 PVC 需求的存储组件，并将该存储组件创建为 Kubernetes 集群上可由该 PVC 绑定的 PV 资源。</p>
+<p>如果没有动态制备，集群管理员必须手动地联系他们的云或存储提供商来创建新的存储卷， 然后在 Kubernetes 集群创建 PV 对象来表示这些卷。 动态制备功能消除了集群管理员预先配置存储的需要。相反，它在用户请求时自动制备存储。</p>
+<figure data-type="image" tabindex="2"><img src="https://raw.githubusercontent.com/protream/protream.github.io/images/20240205-k8s-volume/1.png" alt="" loading="lazy"></figure>
+<p>动态卷制备的实现基于 <code>storage.k8s.io</code> API 组中的 <code>StorageClass</code> API 对象。 集群管理员可以根据需要定义多个 <code>StorageClass</code> 对象，每个对象指定一个<strong>卷插件</strong>（又名 <strong>provisioner</strong>）， 卷插件向卷制备商提供在创建卷时需要的数据卷信息及相关参数。</p>
+<h2 id="参数解读">参数解读</h2>
+<h3 id="pv">PV</h3>
+<p>配置示例：</p>
+<pre><code class="language-yaml">apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: pv0003
+spec:
+  capacity:
+    storage: 5Gi
+  volumeMode: Filesystem
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Recycle
+  storageClassName: slow
+  mountOptions:
+    - hard
+    - nfsvers=4.1
+  nfs:
+    path: /tmp
+    server: 172.17.0.2
+</code></pre>
+<p><strong>ACESS MODES</strong></p>
+<ul>
+<li>RWO：卷可以被一个节点以读写方式挂载。 ReadWriteOnce 访问模式仍然可以在同一节点上运行的多个 Pod 访问该卷。</li>
+<li>ROX：卷可以被多个节点以只读方式挂载。</li>
+<li>RWX：卷可以被多个节点以读写方式挂载。</li>
+<li>RWOP：卷可以被单个 Pod 以读写方式挂载。 如果你想确保整个集群中只有一个 Pod 可以读取或写入该 PVC， 请使用 ReadWriteOncePod 访问模式。</li>
+</ul>
+<p><strong>RECLAIM POLICY</strong></p>
+<ul>
+<li>Retain：手动回收</li>
+<li>Recycle：简单擦除（rm -rf /thevolume/*）</li>
+<li>Delete：删除存储卷</li>
+</ul>
+<p><strong>STATUS</strong></p>
+<ul>
+<li>Available：卷是一个空闲资源，尚未绑定到任何申领</li>
+<li>Bound：该卷已经绑定到某申领</li>
+<li>Released:所绑定的申领已被删除，但是关联存储资源尚未被集群回收</li>
+<li>Failed：卷的自动回收操作失败</li>
+</ul>
+<p><strong>VOLUME MODE</strong></p>
+<p>针对 PV 持久卷，Kubernetes 支持两种卷模式（<code>volumeModes</code>）：<code>Filesystem（文件系统）</code> 和 <code>Block（块）</code>。 <code>volumeMode</code> 是一个可选的 API 参数。 如果该参数被省略，默认的卷模式是 <code>Filesystem</code>。<code>volumeMode</code> 属性设置为 <code>Filesystem</code> 的卷会被 Pod <strong>挂载（Mount）</strong> 到某个目录。 如果卷的存储来自某块设备而该设备目前为空，Kuberneretes 会在第一次挂载卷之前在设备上创建文件系统。</p>
+<h3 id="pvc">PVC</h3>
+<p>配置示例：</p>
+<pre><code class="language-yaml">apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: myclaim
+spec:
+  accessModes:
+    - ReadWriteOnce
+  volumeMode: Filesystem
+  resources:
+    requests:
+      storage: 8Gi
+  storageClassName: slow
+  selector:
+    matchLabels:
+      release: &quot;stable&quot;
+    matchExpressions:
+      - {key: environment, operator: In, values: [dev]}
+</code></pre>
+<p><strong>ACESS MODES</strong>：同 PV。</p>
+<p><strong>VOLUME MODE</strong>：同 PV。</p>
+<h3 id="sc">SC</h3>
+<p>配置示例：</p>
+<pre><code class="language-yaml">kind: StorageClass
+metadata:
+  name: standard
+provisioner: kubernetes.io/aws-ebs
+parameters:
+  type: gp2
+reclaimPolicy: Retain
+allowVolumeExpansion: true
+mountOptions:
+  - debug
+volumeBindingMode: Immediate
+</code></pre>
+<p><strong>PROVISIONER</strong></p>
+<p>每个 StorageClass 都有一个制备器（Provisioner），用来决定使用哪个卷插件制备 PV。</p>
+<p><strong>PARAMETERS</strong></p>
+<p>Storage Classes 的参数描述了存储类的卷。</p>
+<p><strong>RECLAIMPOLICY</strong></p>
+<p>由 StorageClass 动态创建的 PersistentVolume 会在类的 <a href="https://kubernetes.io/zh-cn/docs/concepts/storage/persistent-volumes/#reclaiming">reclaimPolicy</a> 字段中指定回收策略，可以是 <code>Delete</code> 或者 <code>Retain</code>。 如果 StorageClass 对象被创建时没有指定 <code>reclaimPolicy</code>，它将默认为 <code>Delete</code>。</p>
+<p><strong>VOLUMEBINDINGMODE</strong></p>
+<p>控制了卷绑定和动态制备应该发生在什么时候。 当未设置时，默认使用 <code>Immediate</code> 模式。</p>
+<p><code>Immediate</code> 模式表示一旦创建了 PersistentVolumeClaim 也就完成了卷绑定和动态制备。 对于由于拓扑限制而非集群所有节点可达的存储后端，PersistentVolume 会在不知道 Pod 调度要求的情况下绑定或者制备。</p>
+<p>集群管理员可以通过指定 <code>WaitForFirstConsumer</code> 模式来解决此问题。 该模式将延迟 PersistentVolume 的绑定和制备，直到使用该 PersistentVolumeClaim 的 Pod 被创建。</p>
+<h2 id="如何配置">如何配置</h2>
+<p>使用卷时, 在 <code>.spec.volumes</code> 字段中设置为 Pod 提供的卷，并在 <code>.spec.containers[*].volumeMounts</code> 字段中声明卷在容器中的挂载位置。</p>
+<h3 id="挂载-pvc">挂载 PVC</h3>
+<pre><code class="language-yaml">apiVersion: v1
+kind: Pod
+metadata:
+  name: mypod
+spec:
+  containers:
+    - name: myfrontend
+      image: nginx
+      volumeMounts:
+      - mountPath: &quot;/var/www/html&quot;
+        name: mypd
+  volumes:
+    - name: mypd
+      persistentVolumeClaim:
+        claimName: myclaim
+</code></pre>
+<h3 id="挂载-configmap">挂载 ConfigMap</h3>
+<p>使用 ConfigMap 填充卷</p>
+<pre><code class="language-yaml">apiVersion: v1
+kind: Pod
+metadata:
+  name: dapi-test-pod
+spec:
+  containers:
+    - name: test-container
+      image: registry.k8s.io/busybox
+      command: [ &quot;/bin/sh&quot;, &quot;-c&quot;, &quot;ls /etc/config/&quot; ]
+      volumeMounts:
+      - name: config-volume
+        mountPath: /etc/config
+  volumes:
+    - name: config-volume
+      configMap:
+        # 提供包含要添加到容器中的文件的 ConfigMap 的名称
+        name: special-config
+  restartPolicy: Never
+</code></pre>
+<h2 id="参考">参考</h2>
+<p>[1] <a href="%5Bhttps://www.cnblogs.com/yaokaka/p/15400151.html%5D(https://www.cnblogs.com/yaokaka/p/15400151.html)">Kubernetes 之 PV 和 PVC</a></p>
+<p>[2] <a href="%5Bhttps://www.cnblogs.com/yaokaka/p/15364427.html%5D(https://www.cnblogs.com/yaokaka/p/15364427.html)">Kubernetes 存储卷</a></p>
+<p>[3] <a href="%5Bhttps://kubernetes.io/zh-cn/docs/concepts/storage/volumes/%5D(https://kubernetes.io/zh-cn/docs/concepts/storage/volumes/)">k8s volumes</a></p>
+<p>[4] <a href="%5Bhttps://kubernetes.io/zh-cn/docs/tasks/configure-pod-container/configure-persistent-volume-storage/#create-a-persistentvolume%5D(https://kubernetes.io/zh-cn/docs/tasks/configure-pod-container/configure-persistent-volume-storage/#create-a-persistentvolume)">配置 Pod 以使用 PersistentVolume 作为存储</a></p>
+<p>[5] <a href="%5Bhttps://kubernetes.io/zh-cn/docs/tasks/configure-pod-container/configure-pod-configmap/%5D(https://kubernetes.io/zh-cn/docs/tasks/configure-pod-container/configure-pod-configmap/)">配置 Pod 使用 ConfigMap</a></p>
+
+              </div>
+              <div class="toc-container">
+                <ul class="markdownIt-TOC">
+<li>
+<ul>
+<li><a href="#%E5%8D%B7%E7%9A%84%E5%88%86%E7%B1%BB">卷的分类</a>
+<ul>
+<li><a href="#%E4%B8%B4%E6%97%B6%E5%8D%B7ephemeral-volume">临时卷（Ephemeral Volume）</a></li>
+<li><a href="#%E6%8C%81%E4%B9%85%E5%8D%B7persistent-volume">持久卷（Persistent Volume）</a></li>
+<li><a href="#%E6%8A%95%E5%B0%84%E5%8D%B7projected-volumes">投射卷**（Projected Volumes）**</a></li>
+</ul>
+</li>
+<li><a href="#pv-pvc-%E5%92%8C-sc">PV、PVC 和 SC</a>
+<ul>
+<li><a href="#pv-%E5%92%8C-pvc-%E7%9A%84%E5%85%B3%E7%B3%BB">PV 和 PVC 的关系</a></li>
+<li><a href="#%E9%9D%99%E6%80%81%E9%A2%84%E9%85%8Dstatic-provisioning">静态预配（static provisioning）</a></li>
+<li><a href="#%E5%8A%A8%E6%80%81%E9%A2%84%E9%85%8D">动态预配</a></li>
+</ul>
+</li>
+<li><a href="#%E5%8F%82%E6%95%B0%E8%A7%A3%E8%AF%BB">参数解读</a>
+<ul>
+<li><a href="#pv">PV</a></li>
+<li><a href="#pvc">PVC</a></li>
+<li><a href="#sc">SC</a></li>
+</ul>
+</li>
+<li><a href="#%E5%A6%82%E4%BD%95%E9%85%8D%E7%BD%AE">如何配置</a>
+<ul>
+<li><a href="#%E6%8C%82%E8%BD%BD-pvc">挂载 PVC</a></li>
+<li><a href="#%E6%8C%82%E8%BD%BD-configmap">挂载 ConfigMap</a></li>
+</ul>
+</li>
+<li><a href="#%E5%8F%82%E8%80%83">参考</a></li>
+</ul>
+</li>
+</ul>
+
+              </div>
+            </div>
+          </article>
+        </div>
+
+        
+          <div class="next-post">
+            <div class="next">下一篇</div>
+            <a href="https://protream.github.io/post/7Cj41vPio/">
+              <h3 class="post-title">
+                k8s 入门 6: 干扰预算
+              </h3>
+            </a>
+          </div>
+        
+
+        
+
+        <div class="site-footer">
+  Powered by <a href="https://github.com/getgridea/gridea" target="_blank">&nbsp;Gridea</a>
+  <a class="rss" href="https://protream.github.io/atom.xml" target="_blank">
+    <i class="ri-rss-line"></i> RSS
+  </a>
+</div>
+
+      </div>
+    </div>
+
+    <script>
+      hljs.initHighlightingOnLoad()
+
+      let mainNavLinks = document.querySelectorAll(".markdownIt-TOC a");
+
+      // This should probably be throttled.
+      // Especially because it triggers during smooth scrolling.
+      // https://lodash.com/docs/4.17.10#throttle
+      // You could do like...
+      // window.addEventListener("scroll", () => {
+      //    _.throttle(doThatStuff, 100);
+      // });
+      // Only not doing it here to keep this Pen dependency-free.
+
+      window.addEventListener("scroll", event => {
+        let fromTop = window.scrollY;
+
+        mainNavLinks.forEach((link, index) => {
+          let section = document.getElementById(decodeURI(link.hash).substring(1));
+          let nextSection = null
+          if (mainNavLinks[index + 1]) {
+            nextSection = document.getElementById(decodeURI(mainNavLinks[index + 1].hash).substring(1));
+          }
+          if (section.offsetTop <= fromTop) {
+            if (nextSection) {
+              if (nextSection.offsetTop > fromTop) {
+                link.classList.add("current");
+              } else {
+                link.classList.remove("current");    
+              }
+            } else {
+              link.classList.add("current");
+            }
+          } else {
+            link.classList.remove("current");
+          }
+        });
+      });
+
+    </script>
+  </body>
+</html>

@@ -1,0 +1,224 @@
+<html>
+  <head>
+    <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Tmux 基本用法 | Protream&#39;s Notes</title>
+<link rel="shortcut icon" href="https://protream.github.io/favicon.ico?v=1733235889358">
+<link href="https://cdn.jsdelivr.net/npm/remixicon@2.3.0/fonts/remixicon.css" rel="stylesheet">
+<link rel="stylesheet" href="https://protream.github.io/styles/main.css">
+<link rel="alternate" type="application/atom+xml" title="Tmux 基本用法 | Protream&#39;s Notes - Atom Feed" href="https://protream.github.io/atom.xml">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Droid+Serif:400,700">
+
+
+
+    <meta name="description" content="当用户与远程计算机进行会话时，创建的窗口是其中的进程是绑定的，当用户长时间不操作或者因为网络异常导致远程连接中断，窗口及其里面的进行也随之中断，里面如果有些还未完成的任务也会被关闭。tmux 解决的问题是将会话与窗口解绑。窗口关闭会话并不会..." />
+    <meta name="keywords" content="tools,linux" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.10.0/katex.min.css">
+    <script src="//cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.5.1/build/highlight.min.js"></script>
+  </head>
+  <body>
+    <div class="main">
+      <div class="main-content">
+        <div class="site-header">
+  <a href="https://protream.github.io">
+  <img class="avatar" src="https://protream.github.io/images/avatar.png?v=1733235889358" alt="">
+  </a>
+  <h1 class="site-title">
+    Protream&#39;s Notes
+  </h1>
+  <p class="site-description">
+    
+  </p>
+  <div class="menu-container">
+    
+      
+        <a href="/" class="menu">
+          首页
+        </a>
+      
+    
+      
+        <a href="/archives" class="menu">
+          归档
+        </a>
+      
+    
+      
+        <a href="/tags" class="menu">
+          标签
+        </a>
+      
+    
+      
+        <a href="/post/about" class="menu">
+          关于
+        </a>
+      
+    
+  </div>
+  <div class="social-container">
+    
+      
+    
+      
+    
+      
+    
+      
+    
+      
+    
+  </div>
+</div>
+
+        <div class="post-detail">
+          <article class="post">
+            <h2 class="post-title">
+              Tmux 基本用法
+            </h2>
+            <div class="post-info">
+              <span>
+                2024-02-18
+              </span>
+              <span>
+                2 min read
+              </span>
+              
+                <a href="https://protream.github.io/tag/tools/" class="post-tag">
+                  # tools
+                </a>
+              
+                <a href="https://protream.github.io/tag/linux/" class="post-tag">
+                  # linux
+                </a>
+              
+            </div>
+            
+            <div class="post-content-wrapper">
+              <div class="post-content" v-pre>
+                <p>当用户与远程计算机进行会话时，创建的窗口是其中的进程是绑定的，当用户长时间不操作或者因为网络异常导致远程连接中断，窗口及其里面的进行也随之中断，里面如果有些还未完成的任务也会被关闭。tmux 解决的问题是将会话与窗口解绑。窗口关闭会话并不会关闭，重新连接上终端可以恢复会话。</p>
+<!-- more -->
+<h2 id="命令">命令</h2>
+<p>• 创建会话：tmux new -s <session-name><br>
+• 列出会话：tmux ls<br>
+• 退出会话：C-b d<br>
+• 进入会话：tmux a -t <session-name><br>
+• 删除会话：tmux kill-session -t <session-name></p>
+<h2 id="快捷键">快捷键</h2>
+<h3 id="全局">全局</h3>
+<p>• 显示帮助：C-b ?<br>
+• 重新加载配置：C-b :source-file ~/.tmux.conf<br>
+会话操作<br>
+• 列出所有会话：C-b s<br>
+• 重命名当前会话：C-n $</p>
+<h3 id="窗口操作">窗口操作</h3>
+<p>• 创建新窗口：C-b c<br>
+• 下一个窗口：C-b n<br>
+• 上一个窗口：C-b p<br>
+• 重命名窗口：C-b ,<br>
+• 从列表选择窗口：C-b w<br>
+• 按编号选择窗口：C-b <number><br>
+• 查看历史数据：<br>
+• 进入查看模式：C-B [<br>
+• 翻页：Option 方向键</p>
+<h3 id="窗格操作">窗格操作</h3>
+<p>• 垂直分割：C-b %<br>
+• 水平分割：C-b &quot;<br>
+• 全屏/退出全屏：C-b z<br>
+• 上一个窗格：C-b ;<br>
+• 下一个窗格：C-b o<br>
+• 与上一个窗格交换位置：C-b {<br>
+• 与下一个窗格交换位置：C-b }<br>
+• 改变窗格排列方式：C-b space</p>
+<h2 id="参考">参考</h2>
+<p>[1] <a href="https://www.ruanyifeng.com/blog/2019/10/tmux.html">阮一峰 tmux 教程</a><br>
+[2] <a href="https://gist.github.com/ryerh/14b7c24dfd623ef8edc7">Tmux 配置</a></p>
+
+              </div>
+              <div class="toc-container">
+                <ul class="markdownIt-TOC">
+<li>
+<ul>
+<li><a href="#%E5%91%BD%E4%BB%A4">命令</a></li>
+<li><a href="#%E5%BF%AB%E6%8D%B7%E9%94%AE">快捷键</a>
+<ul>
+<li><a href="#%E5%85%A8%E5%B1%80">全局</a></li>
+<li><a href="#%E7%AA%97%E5%8F%A3%E6%93%8D%E4%BD%9C">窗口操作</a></li>
+<li><a href="#%E7%AA%97%E6%A0%BC%E6%93%8D%E4%BD%9C">窗格操作</a></li>
+</ul>
+</li>
+<li><a href="#%E5%8F%82%E8%80%83">参考</a></li>
+</ul>
+</li>
+</ul>
+
+              </div>
+            </div>
+          </article>
+        </div>
+
+        
+          <div class="next-post">
+            <div class="next">下一篇</div>
+            <a href="https://protream.github.io/post/0y-19LIoR/">
+              <h3 class="post-title">
+                pve 虚拟机配置
+              </h3>
+            </a>
+          </div>
+        
+
+        
+
+        <div class="site-footer">
+  Powered by <a href="https://github.com/getgridea/gridea" target="_blank">&nbsp;Gridea</a>
+  <a class="rss" href="https://protream.github.io/atom.xml" target="_blank">
+    <i class="ri-rss-line"></i> RSS
+  </a>
+</div>
+
+      </div>
+    </div>
+
+    <script>
+      hljs.initHighlightingOnLoad()
+
+      let mainNavLinks = document.querySelectorAll(".markdownIt-TOC a");
+
+      // This should probably be throttled.
+      // Especially because it triggers during smooth scrolling.
+      // https://lodash.com/docs/4.17.10#throttle
+      // You could do like...
+      // window.addEventListener("scroll", () => {
+      //    _.throttle(doThatStuff, 100);
+      // });
+      // Only not doing it here to keep this Pen dependency-free.
+
+      window.addEventListener("scroll", event => {
+        let fromTop = window.scrollY;
+
+        mainNavLinks.forEach((link, index) => {
+          let section = document.getElementById(decodeURI(link.hash).substring(1));
+          let nextSection = null
+          if (mainNavLinks[index + 1]) {
+            nextSection = document.getElementById(decodeURI(mainNavLinks[index + 1].hash).substring(1));
+          }
+          if (section.offsetTop <= fromTop) {
+            if (nextSection) {
+              if (nextSection.offsetTop > fromTop) {
+                link.classList.add("current");
+              } else {
+                link.classList.remove("current");    
+              }
+            } else {
+              link.classList.add("current");
+            }
+          } else {
+            link.classList.remove("current");
+          }
+        });
+      });
+
+    </script>
+  </body>
+</html>

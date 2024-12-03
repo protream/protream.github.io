@@ -1,0 +1,252 @@
+<html>
+  <head>
+    <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>k8s 入门 4：Pod 生命周期与容器探针 | Protream&#39;s Notes</title>
+<link rel="shortcut icon" href="https://protream.github.io/favicon.ico?v=1733235889358">
+<link href="https://cdn.jsdelivr.net/npm/remixicon@2.3.0/fonts/remixicon.css" rel="stylesheet">
+<link rel="stylesheet" href="https://protream.github.io/styles/main.css">
+<link rel="alternate" type="application/atom+xml" title="k8s 入门 4：Pod 生命周期与容器探针 | Protream&#39;s Notes - Atom Feed" href="https://protream.github.io/atom.xml">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Droid+Serif:400,700">
+
+
+
+    <meta name="description" content="本文总结了 K8S Pod 的生命周期与容器探针的相关知识。
+
+Pod 的生命周期
+Pod 起始于 Pending 阶段， 如果至少其中有一个主要容器正常启动，则进入 Running，之后取决于 Pod 中是否有容器以失败状态结束而进入 S..." />
+    <meta name="keywords" content="k8s" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.10.0/katex.min.css">
+    <script src="//cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.5.1/build/highlight.min.js"></script>
+  </head>
+  <body>
+    <div class="main">
+      <div class="main-content">
+        <div class="site-header">
+  <a href="https://protream.github.io">
+  <img class="avatar" src="https://protream.github.io/images/avatar.png?v=1733235889358" alt="">
+  </a>
+  <h1 class="site-title">
+    Protream&#39;s Notes
+  </h1>
+  <p class="site-description">
+    
+  </p>
+  <div class="menu-container">
+    
+      
+        <a href="/" class="menu">
+          首页
+        </a>
+      
+    
+      
+        <a href="/archives" class="menu">
+          归档
+        </a>
+      
+    
+      
+        <a href="/tags" class="menu">
+          标签
+        </a>
+      
+    
+      
+        <a href="/post/about" class="menu">
+          关于
+        </a>
+      
+    
+  </div>
+  <div class="social-container">
+    
+      
+    
+      
+    
+      
+    
+      
+    
+      
+    
+  </div>
+</div>
+
+        <div class="post-detail">
+          <article class="post">
+            <h2 class="post-title">
+              k8s 入门 4：Pod 生命周期与容器探针
+            </h2>
+            <div class="post-info">
+              <span>
+                2024-01-02
+              </span>
+              <span>
+                5 min read
+              </span>
+              
+                <a href="https://protream.github.io/tag/k8s/" class="post-tag">
+                  # k8s
+                </a>
+              
+            </div>
+            
+            <div class="post-content-wrapper">
+              <div class="post-content" v-pre>
+                <p>本文总结了 K8S Pod 的生命周期与容器探针的相关知识。</p>
+<!-- more -->
+<h2 id="pod-的生命周期">Pod 的生命周期</h2>
+<p>Pod 起始于 Pending 阶段， 如果至少其中有一个主要容器正常启动，则进入 Running，之后取决于 Pod 中是否有容器以失败状态结束而进入 Succeeded 或者 Failed 阶段。<br>
+Pod 的 status 字段是一个 PodStatus 对象，其中包含一个 phase 字段。Pod 的阶段（Phase）是 Pod 在其生命周期中所处位置的简单宏观概述。 该阶段并不是对容器或 Pod 状态的综合汇总，也不是为了成为完整的状态机。</p>
+<figure data-type="image" tabindex="1"><img src="https://github.com/protream/protream.github.io/blob/images/20240102-k8s-pod-lifecycle/1.jpg?raw=true" alt="podStatus" loading="lazy"></figure>
+<p>*说明：</p>
+<p>当一个 Pod 被删除时，执行一些 kubectl 命令会展示这个 Pod 的状态为 Terminating（终止）。 这个 Terminating 状态并不是 Pod 阶段之一。 Pod 被赋予一个可以体面终止的期限，默认为 30 秒。 你可以使用 --force 参数来强制终止 Pod。*</p>
+<p>如果一个节点死掉了，调度到该节点的 Pod 也被计划在给定超时期限结束后删除。</p>
+<h2 id="容器状态">容器状态</h2>
+<p>调度器将 Pod 分派给某个节点，kubelet 就通过 CRI 开始为 Pod 创建容器。容器的状态有三种：Waiting（等待）、Running（运行中）和 Terminated（已终止）。</p>
+<h3 id="waiting">Waiting</h3>
+<p>容器还有些操作没有完成，如拉取镜像，或者向容器应用 Secret 数据等。</p>
+<h3 id="running">Running</h3>
+<p>容器正常执行，如果配置了 postStart 回调，回调已经执行完成。</p>
+<h3 id="terminated">Terminated</h3>
+<p>容器正常结束，或者因为某些原因失败，如果配置了 preStop 回调，该回调再进入此状态前执行。</p>
+<h2 id="容器探针">容器探针</h2>
+<p>probe 是由 kubelet 对容器执行的定期诊断，方式有：<br>
+• 在容器内执行代码<br>
+• 发出一个网络请求</p>
+<h3 id="检查机制">检查机制</h3>
+<p>1、exec<br>
+在容器内执行指定命令。如果命令退出时返回码为 0 则认为诊断成功。</p>
+<p>2、grpc v1.27<br>
+使用 gRPC 执行一个远程过程调用，目标应该实现 gRPC 健康检查协议。如果响应的状态是 &quot;SERVING&quot;，则认为诊断成功。</p>
+<p>3、httpGet<br>
+执行 HTTP GET 请求，如果响应的状态码大于 200 且小于 400，则认为诊断成功。</p>
+<p>4、tcpSocket<br>
+对 IP:PORT 执行 TCP 检测。如果端口打开，则认为诊断成功。</p>
+<h3 id="探测类型">探测类型</h3>
+<h4 id="livenessprobe">livenessProbe</h4>
+<p>指示容器是否正常运行。如果存活探测失败，则 kubelet 会杀死容器，并且容器会根据其重启策略来决定未来。如果容器不提供存活探针，则默认状态为 Success。</p>
+<p>什么时候用？<br>
+许多长时间运行的应用最终会进入损坏状态，除非重新启动，否则无法被恢复。 Kubernetes 提供了存活探针来发现并处理这种情况。<br>
+如果容器中的进程能够在遇到问题或不健康的情况下自行崩溃，则不一定需要存活态探针； kubelet 将根据 Pod 的 restartPolicy 自动执行修复操作。<br>
+如果你希望容器在探测失败时被杀死并重新启动，那么请指定一个存活态探针， 并指定 restartPolicy 为 &quot;Always&quot; 或 &quot;OnFailure&quot;。</p>
+<h4 id="readinessprobe">readinessProbe</h4>
+<p>指示容器是否准别好为请求提供服务。如果就绪探针失败，Endpoint 控制器会从与 Pod 关联的所有服务的 Endpoint 列表中删除该 Pod 的 IP 地址。在 initialDelaySeconds 之前的状态默认是 Failure。若果容器不提供就绪探针，则默认状态是 Success。<br>
+什么时候用？<br>
+有时候，应用会暂时性地无法为请求提供服务。 例如，应用在启动时可能需要加载大量的数据或配置文件，或是启动后要依赖等待外部服务。 在这种情况下，既不想杀死应用，也不想给它发送请求。 Kubernetes 提供了就绪探针来发现并缓解这些情况。</p>
+<p>1、如果要仅在探测成功时才开始向 Pod 发送请求流量；<br>
+2、希望容器在检测到某个特殊状态时自行进入维护状态；<br>
+3、应用程序对后端服务有严格的依赖性，同时实现存活态和就绪态探针。 当应用程序本身是健康的，存活态探针检测通过后，就绪态探针会额外检查每个所需的后端服务是否可用，避免将流量导向只能返回错误信息的 Pod。<br>
+4、容器需要再启动期间加载大型数据、配置文件或执行迁移且希望区分失败的和仍在处理的应用。</p>
+<h4 id="startupprobe">startupProbe</h4>
+<p>指示容器中的应用是否已经启动。如果提供了启动探针，则所有其他探针都会被禁用，直到此探针成功为止。如果启动探测失败，则 kubelet 会杀死容器，并且容器会根据其重启策略来决定未来。如果容器不提供存活探针，则默认状态为 Success。</p>
+<p>什么时候用？<br>
+容器需要较长的启动时间，超出 initialDelaySeconds + failureThreshold × periodSeconds 总值。</p>
+<h2 id="参考">参考</h2>
+<p>[1] <a href="https://kubernetes.io/zh-cn/docs/concepts/workloads/pods/pod-lifecycle/">Pod 生命周期</a><br>
+[2] <a href="https://kubernetes.io/zh-cn/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/">配置存活、就绪和启动探针</a><br>
+[3] <a href="https://github.com/grpc/grpc/blob/master/doc/health-checking.md">gRPC 健康检查协议</a><br>
+[4] <a href="https://kubernetes.io/zh-cn/docs/tasks/configure-pod-container/attach-handler-lifecycle-event/">为容器的生命周期事件设置处理函数</a></p>
+
+              </div>
+              <div class="toc-container">
+                <ul class="markdownIt-TOC">
+<li>
+<ul>
+<li><a href="#pod-%E7%9A%84%E7%94%9F%E5%91%BD%E5%91%A8%E6%9C%9F">Pod 的生命周期</a></li>
+<li><a href="#%E5%AE%B9%E5%99%A8%E7%8A%B6%E6%80%81">容器状态</a>
+<ul>
+<li><a href="#waiting">Waiting</a></li>
+<li><a href="#running">Running</a></li>
+<li><a href="#terminated">Terminated</a></li>
+</ul>
+</li>
+<li><a href="#%E5%AE%B9%E5%99%A8%E6%8E%A2%E9%92%88">容器探针</a>
+<ul>
+<li><a href="#%E6%A3%80%E6%9F%A5%E6%9C%BA%E5%88%B6">检查机制</a></li>
+<li><a href="#%E6%8E%A2%E6%B5%8B%E7%B1%BB%E5%9E%8B">探测类型</a>
+<ul>
+<li><a href="#livenessprobe">livenessProbe</a></li>
+<li><a href="#readinessprobe">readinessProbe</a></li>
+<li><a href="#startupprobe">startupProbe</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><a href="#%E5%8F%82%E8%80%83">参考</a></li>
+</ul>
+</li>
+</ul>
+
+              </div>
+            </div>
+          </article>
+        </div>
+
+        
+          <div class="next-post">
+            <div class="next">下一篇</div>
+            <a href="https://protream.github.io/post/A6SBJWIn8/">
+              <h3 class="post-title">
+                k8s 入门 3：Pod
+              </h3>
+            </a>
+          </div>
+        
+
+        
+
+        <div class="site-footer">
+  Powered by <a href="https://github.com/getgridea/gridea" target="_blank">&nbsp;Gridea</a>
+  <a class="rss" href="https://protream.github.io/atom.xml" target="_blank">
+    <i class="ri-rss-line"></i> RSS
+  </a>
+</div>
+
+      </div>
+    </div>
+
+    <script>
+      hljs.initHighlightingOnLoad()
+
+      let mainNavLinks = document.querySelectorAll(".markdownIt-TOC a");
+
+      // This should probably be throttled.
+      // Especially because it triggers during smooth scrolling.
+      // https://lodash.com/docs/4.17.10#throttle
+      // You could do like...
+      // window.addEventListener("scroll", () => {
+      //    _.throttle(doThatStuff, 100);
+      // });
+      // Only not doing it here to keep this Pen dependency-free.
+
+      window.addEventListener("scroll", event => {
+        let fromTop = window.scrollY;
+
+        mainNavLinks.forEach((link, index) => {
+          let section = document.getElementById(decodeURI(link.hash).substring(1));
+          let nextSection = null
+          if (mainNavLinks[index + 1]) {
+            nextSection = document.getElementById(decodeURI(mainNavLinks[index + 1].hash).substring(1));
+          }
+          if (section.offsetTop <= fromTop) {
+            if (nextSection) {
+              if (nextSection.offsetTop > fromTop) {
+                link.classList.add("current");
+              } else {
+                link.classList.remove("current");    
+              }
+            } else {
+              link.classList.add("current");
+            }
+          } else {
+            link.classList.remove("current");
+          }
+        });
+      });
+
+    </script>
+  </body>
+</html>

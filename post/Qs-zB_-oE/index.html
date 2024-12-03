@@ -1,0 +1,252 @@
+<html>
+  <head>
+    <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>设计模式7：桥接模式 | Protream&#39;s Notes</title>
+<link rel="shortcut icon" href="https://protream.github.io/favicon.ico?v=1733235889358">
+<link href="https://cdn.jsdelivr.net/npm/remixicon@2.3.0/fonts/remixicon.css" rel="stylesheet">
+<link rel="stylesheet" href="https://protream.github.io/styles/main.css">
+<link rel="alternate" type="application/atom+xml" title="设计模式7：桥接模式 | Protream&#39;s Notes - Atom Feed" href="https://protream.github.io/atom.xml">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Droid+Serif:400,700">
+
+
+
+    <meta name="description" content="桥接模式是一种结构型设计模式，它把抽象化与实现化解耦，使得二者可以独立变化。
+
+意图：将抽象部分与实现部分分离，使它们都可以独立的变化。
+主要解决：在有多种可能会变化的情况下，用继承会造成类爆炸问题，扩展起来不灵活。
+何时使用：实现系统可能..." />
+    <meta name="keywords" content="design patterns" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.10.0/katex.min.css">
+    <script src="//cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.5.1/build/highlight.min.js"></script>
+  </head>
+  <body>
+    <div class="main">
+      <div class="main-content">
+        <div class="site-header">
+  <a href="https://protream.github.io">
+  <img class="avatar" src="https://protream.github.io/images/avatar.png?v=1733235889358" alt="">
+  </a>
+  <h1 class="site-title">
+    Protream&#39;s Notes
+  </h1>
+  <p class="site-description">
+    
+  </p>
+  <div class="menu-container">
+    
+      
+        <a href="/" class="menu">
+          首页
+        </a>
+      
+    
+      
+        <a href="/archives" class="menu">
+          归档
+        </a>
+      
+    
+      
+        <a href="/tags" class="menu">
+          标签
+        </a>
+      
+    
+      
+        <a href="/post/about" class="menu">
+          关于
+        </a>
+      
+    
+  </div>
+  <div class="social-container">
+    
+      
+    
+      
+    
+      
+    
+      
+    
+      
+    
+  </div>
+</div>
+
+        <div class="post-detail">
+          <article class="post">
+            <h2 class="post-title">
+              设计模式7：桥接模式
+            </h2>
+            <div class="post-info">
+              <span>
+                2023-11-22
+              </span>
+              <span>
+                3 min read
+              </span>
+              
+                <a href="https://protream.github.io/tag/design-patterns/" class="post-tag">
+                  # design patterns
+                </a>
+              
+            </div>
+            
+            <div class="post-content-wrapper">
+              <div class="post-content" v-pre>
+                <p>桥接模式是一种结构型设计模式，它把抽象化与实现化解耦，使得二者可以独立变化。</p>
+<!-- more -->
+<p>意图：将抽象部分与实现部分分离，使它们都可以独立的变化。</p>
+<p>主要解决：在有多种可能会变化的情况下，用继承会造成类爆炸问题，扩展起来不灵活。</p>
+<p>何时使用：实现系统可能有多个角度分类，每一种角度都可能变化。</p>
+<p>如何解决：把这种多角度分类分离出来，让它们独立变化，减少它们之间耦合。</p>
+<h2 id="示例">示例</h2>
+<p>我们以遥控器和电视设备为例，来说明桥接模式。</p>
+<p>在这个例子中，我们可以把遥控器看作是抽象部分，而电视设备看作是实现部分。不同的遥控器和电视设备可以有不同的实现，但是它们之间的基本操作（如打开、关闭、切换频道等）是一样的。</p>
+<p>首先，我们定义一个设备接口（电视设备）：</p>
+<pre><code class="language-golang">type Device interface {
+	TurnOn()
+	TurnOff()
+	SetChannel(channel int)
+}
+</code></pre>
+<p>然后，我们可以定义两种不同的设备，如电视和收音机：</p>
+<pre><code class="language-go">type TV struct{}
+
+func (tv *TV) TurnOn() {
+	fmt.Println(&quot;Turning on the TV&quot;)
+}
+
+func (tv *TV) TurnOff() {
+	fmt.Println(&quot;Turning off the TV&quot;)
+}
+
+func (tv *TV) SetChannel(channel int) {
+	fmt.Println(&quot;Setting channel on the TV to&quot;, channel)
+}
+
+type Radio struct{}
+
+func (radio *Radio) TurnOn() {
+	fmt.Println(&quot;Turning on the Radio&quot;)
+}
+
+func (radio *Radio) TurnOff() {
+	fmt.Println(&quot;Turning off the Radio&quot;)
+}
+
+func (radio *Radio) SetChannel(channel int) {
+	fmt.Println(&quot;Setting channel on the Radio to&quot;, channel)
+}
+</code></pre>
+<p>接着，我们定义一个遥控器接口：</p>
+<pre><code>type RemoteControl struct {
+	device Device
+}
+
+func (rc *RemoteControl) TurnOn() {
+	rc.device.TurnOn()
+}
+
+func (rc *RemoteControl) TurnOff() {
+	rc.device.TurnOff()
+}
+
+func (rc *RemoteControl) SetChannel(channel int) {
+	rc.device.SetChannel(channel)
+}
+</code></pre>
+<p>最后，我们可以创建一个电视和一个遥控器，并通过遥控器来控制电视：</p>
+<pre><code>func main() {
+	tv := &amp;TV{}
+	remote := &amp;RemoteControl{device: tv}
+
+	remote.TurnOn()
+	remote.SetChannel(1)
+	remote.TurnOff()
+}
+</code></pre>
+<p>这样，如果我们要添加新的设备或者新的遥控器，我们只需要分别实现设备接口和遥控器接口即可，而不需要修改现有的代码。这就是桥接模式的优点。</p>
+
+              </div>
+              <div class="toc-container">
+                <ul class="markdownIt-TOC">
+<li>
+<ul>
+<li><a href="#%E7%A4%BA%E4%BE%8B">示例</a></li>
+</ul>
+</li>
+</ul>
+
+              </div>
+            </div>
+          </article>
+        </div>
+
+        
+          <div class="next-post">
+            <div class="next">下一篇</div>
+            <a href="https://protream.github.io/post/Qqc59xcmw/">
+              <h3 class="post-title">
+                设计模式6：适配器模式
+              </h3>
+            </a>
+          </div>
+        
+
+        
+
+        <div class="site-footer">
+  Powered by <a href="https://github.com/getgridea/gridea" target="_blank">&nbsp;Gridea</a>
+  <a class="rss" href="https://protream.github.io/atom.xml" target="_blank">
+    <i class="ri-rss-line"></i> RSS
+  </a>
+</div>
+
+      </div>
+    </div>
+
+    <script>
+      hljs.initHighlightingOnLoad()
+
+      let mainNavLinks = document.querySelectorAll(".markdownIt-TOC a");
+
+      // This should probably be throttled.
+      // Especially because it triggers during smooth scrolling.
+      // https://lodash.com/docs/4.17.10#throttle
+      // You could do like...
+      // window.addEventListener("scroll", () => {
+      //    _.throttle(doThatStuff, 100);
+      // });
+      // Only not doing it here to keep this Pen dependency-free.
+
+      window.addEventListener("scroll", event => {
+        let fromTop = window.scrollY;
+
+        mainNavLinks.forEach((link, index) => {
+          let section = document.getElementById(decodeURI(link.hash).substring(1));
+          let nextSection = null
+          if (mainNavLinks[index + 1]) {
+            nextSection = document.getElementById(decodeURI(mainNavLinks[index + 1].hash).substring(1));
+          }
+          if (section.offsetTop <= fromTop) {
+            if (nextSection) {
+              if (nextSection.offsetTop > fromTop) {
+                link.classList.add("current");
+              } else {
+                link.classList.remove("current");    
+              }
+            } else {
+              link.classList.add("current");
+            }
+          } else {
+            link.classList.remove("current");
+          }
+        });
+      });
+
+    </script>
+  </body>
+</html>

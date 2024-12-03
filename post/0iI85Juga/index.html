@@ -1,0 +1,222 @@
+<html>
+  <head>
+    <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>网络诊断工具之 traceroute | Protream&#39;s Notes</title>
+<link rel="shortcut icon" href="https://protream.github.io/favicon.ico?v=1733235889358">
+<link href="https://cdn.jsdelivr.net/npm/remixicon@2.3.0/fonts/remixicon.css" rel="stylesheet">
+<link rel="stylesheet" href="https://protream.github.io/styles/main.css">
+<link rel="alternate" type="application/atom+xml" title="网络诊断工具之 traceroute | Protream&#39;s Notes - Atom Feed" href="https://protream.github.io/atom.xml">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Droid+Serif:400,700">
+
+
+
+    <meta name="description" content="traceroute是一种计算机网络诊断工具，它的主要作用是展示数据包从一个网络节点到达另一个网络节点所经过的路径。traceroute 在Linux、Unix、Windows 等操作系统中都有实现，在 windows 下叫 tracetc..." />
+    <meta name="keywords" content="linux" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.10.0/katex.min.css">
+    <script src="//cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.5.1/build/highlight.min.js"></script>
+  </head>
+  <body>
+    <div class="main">
+      <div class="main-content">
+        <div class="site-header">
+  <a href="https://protream.github.io">
+  <img class="avatar" src="https://protream.github.io/images/avatar.png?v=1733235889358" alt="">
+  </a>
+  <h1 class="site-title">
+    Protream&#39;s Notes
+  </h1>
+  <p class="site-description">
+    
+  </p>
+  <div class="menu-container">
+    
+      
+        <a href="/" class="menu">
+          首页
+        </a>
+      
+    
+      
+        <a href="/archives" class="menu">
+          归档
+        </a>
+      
+    
+      
+        <a href="/tags" class="menu">
+          标签
+        </a>
+      
+    
+      
+        <a href="/post/about" class="menu">
+          关于
+        </a>
+      
+    
+  </div>
+  <div class="social-container">
+    
+      
+    
+      
+    
+      
+    
+      
+    
+      
+    
+  </div>
+</div>
+
+        <div class="post-detail">
+          <article class="post">
+            <h2 class="post-title">
+              网络诊断工具之 traceroute
+            </h2>
+            <div class="post-info">
+              <span>
+                2023-11-28
+              </span>
+              <span>
+                5 min read
+              </span>
+              
+                <a href="https://protream.github.io/tag/linux/" class="post-tag">
+                  # linux
+                </a>
+              
+            </div>
+            
+            <div class="post-content-wrapper">
+              <div class="post-content" v-pre>
+                <p>traceroute是一种计算机网络诊断工具，它的主要作用是展示数据包从一个网络节点到达另一个网络节点所经过的路径。traceroute 在Linux、Unix、Windows 等操作系统中都有实现，在 windows 下叫 tracetcp。</p>
+<!-- more -->
+<h2 id="原理">原理</h2>
+<p>traceroute的工作原理是利用IP协议的“生存时间”（TTL）字段。当数据包在网络中传输时，每经过一个网络节点（如路由器或防火墙），TTL值就会减1，当TTL值减为0时，该数据包就会被丢弃，同时发送一个ICMP“超时”错误消息回源节点。traceroute就是通过发送一系列TTL值从1开始递增的数据包，然后依次接收并记录返回的ICMP错误消息，从而获得从源节点到目标节点的路径信息。</p>
+<h2 id="使用场景">使用场景</h2>
+<p>traceroute主要用于诊断网络问题，如网络延迟、丢包等。它可以显示出数据包从源节点到目标节点所经过的所有网络节点，以及每个节点的IP地址和主机名，还可以显示出数据包到达每个节点所需要的时间。因此，通过traceroute，我们可以了解网络的结构，找出网络的瓶颈，定位网络问题。</p>
+<h2 id="用法">用法</h2>
+<p>在Linux中，traceroute的基本用法是 traceroute [选项] 目标，其中目标可以是IP地址或域名。例如，traceroute www.google.com会显示出从当前主机到www.google.com的路径。</p>
+<p>traceroute有许多选项，如：</p>
+<p>-I：使用ICMP ECHO而不是UDP数据包。<br>
+-n：不解析IP地址为主机名。<br>
+-f：设置第一个数据包的TTL值。<br>
+-m：设置最大的TTL值。<br>
+-q：设置每个节点发送的查询数。<br>
+-w：设置等待响应的超时时间。</p>
+<h2 id="示例">示例</h2>
+<pre><code class="language-bash">traceroute www.google.com
+</code></pre>
+<p>然后你可能会看到类似以下的输出：</p>
+<pre><code class="language-bash">traceroute to www.google.com (216.58.217.36), 30 hops max, 60 byte packets
+ 1  gateway (192.168.1.1)  0.273 ms  0.387 ms  0.466 ms
+ 2  10.0.0.1 (10.0.0.1)  10.686 ms  10.686 ms  10.665 ms
+ 3  172.18.12.12 (172.18.12.12)  15.213 ms  15.190 ms  15.166 ms
+ 4  192.0.2.1 (192.0.2.1)  15.141 ms  15.117 ms  15.093 ms
+ 5  203.0.113.1 (203.0.113.1)  15.069 ms  15.046 ms  15.022 ms
+ 6  198.51.100.1 (198.51.100.1)  14.998 ms  14.974 ms  14.951 ms
+ 7  203.0.113.1 (203.0.113.1)  14.927 ms  14.903 ms  14.880 ms
+ 8  8.8.8.8 (8.8.8.8)  14.856 ms  14.832 ms  14.809 ms
+ 9  dns.google (216.58.217.36)  14.784 ms  14.761 ms  14.738 ms
+</code></pre>
+<p>这个输出告诉我们，从你的计算机到Google主页的数据包需要经过9个网络节点，每个节点的IP地址和到达该节点所需的时间都列出来了。</p>
+<p>在traceroute的输出结果中，每一行代表一个网络节点，每个节点后面的三个时间值是traceroute发送三个数据包到达该节点所需要的时间。</p>
+<p>traceroute默认会向每个节点发送三个数据包，这是为了获得更准确的结果，因为网络延迟可能会有波动。这三个时间值就是这三个数据包从发送到收到回应所经过的时间，单位是毫秒。</p>
+<p>如果你看到三个时间值有较大的差异，那可能意味着网络延迟有较大的波动，这可能是网络问题的一个迹象。如果你看到某个节点的所有时间值都是星号（*），那可能意味着数据包没有到达该节点，或者该节点没有回应，这可能是网络问题的一个迹象。</p>
+<h2 id="注意事项">注意事项</h2>
+<ul>
+<li>traceroute可能需要root权限才能运行。</li>
+<li>traceroute的结果可能会受到网络状况的影响，因此可能需要多次运行以获得准确的结果。</li>
+<li>由于一些网络节点可能会丢弃或者不回应traceroute的查询，因此traceroute的结果可能会不完整或者不准确。</li>
+<li>一些网络节点可能会对traceroute的查询进行限速，这可能会影响traceroute的结果。</li>
+<li>由于网络的动态性，traceroute显示的路径可能会随着时间的推移而改变。</li>
+</ul>
+<p>并不是所有网关都会如实返回 ICMP 超时报文。出于安全性考虑，大多数防火墙以及启用了防火墙功能的路由器缺省配置为不返回各种 ICMP 报文，其余路由器或交换机也可被管理员主动修改配置变为不返回 ICMP 报文。因此 Traceroute 程序不一定能拿全所有的沿途网关地址。所以，当某个 TTL 值的数据包得不到响应时，并不能停止这一追踪过程，程序仍然会把 TTL 递增而发出下一个数据包。一直达到默认或用参数指定的追踪限制（maximum_hops）才结束追踪。</p>
+
+              </div>
+              <div class="toc-container">
+                <ul class="markdownIt-TOC">
+<li>
+<ul>
+<li><a href="#%E5%8E%9F%E7%90%86">原理</a></li>
+<li><a href="#%E4%BD%BF%E7%94%A8%E5%9C%BA%E6%99%AF">使用场景</a></li>
+<li><a href="#%E7%94%A8%E6%B3%95">用法</a></li>
+<li><a href="#%E7%A4%BA%E4%BE%8B">示例</a></li>
+<li><a href="#%E6%B3%A8%E6%84%8F%E4%BA%8B%E9%A1%B9">注意事项</a></li>
+</ul>
+</li>
+</ul>
+
+              </div>
+            </div>
+          </article>
+        </div>
+
+        
+          <div class="next-post">
+            <div class="next">下一篇</div>
+            <a href="https://protream.github.io/post/Qs-zB_-oE/">
+              <h3 class="post-title">
+                设计模式7：桥接模式
+              </h3>
+            </a>
+          </div>
+        
+
+        
+
+        <div class="site-footer">
+  Powered by <a href="https://github.com/getgridea/gridea" target="_blank">&nbsp;Gridea</a>
+  <a class="rss" href="https://protream.github.io/atom.xml" target="_blank">
+    <i class="ri-rss-line"></i> RSS
+  </a>
+</div>
+
+      </div>
+    </div>
+
+    <script>
+      hljs.initHighlightingOnLoad()
+
+      let mainNavLinks = document.querySelectorAll(".markdownIt-TOC a");
+
+      // This should probably be throttled.
+      // Especially because it triggers during smooth scrolling.
+      // https://lodash.com/docs/4.17.10#throttle
+      // You could do like...
+      // window.addEventListener("scroll", () => {
+      //    _.throttle(doThatStuff, 100);
+      // });
+      // Only not doing it here to keep this Pen dependency-free.
+
+      window.addEventListener("scroll", event => {
+        let fromTop = window.scrollY;
+
+        mainNavLinks.forEach((link, index) => {
+          let section = document.getElementById(decodeURI(link.hash).substring(1));
+          let nextSection = null
+          if (mainNavLinks[index + 1]) {
+            nextSection = document.getElementById(decodeURI(mainNavLinks[index + 1].hash).substring(1));
+          }
+          if (section.offsetTop <= fromTop) {
+            if (nextSection) {
+              if (nextSection.offsetTop > fromTop) {
+                link.classList.add("current");
+              } else {
+                link.classList.remove("current");    
+              }
+            } else {
+              link.classList.add("current");
+            }
+          } else {
+            link.classList.remove("current");
+          }
+        });
+      });
+
+    </script>
+  </body>
+</html>

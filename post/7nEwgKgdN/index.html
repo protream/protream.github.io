@@ -1,0 +1,321 @@
+<html>
+  <head>
+    <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>k8s 入门 1：基础 | Protream&#39;s Notes</title>
+<link rel="shortcut icon" href="https://protream.github.io/favicon.ico?v=1733235889358">
+<link href="https://cdn.jsdelivr.net/npm/remixicon@2.3.0/fonts/remixicon.css" rel="stylesheet">
+<link rel="stylesheet" href="https://protream.github.io/styles/main.css">
+<link rel="alternate" type="application/atom+xml" title="k8s 入门 1：基础 | Protream&#39;s Notes - Atom Feed" href="https://protream.github.io/atom.xml">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Droid+Serif:400,700">
+
+
+
+    <meta name="description" content="k8s 诞生的背景、架构、核心组成部分。
+
+1 背景
+K8S 是 Google 设计建造用来简化部署和管理复杂的分布式系统，它不是从零开始的，而是建立在 google 多年的基础设施及服务管理经验上的产物。在 K8S 之前，Google 已..." />
+    <meta name="keywords" content="k8s" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.10.0/katex.min.css">
+    <script src="//cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.5.1/build/highlight.min.js"></script>
+  </head>
+  <body>
+    <div class="main">
+      <div class="main-content">
+        <div class="site-header">
+  <a href="https://protream.github.io">
+  <img class="avatar" src="https://protream.github.io/images/avatar.png?v=1733235889358" alt="">
+  </a>
+  <h1 class="site-title">
+    Protream&#39;s Notes
+  </h1>
+  <p class="site-description">
+    
+  </p>
+  <div class="menu-container">
+    
+      
+        <a href="/" class="menu">
+          首页
+        </a>
+      
+    
+      
+        <a href="/archives" class="menu">
+          归档
+        </a>
+      
+    
+      
+        <a href="/tags" class="menu">
+          标签
+        </a>
+      
+    
+      
+        <a href="/post/about" class="menu">
+          关于
+        </a>
+      
+    
+  </div>
+  <div class="social-container">
+    
+      
+    
+      
+    
+      
+    
+      
+    
+      
+    
+  </div>
+</div>
+
+        <div class="post-detail">
+          <article class="post">
+            <h2 class="post-title">
+              k8s 入门 1：基础
+            </h2>
+            <div class="post-info">
+              <span>
+                2023-07-24
+              </span>
+              <span>
+                10 min read
+              </span>
+              
+                <a href="https://protream.github.io/tag/k8s/" class="post-tag">
+                  # k8s
+                </a>
+              
+            </div>
+            
+            <div class="post-content-wrapper">
+              <div class="post-content" v-pre>
+                <p>k8s 诞生的背景、架构、核心组成部分。</p>
+<!-- more -->
+<h2 id="1-背景">1 背景</h2>
+<p>K8S 是 Google 设计建造用来简化部署和管理复杂的分布式系统，它不是从零开始的，而是建立在 google 多年的基础设施及服务管理经验上的产物。在 K8S 之前，Google 已经有过 Borg 和  Omega 两个系统。</p>
+<p><strong>Borg</strong></p>
+<blockquote>
+<p>It was built to manage both long-running services and batch jobs.</p>
+</blockquote>
+<blockquote>
+<p>As more and more applications were developed to run on top of Borg, our application and infrastructure teams developed a broad ecosystem of tools and services for it. These systems provided mechanisms for configuring and updating jobs; predicting resource requirements; dynamically pushing configuration files to running jobs; service discovery and load balancing; auto-scaling; machine-lifecycle management; quota management; and much more.</p>
+</blockquote>
+<p>管理服务和批任务。随着越来越多的服务运行在 Borg 在，越来越多的功能工具被开发出来，也带来了问题，如架构上的不一致，配置上的混乱</p>
+<p><strong>Omega</strong></p>
+<blockquote>
+<p>Omega,6 an offspring of Borg, was driven by a desire to improve the software engineering of the Borg ecosystem.</p>
+</blockquote>
+<p>Omega 是 Borg 的后代，解决了上代工程上的一些问题。由单体架构变成微服务架构，borg master 的能力被拆分成不同的组件；引入了基于 Paxos 一致性算法的共享存储。</p>
+<p><strong>Kubernetes</strong></p>
+<blockquote>
+<p>It was conceived of and developed in a world where external developers were becoming interested in Linux containers, and Google had developed a growing business selling public-cloud infrastructure.</p>
+</blockquote>
+<p>面向开发人员。</p>
+<blockquote>
+<p>Kubernetes was developed with a stronger focus on the experience of developers writing applications that run in a cluster: its main design goal is to make it easy to deploy and manage complex distributed systems, while still benefiting from the improved utilization that containers enable.</p>
+</blockquote>
+<p>简化部署和管理分布式应用。</p>
+<h2 id="2-边界">2 边界</h2>
+<h3 id="21-能做什么">2.1 能做什么</h3>
+<p>Kubernetes 为你提供：</p>
+<ul>
+<li>服务发现和负载均衡</li>
+<li>存储编排</li>
+<li>自动部署和回滚</li>
+<li>自动完成装箱计算</li>
+<li>自我修复</li>
+<li>密钥与配置管理</li>
+</ul>
+<h3 id="22-不是什么">2.2 不是什么</h3>
+<p>不限制支持的应用程序类型。 Kubernetes 旨在支持极其多种多样的工作负载，包括无状态、有状态和数据处理工作负载。 如果应用程序可以在容器中运行，那么它应该可以在 Kubernetes 上很好地运行。<br>
+不部署源代码，也不构建你的应用程序。 持续集成（CI）、交付和部署（CI/CD）工作流取决于组织的文化和偏好以及技术要求。<br>
+不提供应用程序级别的服务作为内置服务，例如中间件（例如消息中间件）、 数据处理框架（例如 Spark）、数据库（例如 MySQL）、缓存、集群存储系统 （例如 Ceph）。这样的组件可以在 Kubernetes 上运行，并且/或者可以由运行在 Kubernetes 上的应用程序通过可移植机制（例如开放服务代理）来访问。<br>
+不是日志记录、监视或警报的解决方案。 它集成了一些功能作为概念证明，并提供了收集和导出指标的机制。<br>
+不提供也不要求配置用的语言、系统（例如 jsonnet），它提供了声明性 API， 该声明性 API 可以由任意形式的声明性规范所构成。<br>
+不提供也不采用任何全面的机器配置、维护、管理或自我修复系统。<br>
+此外，Kubernetes 不仅仅是一个编排系统，实际上它消除了编排的需要。 编排的技术定义是执行已定义的工作流程：首先执行 A，然后执行 B，再执行 C。 而 Kubernetes 包含了一组独立可组合的控制过程，可以持续地将当前状态驱动到所提供的预期状态。 你不需要在乎如何从 A 移动到 C，也不需要集中控制，这使得系统更易于使用且功能更强大、 系统更健壮，更为弹性和可扩展。</p>
+<h3 id="23-物理限制">2.3 物理限制</h3>
+<p>节点数：5000<br>
+pod 总数：150000<br>
+容器总数：300000<br>
+单节点pod数：110</p>
+<h2 id="3-架构">3 架构</h2>
+<h3 id="整体架构">整体架构</h3>
+<figure data-type="image" tabindex="1"><img src="https://github.com/protream/protream.github.io/blob/images/59947fd799db244ab2a53180ca828e1c/f95e4995-daa8-4d64-96f8-22aa5ff8972a.png?raw=true" alt="" loading="lazy"></figure>
+<h3 id="组成部分">组成部分</h3>
+<p>1、控制平面组件（Control Plane Components）</p>
+<p>kube-apiserver<br>
+服务API，接收处理 API 请求，可伸缩。</p>
+<p>etcd<br>
+高可用、一致的键值存储，保存整个集群的状态。</p>
+<p>kube-scheduler<br>
+选择合适的节点运行新创建的 pod。</p>
+<p>kube-contoller-manager<br>
+运行控制器进程。<br>
+从逻辑上讲， 每个控制器都是一个单独的进程， 但是为了降低复杂性，它们都被编译到同一个可执行文件，并在同一个进程中运行。<br>
+• 节点控制器（Node Controller）：负责咋节点出现故障时进行通知和响应。<br>
+• 任务控制器（Job Controller）：监测代表一次性任务的 Job 对象，然后创建 Pods 来运行这些任务直至完成。<br>
+• 端点分片控制器（EndpointSlice controller）<br>
+• 服务账号控制器（ServiceAccount controller）</p>
+<p>cloud-controller-manager<br>
+封装与特定云平台的交互。</p>
+<p>2、Node 组件<br>
+kubelet<br>
+在集群每个节点上运行，kubelet 接收一组通过各类机制提供给它的 PodSpecs， 确保这些 PodSpecs 中描述的容器处于运行状态且健康。</p>
+<p>kube-proxy<br>
+是集群中每个节点上运行的网络代理，实现 k8s 的 service 概念的一部分。</p>
+<p>container runtime<br>
+• containerd<br>
+• CRI-O<br>
+• 其他实现了 CRI 的</p>
+<p>3、插件<br>
+• dns<br>
+• web dashboard</p>
+<h3 id="资源对象">资源对象</h3>
+<figure data-type="image" tabindex="2"><img src="https://raw.githubusercontent.com/protream/protream.github.io/images/59947fd799db244ab2a53180ca828e1c/4d451488-899b-4c47-85e5-1abc476c72d4.png" alt="" loading="lazy"></figure>
+<p>集群：<br>
+Namespace：Namespace资源对象用于将集群中的资源划分为逻辑分区。</p>
+<p>Node：Node 资源对象表示集群中的一个工作节点，也称为主机或服务器。Node 资源对象包含了节点的基本信息，如节点的名称、IP地址、标签、状态等。此外，Node资源对象还包含了节点的容量和使用情况，包括CPU、内存、磁盘等资源的容量和使用情况。</p>
+<p>Pod：Pod 是 k8s 中最小的可部署对象，它是一个或多个容器的集合，共享网络和存储资源。</p>
+<p>Custom Resource Definition：Custom Resource Definition 是一种自定义资源定义，它允许用户定义自己的资源类型，这些资源类型可以像Kubernetes原生资源一样被管理和操作。CRD可以用于扩展Kubernetes API，以支持自定义资源类型的创建、更新和删除。</p>
+<p>Pod Security Policy：Pod Security Policy资源对象，用于定义Pod的安全策略。它可以限制Pod中容器的权限和访问控制，以确保Pod的安全性。</p>
+<p>网络：<br>
+Service：Service是一种抽象，用于将Pod公开为网络服务，并提供负载均衡和服务发现功能。</p>
+<p>Ingress：Ingress是一种抽象，用于将外部流量路由到集群中的服务。</p>
+<p>Endpoint：Endpoint是一个表示服务终端的对象，它将服务的IP地址和端口映射到实际运行服务的Pod的IP地址和端口。</p>
+<p>Network Policy：Network Policy定义了一组规则，用于控制Pod之间的网络通信。它可以限制哪些Pod可以与其他Pod通信，以及如何通信。</p>
+<p>配置：</p>
+<p>ConfigMap：ConfigMap是一种对象，用于存储应用程序的配置数据。</p>
+<p>Secret：Secret是一种对象，用于存储敏感数据，例如密码和证书。</p>
+<p>工作：</p>
+<p>Job：Job是一种控制器，用于运行一次性任务，例如批处理作业。</p>
+<p>CronJob：CronJob是一种控制器，用于定期运行任务，例如备份或清理任务。</p>
+<p>Horizontal Pod Autoscaler：Horizontal Pod Autoscaler是一种用于自动调整Pod副本数量的机制。HPA资源对象可以根据CPU使用率、内存使用率等指标来自动扩展或缩减Pod副本数量，以满足应用程序的负载需求。</p>
+<p>ReplicaSet：ReplicaSet是Pod的控制器，用于确保指定数量的Pod副本正在运行。</p>
+<p>Deployment：Deployment是ReplicaSet的控制器，用于管理Pod的滚动更新和回滚。</p>
+<p>StatefulSet：StatefulSet是ReplicaSet的扩展，用于管理有状态应用程序的Pod。</p>
+<p>DaemonSet：DaemonSet是一种控制器，用于在每个节点上运行一个Pod副本。</p>
+<p>存储：</p>
+<p>Storage Class：Storage Class是一种资源对象，用于定义动态存储卷的属性和行为。SC可以被视为一种抽象层，它将底层存储系统的细节隐藏在背后，使得应用程序可以使用统一的方式来访问存储资源。</p>
+<p>PersistentVolume：PersistentVolume是一种对象，用于将持久存储资源（例如磁盘）分配给Pod。</p>
+<p>PersistentVolumeClaim：PersistentVolumeClaim是一种对象，用于声明需要PersistentVolume的Pod的存储需求。</p>
+<p>权限管理：</p>
+<p>ServiceAccount：ServiceAccount用于授权Pod对其他资源的访问权限。</p>
+<p>Role：Role资源对象是一种授权机制，用于定义一组权限，以控制对Kubernetes集群中的资源的访问。Role对象定义了一组规则，这些规则指定了哪些用户或组可以访问哪些资源以及可以执行哪些操作。Role对象只能授权对单个命名空间中的资源进行访问。</p>
+<p>ClusterRoleBinding：ClusterRoleBinding资源对象用于将一个ClusterRole（集群角色）绑定到一个或多个用户、组或ServiceAccount上，从而授予它们对集群中资源的访问权限。</p>
+<p>RoleBinding：RoleBinding资源对象用于将角色(Role)与用户(User)或服务账户(ServiceAccount)绑定在一起，从而授予用户或服务账户对指定资源的访问权限。RoleBinding资源对象定义了一个或多个用户或服务账户与一个或多个角色之间的关系，以便在Kubernetes集群中管理访问控制。</p>
+<h3 id="关键实现">关键实现</h3>
+<p>• CGroup<br>
+• 声明式 API<br>
+• 资源对象<br>
+• 插件<br>
+• CNI<br>
+• CSI<br>
+• CRI</p>
+<h2 id="参考">参考</h2>
+<p>【1】<a href="https://queue.acm.org/detail.cfm?id=2898444">Borg, Omega, and Kubernetes</a><br>
+【2】<a href="https://kubernetes.io/zh-cn/docs/concepts/cluster-administration/addons/">插件</a><br>
+【3】<a href="https://kubernetes.io/docs/concepts/overview/">overview</a></p>
+
+              </div>
+              <div class="toc-container">
+                <ul class="markdownIt-TOC">
+<li>
+<ul>
+<li><a href="#1-%E8%83%8C%E6%99%AF">1 背景</a></li>
+<li><a href="#2-%E8%BE%B9%E7%95%8C">2 边界</a>
+<ul>
+<li><a href="#21-%E8%83%BD%E5%81%9A%E4%BB%80%E4%B9%88">2.1 能做什么</a></li>
+<li><a href="#22-%E4%B8%8D%E6%98%AF%E4%BB%80%E4%B9%88">2.2 不是什么</a></li>
+<li><a href="#23-%E7%89%A9%E7%90%86%E9%99%90%E5%88%B6">2.3 物理限制</a></li>
+</ul>
+</li>
+<li><a href="#3-%E6%9E%B6%E6%9E%84">3 架构</a>
+<ul>
+<li><a href="#%E6%95%B4%E4%BD%93%E6%9E%B6%E6%9E%84">整体架构</a></li>
+<li><a href="#%E7%BB%84%E6%88%90%E9%83%A8%E5%88%86">组成部分</a></li>
+<li><a href="#%E8%B5%84%E6%BA%90%E5%AF%B9%E8%B1%A1">资源对象</a></li>
+<li><a href="#%E5%85%B3%E9%94%AE%E5%AE%9E%E7%8E%B0">关键实现</a></li>
+</ul>
+</li>
+<li><a href="#%E5%8F%82%E8%80%83">参考</a></li>
+</ul>
+</li>
+</ul>
+
+              </div>
+            </div>
+          </article>
+        </div>
+
+        
+          <div class="next-post">
+            <div class="next">下一篇</div>
+            <a href="https://protream.github.io/post/49m3yDGo3/">
+              <h3 class="post-title">
+                Supervisor 运行 FastAPI 项目
+              </h3>
+            </a>
+          </div>
+        
+
+        
+
+        <div class="site-footer">
+  Powered by <a href="https://github.com/getgridea/gridea" target="_blank">&nbsp;Gridea</a>
+  <a class="rss" href="https://protream.github.io/atom.xml" target="_blank">
+    <i class="ri-rss-line"></i> RSS
+  </a>
+</div>
+
+      </div>
+    </div>
+
+    <script>
+      hljs.initHighlightingOnLoad()
+
+      let mainNavLinks = document.querySelectorAll(".markdownIt-TOC a");
+
+      // This should probably be throttled.
+      // Especially because it triggers during smooth scrolling.
+      // https://lodash.com/docs/4.17.10#throttle
+      // You could do like...
+      // window.addEventListener("scroll", () => {
+      //    _.throttle(doThatStuff, 100);
+      // });
+      // Only not doing it here to keep this Pen dependency-free.
+
+      window.addEventListener("scroll", event => {
+        let fromTop = window.scrollY;
+
+        mainNavLinks.forEach((link, index) => {
+          let section = document.getElementById(decodeURI(link.hash).substring(1));
+          let nextSection = null
+          if (mainNavLinks[index + 1]) {
+            nextSection = document.getElementById(decodeURI(mainNavLinks[index + 1].hash).substring(1));
+          }
+          if (section.offsetTop <= fromTop) {
+            if (nextSection) {
+              if (nextSection.offsetTop > fromTop) {
+                link.classList.add("current");
+              } else {
+                link.classList.remove("current");    
+              }
+            } else {
+              link.classList.add("current");
+            }
+          } else {
+            link.classList.remove("current");
+          }
+        });
+      });
+
+    </script>
+  </body>
+</html>

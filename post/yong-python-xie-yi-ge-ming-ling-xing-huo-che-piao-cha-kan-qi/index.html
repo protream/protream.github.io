@@ -1,0 +1,339 @@
+<html>
+  <head>
+    <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>用 Python 写一个命令行火车票查看器 | Protream&#39;s Notes</title>
+<link rel="shortcut icon" href="https://protream.github.io/favicon.ico?v=1733235889358">
+<link href="https://cdn.jsdelivr.net/npm/remixicon@2.3.0/fonts/remixicon.css" rel="stylesheet">
+<link rel="stylesheet" href="https://protream.github.io/styles/main.css">
+<link rel="alternate" type="application/atom+xml" title="用 Python 写一个命令行火车票查看器 | Protream&#39;s Notes - Atom Feed" href="https://protream.github.io/atom.xml">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Droid+Serif:400,700">
+
+
+
+    <meta name="description" content="当你想查询一下火车票信息的时候，你还在上12306官网吗？或是打开你手机里的APP？下面让我们来用Python写一个命令行版的火车票查看器, 只要在命令行敲一行命令就能获得你想要的火车票信息！如果你刚掌握了Python基础，这将是个不错的小..." />
+    <meta name="keywords" content="python" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.10.0/katex.min.css">
+    <script src="//cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.5.1/build/highlight.min.js"></script>
+  </head>
+  <body>
+    <div class="main">
+      <div class="main-content">
+        <div class="site-header">
+  <a href="https://protream.github.io">
+  <img class="avatar" src="https://protream.github.io/images/avatar.png?v=1733235889358" alt="">
+  </a>
+  <h1 class="site-title">
+    Protream&#39;s Notes
+  </h1>
+  <p class="site-description">
+    
+  </p>
+  <div class="menu-container">
+    
+      
+        <a href="/" class="menu">
+          首页
+        </a>
+      
+    
+      
+        <a href="/archives" class="menu">
+          归档
+        </a>
+      
+    
+      
+        <a href="/tags" class="menu">
+          标签
+        </a>
+      
+    
+      
+        <a href="/post/about" class="menu">
+          关于
+        </a>
+      
+    
+  </div>
+  <div class="social-container">
+    
+      
+    
+      
+    
+      
+    
+      
+    
+      
+    
+  </div>
+</div>
+
+        <div class="post-detail">
+          <article class="post">
+            <h2 class="post-title">
+              用 Python 写一个命令行火车票查看器
+            </h2>
+            <div class="post-info">
+              <span>
+                2016-06-20
+              </span>
+              <span>
+                7 min read
+              </span>
+              
+                <a href="https://protream.github.io/tag/A0Yg_mO4u/" class="post-tag">
+                  # python
+                </a>
+              
+            </div>
+            
+              <img class="post-feature-image" src="https://github.com/protream/protream.github.io/blob/images/3d1ed4616c7a715e0c5c0336a4d80fd8/477960ab-a811-4da8-88f7-0d206509aa88.png?raw=true" alt="">
+            
+            <div class="post-content-wrapper">
+              <div class="post-content" v-pre>
+                <p>当你想查询一下火车票信息的时候，你还在上12306官网吗？或是打开你手机里的APP？下面让我们来用Python写一个命令行版的火车票查看器, 只要在命令行敲一行命令就能获得你想要的火车票信息！如果你刚掌握了Python基础，这将是个不错的小练习。</p>
+<!--more-->
+<h2 id="接口设计">接口设计</h2>
+<p>一个应用写出来最终是要给人使用的，哪怕只是给你自己使用。所以，首先应该想想你希望怎么使用它？让我们先给这个小应用起个名字吧，既然及查询票务信息，那就叫它<code>tickets</code>好了。我们希望用户只要输入出发站，到达站以及日期就让就能获得想要的信息，所以<code>tickets</code>应该这样被使用：</p>
+<pre><code class="language-sh">$ tickets from to date
+</code></pre>
+<p>另外，火车有各种类型，高铁、动车、特快、快速和直达，我们希望可以提供选项只查询特定的一种或几种的火车，所以，我们应该有下面这些选项：</p>
+<ul>
+<li>-g    高铁</li>
+<li>-d    动车</li>
+<li>-t    特快</li>
+<li>-k    快速</li>
+<li>-z    直达</li>
+</ul>
+<p>这几个选项应该能被组合使用，所以，最终我们的接口应该是这个样子的：</p>
+<pre><code class="language-sh">$ tickets [-gdtkz] from to date
+</code></pre>
+<p>接口已经确定好了，剩下的就是实现它了。</p>
+<h2 id="开发环境">开发环境</h2>
+<p>写Python程序的一个良好实践是使用<code>virtualenv</code>这个工具建一个虚拟的环境。我们的程序使用Python3开发，下面在你的工作目录下建一个文件夹<code>tickets</code>，进去创建一个虚拟环境：</p>
+<pre><code class="language-sh">$ virtualenv -p /usr/bin/python3 venv
+</code></pre>
+<p>通过下面的命令激活它：</p>
+<pre><code class="language-sh">$ . venv/bin/activate
+</code></pre>
+<h2 id="解析参数">解析参数</h2>
+<p>Python有很多写命令行应用的工具，如argparse, docopt, options...这里，我们选用docopt这个简单易用的工具，我们先安装它：</p>
+<pre><code class="language-sh">$ pip3 install docopt
+</code></pre>
+<p>docopt可以按我们在文档字符串中定义的格式来解析参数，在<code>tickets.py</code>中：</p>
+<pre><code class="language-py"># coding: utf-8
+
+&quot;&quot;&quot;Train tickets query via command-line.
+
+Usage:
+    tickets [-gdtkz] &lt;from&gt; &lt;to&gt; &lt;date&gt;
+
+Options:
+    -h,--help        显示帮助菜单
+    -g               高铁
+    -d               动车
+    -t               特快
+    -k               快速
+    -z               直达
+
+Example:
+    tickets 南京 北京 2016-07-01
+    tickets -dg 南京 北京 2016-07-01
+&quot;&quot;&quot;
+from docopt import docopt
+
+def cli():
+    &quot;&quot;&quot;command-line interface&quot;&quot;&quot;
+    arguments = docopt(__doc__)
+    print(arguments)
+
+if __name__ == '__main__':
+    cli()
+</code></pre>
+<p>下面我们运行一下这个程序：</p>
+<pre><code class="language-sh">$ python3 tickets.py 上海 北京 2016-07-01
+</code></pre>
+<p>我们得到下面的参数解析结果：</p>
+<pre><code class="language-py">{'-d': False, '-g': False, '-k': False, '-t': False, '-z': False, '&lt;date&gt;': '2016-07-01', '&lt;from&gt;': '上海', '&lt;to&gt;': '北京'}
+</code></pre>
+<h2 id="获取数据">获取数据</h2>
+<p>参数已经解析好了，下面就是如何获取数据了，这也是最主要的部分。首先我们打开<a href="www.12306.cn">12306</a>，进入余票查询页面，如果你使用chrome，那么按<code>F12</code>打开开发者工具，选中<code>Network</code>一栏，在查询框钟我们输入<code>上海</code>到<code>北京</code>，日期<code>2016-07-01</code>, 点击查询，我们在调试工具发现，查询系统实际上请求了这个URL</p>
+<pre><code>https://kyfw.12306.cn/otn/lcxxcx/query?purpose_codes=ADULT&amp;queryDate=2016-07-01&amp;from_station=SHH&amp;to_station=BJP
+</code></pre>
+<p>并且返回的是<code>JSON</code>格式的数据！接下来问题就简单了，我们只需要构建请求URL然后解析返回的JSON数据就可以了。但是我们发现，URL里面<code>from_station</code>和<code>to_station</code>并不是汉字，而是一个代号，而用户输入的是汉字，我们要如何获取代号呢？我们打开网页源码看看有没有什么发现。</p>
+<p>啊哈！果然，我们在网页里面找到了这个链接：<a href="https://kyfw.12306.cn/otn/resources/js/framework/station_name.js?station_version=1.8955">点我</a>, 这里面貌似是包含了所有车站的中文名，拼音，简写和代号等信息, 我们在项目目录下将它保存为<code>stations.html</code>。但是这些信息挤在一起，而我们只想要中文名和大写字母的代号信息，怎么办呢？</p>
+<p>BINGO!正则表达式，我们写个小脚本来匹配提取出想要的信息吧, 在parse.py中：</p>
+<pre><code class="language-py"># coding: utf-8
+import re
+from pprint import pprint
+
+with open('stations.html', 'r') as f:
+    text = f.read()
+    stations = re.findall(u'([\u4e00-\u9fa5]+)\|([A-Z]+)', text)
+    pprint(dict(stations), indent=4)
+</code></pre>
+<p>我们运行这个脚本，它将以字典的形式返回所有车站和它的大写字母代号, 我们将结果重定向到<code>stations.py</code>中，</p>
+<pre><code>$ python3 parse.py &gt; stations.py
+</code></pre>
+<p>我们为这个字典加名字，<code>stations</code>, 最终，<code>stations.py</code>文件是这样的：</p>
+<pre><code class="language-py">stations = {
+    '一间堡': 'YJT',
+    '一面坡': 'YPB',
+     ...
+    '龙镇': 'LZA',
+    '龙骨甸': 'LGM'
+}
+</code></pre>
+<p>现在，用户输入车站的中文名，我们就可以直接从这个字典中获取它的字母代码了：</p>
+<pre><code class="language-py">...
+from stations import stations
+
+def cli():
+    arguments = docopt(__doc__)
+    from_staion = stations.get(arguments['&lt;from&gt;'])
+    to_station = stations.get(arguments['&lt;to&gt;'])
+    date = arguments['&lt;date&gt;']
+    # 构建URL
+    url = 'https://kyfw.12306.cn/otn/lcxxcx/query?purpose_codes=ADULT&amp;queryDate={}&amp;from_station={}&amp;to_station={}'.format(
+        date, from_staion, to_station
+)
+</code></pre>
+<p>万事俱备，下面我们来请求这个URL获取数据吧！这里我们使用<code>requests</code>这个库, 先安装它：</p>
+<pre><code class="language-sh">$ pip3 install requests
+</code></pre>
+<p>它提供了非常简单易用的接口，</p>
+<pre><code class="language-py">...
+import requests
+
+def cli():
+    ...
+    # 添加verify=False参数, 不验证证书
+    r = requests.get(url, verify=False)
+    print(r.json())
+</code></pre>
+<p>从结果中，我们可以观察到，与车票有关的信息需要进一步提取：</p>
+<pre><code class="language-py">def cli():
+    ...
+    r = requsets.get(url);
+    rows = r.json()['data']['datas']
+</code></pre>
+<h2 id="显示结果">显示结果</h2>
+<p>数据已经获取到了，剩下的就是提取我们要的信息并将它显示出来。<code>prettytable</code>这个库可以让我们它像MySQL数据库那样格式化显示数据。</p>
+<pre><code class="language-sh">$ pip3 install prettytable
+</code></pre>
+<p>这样使用它：</p>
+<pre><code class="language-py">...
+from prettytable import PrettyTable
+
+def cli():
+    ...
+    headers = '车次 车站 时间 历时 商务 一等 二等 软卧 硬卧 软座 硬座 无座'.split()
+    pt = PrettyTable()
+    pt._set_field_names(headers)
+    for row in rows:
+    # 从row中根据headers过滤信息, 然后调用pt.add_row()添加到表中
+        ...
+    print(pt)
+</code></pre>
+<h2 id="练习">练习</h2>
+<p>下面一些问题留给你做练习:</p>
+<ol>
+<li>
+<p>从每一行<code>row</code>中按照<code>headers</code>过滤信息，将结果添加到prettytable中</p>
+</li>
+<li>
+<p>像开始的图片中那样将出发站和到达站，出发时间和到达时间显示为一列</p>
+</li>
+<li>
+<p>添加颜色（提示：使用colorama, termcorlor或ANSI转义字符）</p>
+</li>
+<li>
+<p>添加异常处理，如果用户输入的车站或日期有错误怎么办？如果网络异常怎么办？</p>
+</li>
+<li>
+<p>添加更多的日期格式支持: 比如用户输入20160701也可以查</p>
+</li>
+<li>
+<p>添加参数支持，用户可以指定火车类型</p>
+</li>
+</ol>
+
+              </div>
+              <div class="toc-container">
+                <ul class="markdownIt-TOC">
+<li>
+<ul>
+<li><a href="#%E6%8E%A5%E5%8F%A3%E8%AE%BE%E8%AE%A1">接口设计</a></li>
+<li><a href="#%E5%BC%80%E5%8F%91%E7%8E%AF%E5%A2%83">开发环境</a></li>
+<li><a href="#%E8%A7%A3%E6%9E%90%E5%8F%82%E6%95%B0">解析参数</a></li>
+<li><a href="#%E8%8E%B7%E5%8F%96%E6%95%B0%E6%8D%AE">获取数据</a></li>
+<li><a href="#%E6%98%BE%E7%A4%BA%E7%BB%93%E6%9E%9C">显示结果</a></li>
+<li><a href="#%E7%BB%83%E4%B9%A0">练习</a></li>
+</ul>
+</li>
+</ul>
+
+              </div>
+            </div>
+          </article>
+        </div>
+
+        
+
+        
+
+        <div class="site-footer">
+  Powered by <a href="https://github.com/getgridea/gridea" target="_blank">&nbsp;Gridea</a>
+  <a class="rss" href="https://protream.github.io/atom.xml" target="_blank">
+    <i class="ri-rss-line"></i> RSS
+  </a>
+</div>
+
+      </div>
+    </div>
+
+    <script>
+      hljs.initHighlightingOnLoad()
+
+      let mainNavLinks = document.querySelectorAll(".markdownIt-TOC a");
+
+      // This should probably be throttled.
+      // Especially because it triggers during smooth scrolling.
+      // https://lodash.com/docs/4.17.10#throttle
+      // You could do like...
+      // window.addEventListener("scroll", () => {
+      //    _.throttle(doThatStuff, 100);
+      // });
+      // Only not doing it here to keep this Pen dependency-free.
+
+      window.addEventListener("scroll", event => {
+        let fromTop = window.scrollY;
+
+        mainNavLinks.forEach((link, index) => {
+          let section = document.getElementById(decodeURI(link.hash).substring(1));
+          let nextSection = null
+          if (mainNavLinks[index + 1]) {
+            nextSection = document.getElementById(decodeURI(mainNavLinks[index + 1].hash).substring(1));
+          }
+          if (section.offsetTop <= fromTop) {
+            if (nextSection) {
+              if (nextSection.offsetTop > fromTop) {
+                link.classList.add("current");
+              } else {
+                link.classList.remove("current");    
+              }
+            } else {
+              link.classList.add("current");
+            }
+          } else {
+            link.classList.remove("current");
+          }
+        });
+      });
+
+    </script>
+  </body>
+</html>

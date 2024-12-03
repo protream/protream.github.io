@@ -1,0 +1,394 @@
+<html>
+  <head>
+    <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Protream&#39;s Notes</title>
+<link rel="shortcut icon" href="https://protream.github.io/favicon.ico?v=1733235889358">
+<link href="https://cdn.jsdelivr.net/npm/remixicon@2.3.0/fonts/remixicon.css" rel="stylesheet">
+<link rel="stylesheet" href="https://protream.github.io/styles/main.css">
+<link rel="alternate" type="application/atom+xml" title="Protream&#39;s Notes - Atom Feed" href="https://protream.github.io/atom.xml">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Droid+Serif:400,700">
+
+
+
+    <meta name="description" content="" />
+  </head>
+  <body>
+    <div class="main">
+      <div class="main-content">
+        <div class="site-header">
+  <a href="https://protream.github.io">
+  <img class="avatar" src="https://protream.github.io/images/avatar.png?v=1733235889358" alt="">
+  </a>
+  <h1 class="site-title">
+    Protream&#39;s Notes
+  </h1>
+  <p class="site-description">
+    
+  </p>
+  <div class="menu-container">
+    
+      
+        <a href="/" class="menu">
+          首页
+        </a>
+      
+    
+      
+        <a href="/archives" class="menu">
+          归档
+        </a>
+      
+    
+      
+        <a href="/tags" class="menu">
+          标签
+        </a>
+      
+    
+      
+        <a href="/post/about" class="menu">
+          关于
+        </a>
+      
+    
+  </div>
+  <div class="social-container">
+    
+      
+    
+      
+    
+      
+    
+      
+    
+      
+    
+  </div>
+</div>
+
+    
+        <div class="post-container">
+  
+    <article class="post">
+      <a href="https://protream.github.io/post/oflgxGKdKr/">
+        <h2 class="post-title">Linux 下常用日志查询工具</h2>
+      </a>
+      <div class="post-info">
+        <span>
+          2024-12-03
+        </span>
+        <span>
+          2 min read
+        </span>
+        
+          <a href="https://protream.github.io/tag/linux/" class="post-tag">
+            # linux
+          </a>
+        
+      </div>
+      
+      <div class="post-abstract">
+        <h2 id="journalctl">journalctl</h2>
+<p>journalctl 是 systemd 的日志管理工具，用于查询 systemd 的日志管理系统 (journal) 中的日志。它整合了系统和服务的所有日志信息。</p>
+<p>常用命令：</p>
+<ol>
+<li>查看全部日志：</li>
+</ol>
+<pre><code class="language-bash">journalctl
+</code></pre>
+<ol start="2">
+<li>查看最新日志并持续监控</li>
+</ol>
+<pre><code class="language-bash">journalctl -f
+</code></pre>
+<ol start="3">
+<li>查看本次启动的日志：</li>
+</ol>
+<pre><code class="language-bash">journalctl -b
+</code></pre>
+<ol start="4">
+<li>查看特定服务的日志：</li>
+</ol>
+<pre><code class="language-bash">journalctl -u ssh    # SSH服务
+journalctl -u nginx  # Nginx服务
+</code></pre>
+<ol start="5">
+<li>按时间过滤：</li>
+</ol>
+<pre><code class="language-bash">journalctl --since &quot;2024-01-01&quot;
+journalctl --since &quot;1 hour ago&quot;
+</code></pre>
+<ol start="6">
+<li>查看特定优先级的日志：</li>
+</ol>
+<pre><code class="language-bash">journalctl -p err    # 错误级别
+journalctl -p info   # 信息级别
+</code></pre>
+<ol start="7">
+<li>查看内核日志</li>
+</ol>
+<pre><code class="language-bash">journalctl -k
+</code></pre>
+
+      </div>
+    </article>
+  
+    <article class="post">
+      <a href="https://protream.github.io/post/UVtG8UUaN/">
+        <h2 class="post-title">k8s leases 详解</h2>
+      </a>
+      <div class="post-info">
+        <span>
+          2024-08-30
+        </span>
+        <span>
+          4 min read
+        </span>
+        
+          <a href="https://protream.github.io/tag/k8s/" class="post-tag">
+            # k8s
+          </a>
+        
+      </div>
+      
+      <div class="post-abstract">
+        <p>Leases 是 k8s 内部提供的一种分布式锁机制，用于锁定共享资源、协调活动。</p>
+<p>Lease 翻译成中文是“租约”或“契约”。当某个组件或进程获得了这个 Lease，就相当于它获得了某种特权或责任，可以执行特定的任务。</p>
+
+      </div>
+    </article>
+  
+    <article class="post">
+      <a href="https://protream.github.io/post/PfKhCcx6f/">
+        <h2 class="post-title">go.mod 详解</h2>
+      </a>
+      <div class="post-info">
+        <span>
+          2024-08-29
+        </span>
+        <span>
+          5 min read
+        </span>
+        
+          <a href="https://protream.github.io/tag/go/" class="post-tag">
+            # go
+          </a>
+        
+      </div>
+      
+      <div class="post-abstract">
+        <p>Go 模块是Go 语言的依赖管理系统,它从 Go 1.11 版本开始引入。本文讲解 go mod 的使用细节。</p>
+
+      </div>
+    </article>
+  
+    <article class="post">
+      <a href="https://protream.github.io/post/es-82zsB0/">
+        <h2 class="post-title">k8s operator 入门</h2>
+      </a>
+      <div class="post-info">
+        <span>
+          2024-08-28
+        </span>
+        <span>
+          31 min read
+        </span>
+        
+          <a href="https://protream.github.io/tag/k8s/" class="post-tag">
+            # k8s
+          </a>
+        
+      </div>
+      
+      <div class="post-abstract">
+        <blockquote>
+<p>The operator design pattern defines how to manage application and infrastructure resources using domain-specific knowledge and declarative state. The goal of the pattern is to reduce the amount of manual imperative work (how to backup, scale, upgrade...) which is required to keep an application in a healthy and well-maintained state, by capturing that domain specific knowledge in code and exposing it using a declarative API.</p>
+</blockquote>
+<p>Kubernetes Operator 是一种用于打包、部署和管理 Kubernetes 应用的方法。它是一个应用特定的控制器,扩展了 Kubernetes 的功能,使复杂的、有状态的应用能够像简单的无状态应用一样易于部署和管理。</p>
+<p>Operator 模式由 CoreOS 公司在 2016 年首次提出。这个概念源于以下需求:</p>
+<ul>
+<li>需要一种方法来扩展 Kubernetes 的能力,以管理复杂的有状态应用。</li>
+<li>希望将人类操作员的知识自动化,减少人为错误和提高效率。</li>
+<li>寻求一种标准化的方式来部署和管理复杂的分布式系统。</li>
+</ul>
+<p>CoreOS 最初创建 Operator 是为了管理 etcd 集群,后来这个概念被广泛采用,应用于各种复杂系统的管理。</p>
+
+      </div>
+    </article>
+  
+    <article class="post">
+      <a href="https://protream.github.io/post/vzZzy3P9V/">
+        <h2 class="post-title">显卡直通技术原理</h2>
+      </a>
+      <div class="post-info">
+        <span>
+          2024-06-02
+        </span>
+        <span>
+          4 min read
+        </span>
+        
+          <a href="https://protream.github.io/tag/linux/" class="post-tag">
+            # linux
+          </a>
+        
+      </div>
+      
+      <div class="post-abstract">
+        <p>显卡直通（GPU Passthrough）的原理是通过硬件虚拟化技术，使得虚拟机能直接访问物理硬件资源，从而大大提高虚拟机的性能。</p>
+<p>在没有直通技术的情况下，虚拟机需要通过宿主机的操作系统来访问硬件资源，这会造成一定的性能损失。而显卡直通技术则可以使虚拟机绕过宿主机操作系统，直接访问显卡硬件。</p>
+
+      </div>
+    </article>
+  
+    <article class="post">
+      <a href="https://protream.github.io/post/FPzI7NSe3/">
+        <h2 class="post-title">SOLID 原则</h2>
+      </a>
+      <div class="post-info">
+        <span>
+          2024-05-29
+        </span>
+        <span>
+          15 min read
+        </span>
+        
+          <a href="https://protream.github.io/tag/code/" class="post-tag">
+            # code
+          </a>
+        
+      </div>
+      
+      <div class="post-abstract">
+        <p>SOLID 原则是由著名的鲍勃大叔（Robert J. Martin）在其论文里提出的，鲍勃大叔在架构领域建树颇多，《代码整洁之道》、《架构整洁之道》都出资他手。</p>
+<p>SOLID 是五个面向对象编程和设计的基本原则的首字母缩写，它们分别是：</p>
+<ol>
+<li>单一职责原则（Single Responsibility Principle, SRP）</li>
+<li>开放封闭原则（Open-Closed Principle, OCP）</li>
+<li>里氏替换原则（Liskov Substitution Principle, LSP）</li>
+<li>接口隔离原则（Interface Segregation Principle, ISP）</li>
+<li>依赖倒置原则（Dependency Inversion Principle, DIP）</li>
+</ol>
+
+      </div>
+    </article>
+  
+    <article class="post">
+      <a href="https://protream.github.io/post/6gHuzef_3/">
+        <h2 class="post-title"> QUIC 协议</h2>
+      </a>
+      <div class="post-info">
+        <span>
+          2024-05-17
+        </span>
+        <span>
+          8 min read
+        </span>
+        
+      </div>
+      
+      <div class="post-abstract">
+        <p>QUIC 协议是 Google 出品的传输层网络协议。那么，在已经有了安全可靠的 TCP 协议的情况下，又搞出来一个新的协议呢？简单来说，Google 对 TCP 协议的优化已经到了尽头，已经没有什么好优化的了，但还想更进一步，怎么办呢？搞个新的。</p>
+
+      </div>
+    </article>
+  
+    <article class="post">
+      <a href="https://protream.github.io/post/0Wbj5ilhe/">
+        <h2 class="post-title">Bazel 基本使用</h2>
+      </a>
+      <div class="post-info">
+        <span>
+          2024-03-29
+        </span>
+        <span>
+          8 min read
+        </span>
+        
+          <a href="https://protream.github.io/tag/tools/" class="post-tag">
+            # tools
+          </a>
+        
+      </div>
+      
+      <div class="post-abstract">
+        <p>本文是 Bazel 学习笔记，记录了 Bazel 的一些核心概念和基本使用方法，构建目标为 Go 语言项目。</p>
+
+      </div>
+    </article>
+  
+    <article class="post">
+      <a href="https://protream.github.io/post/Zq6cxvh7A/">
+        <h2 class="post-title">Tmux 基本用法</h2>
+      </a>
+      <div class="post-info">
+        <span>
+          2024-02-18
+        </span>
+        <span>
+          2 min read
+        </span>
+        
+          <a href="https://protream.github.io/tag/tools/" class="post-tag">
+            # tools
+          </a>
+        
+          <a href="https://protream.github.io/tag/linux/" class="post-tag">
+            # linux
+          </a>
+        
+      </div>
+      
+      <div class="post-abstract">
+        <p>当用户与远程计算机进行会话时，创建的窗口是其中的进程是绑定的，当用户长时间不操作或者因为网络异常导致远程连接中断，窗口及其里面的进行也随之中断，里面如果有些还未完成的任务也会被关闭。tmux 解决的问题是将会话与窗口解绑。窗口关闭会话并不会关闭，重新连接上终端可以恢复会话。</p>
+
+      </div>
+    </article>
+  
+    <article class="post">
+      <a href="https://protream.github.io/post/0y-19LIoR/">
+        <h2 class="post-title">pve 虚拟机配置</h2>
+      </a>
+      <div class="post-info">
+        <span>
+          2024-02-11
+        </span>
+        <span>
+          5 min read
+        </span>
+        
+          <a href="https://protream.github.io/tag/pve/" class="post-tag">
+            # pve
+          </a>
+        
+      </div>
+      
+      <div class="post-abstract">
+        
+      </div>
+    </article>
+  
+</div>
+
+    
+        <div class="pagination-container">
+  
+  
+    <a href="https://protream.github.io/page/2" class="next-page">下一页</a>
+  
+</div>
+
+    
+        <div class="site-footer">
+  Powered by <a href="https://github.com/getgridea/gridea" target="_blank">&nbsp;Gridea</a>
+  <a class="rss" href="https://protream.github.io/atom.xml" target="_blank">
+    <i class="ri-rss-line"></i> RSS
+  </a>
+</div>
+
+      </div>
+    </div>
+  </body>
+</html>

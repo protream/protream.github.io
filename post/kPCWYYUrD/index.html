@@ -1,0 +1,302 @@
+<html>
+  <head>
+    <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>k8s 入门 2：Service  | Protream&#39;s Notes</title>
+<link rel="shortcut icon" href="https://protream.github.io/favicon.ico?v=1733235889358">
+<link href="https://cdn.jsdelivr.net/npm/remixicon@2.3.0/fonts/remixicon.css" rel="stylesheet">
+<link rel="stylesheet" href="https://protream.github.io/styles/main.css">
+<link rel="alternate" type="application/atom+xml" title="k8s 入门 2：Service  | Protream&#39;s Notes - Atom Feed" href="https://protream.github.io/atom.xml">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Droid+Serif:400,700">
+
+
+
+    <meta name="description" content="Service 意为服务，但 K8S 中真正运行服务的是 Pod。但 Pod 数可以增大和缩减，Pod 可能意外退出然后重建且重建后 IP 地址是会变化的。如何将同一组 Pod 作为一个整体对外服务呢？K8S 的解决方案是 Service ..." />
+    <meta name="keywords" content="k8s" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.10.0/katex.min.css">
+    <script src="//cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.5.1/build/highlight.min.js"></script>
+  </head>
+  <body>
+    <div class="main">
+      <div class="main-content">
+        <div class="site-header">
+  <a href="https://protream.github.io">
+  <img class="avatar" src="https://protream.github.io/images/avatar.png?v=1733235889358" alt="">
+  </a>
+  <h1 class="site-title">
+    Protream&#39;s Notes
+  </h1>
+  <p class="site-description">
+    
+  </p>
+  <div class="menu-container">
+    
+      
+        <a href="/" class="menu">
+          首页
+        </a>
+      
+    
+      
+        <a href="/archives" class="menu">
+          归档
+        </a>
+      
+    
+      
+        <a href="/tags" class="menu">
+          标签
+        </a>
+      
+    
+      
+        <a href="/post/about" class="menu">
+          关于
+        </a>
+      
+    
+  </div>
+  <div class="social-container">
+    
+      
+    
+      
+    
+      
+    
+      
+    
+      
+    
+  </div>
+</div>
+
+        <div class="post-detail">
+          <article class="post">
+            <h2 class="post-title">
+              k8s 入门 2：Service 
+            </h2>
+            <div class="post-info">
+              <span>
+                2023-12-26
+              </span>
+              <span>
+                6 min read
+              </span>
+              
+                <a href="https://protream.github.io/tag/k8s/" class="post-tag">
+                  # k8s
+                </a>
+              
+            </div>
+            
+            <div class="post-content-wrapper">
+              <div class="post-content" v-pre>
+                <p>Service 意为服务，但 K8S 中真正运行服务的是 Pod。但 Pod 数可以增大和缩减，Pod 可能意外退出然后重建且重建后 IP 地址是会变化的。如何将同一组 Pod 作为一个整体对外服务呢？K8S 的解决方案是 Service 抽象。</p>
+<!-- more -->
+<p>Service 它提供了一种无状态的、稳定的、可靠的、持续的网络连接。这样，即使Pod的数量、位置发生变化，Service 也可以保持网络连接的稳定。</p>
+<h2 id="endpoints">Endpoints</h2>
+<p>Service 与 Pods 的关联是通过 Endpoint 建立的。在创建 Service 时，会设置 <code>selector</code> 标签关联相关的 Pod，Endpoint Controller 会自动创建一个与 Service 同名的 Endpoints，用来记录 Service 对应的所有 Pods 的地址，数据存储在 etcd 中。</p>
+<pre><code>Service -&gt; Endpoints -&gt; Pod
+</code></pre>
+<p>Endpoint Controller 功能如下：</p>
+<ul>
+<li>负责生成和维护所有 Endpoint 对象的控制器</li>
+<li>负责监听 service 和对应 Pod 的变化：
+<ul>
+<li>监听到 service 被删除，则删除和该 service 同名的 endpoint 对象</li>
+<li>监听到新的 service 被创建，则根据新建 service 信息获取相关 pod 列表，然后创建对应   endpoint 对象</li>
+<li>监听到 service 被更新，则根据更新后的service信息获取相关 pod 列表，然后更新对应 endpoint 对象</li>
+<li>监听到 pod 事件，则更新对应的 service 的 endpoint 对象，将 podIp 记录到 endpoint 中</li>
+</ul>
+</li>
+</ul>
+<h2 id="类型">类型</h2>
+<h3 id="clusterip">ClusterIP</h3>
+<p>没有指定 type 时默认是此类型。Service 会被分配一个集群内部的 IP，这个 IP 是一个虚拟的 IP，并不会经过网络接口，所以只能在集群内部访问。</p>
+<h3 id="nodeport">NodePort</h3>
+<p>在 ClusterIP 的基础上，会在节点上映射一个端口号，可以使用节点IP+端口号访问 Service。 集群中的每个节点都将自己配置为监听所分配的端口，并将流量转发到与该 Service 关联的某个就绪端点。</p>
+<h3 id="loadbalance">LoadBalance</h3>
+<p>使用云平台的负载均衡器向外部公开 Service。</p>
+<h4 id="externelname">ExternelName</h4>
+<p>将服务映射到 <code>externalName</code> 字段的内容（例如，映射到主机名 <code>api.foo.bar.example</code>）。 该映射将集群的 DNS 服务器配置为返回具有该外部主机名值的 <code>CNAME</code> 记录。 集群不会为之创建任何类型代理。</p>
+<p>以上 type 类型是层层递进的关系，每一个层是在上一层的基础上。</p>
+<h2 id="流量的流转过程iptables">流量的流转过程（iptables）</h2>
+<p>首先进入 PREROUTING 链，所有流量依次进入下面三个子链：</p>
+<pre><code class="language-go">Chain PREROUTING (policy ACCEPT 936 packets, 160K bytes)
+ pkts bytes target     prot opt in     out     source               destination         
+3107K  548M cali-PREROUTING  all  --  *      *       0.0.0.0/0            0.0.0.0/0            /* cali:6gwbT8clXdHdC1b1 */
+3107K  548M KUBE-SERVICES  all  --  *      *       0.0.0.0/0            0.0.0.0/0            /* kubernetes service portals */
+   16  1148 DOCKER     all  --  *      *       0.0.0.0/0            0.0.0.0/0            ADDRTYPE match dst-type LOCAL
+</code></pre>
+<p>Nginx service 地址是 10.106.172.15，所以访问 Nginx 服务的会匹配到下面的规则</p>
+<pre><code class="language-go">Chain KUBE-SERVICES (2 references)
+ pkts bytes target     prot opt in     out     source               destination         
+    0     0 KUBE-SVC-2CMXP7HKUVJN7L6M  tcp  --  *      *       0.0.0.0/0            10.106.172.15        /* default/nginx cluster IP */ tcp dpt:80
+...
+</code></pre>
+<p>进入 KUBE-SVC-2CMXP7HKUVJN7L6M 子链：</p>
+<pre><code class="language-go">
+Chain KUBE-SVC-2CMXP7HKUVJN7L6M (2 references)
+ pkts bytes target     prot opt in     out     source               destination         
+    0     0 KUBE-MARK-MASQ  tcp  --  *      *      !172.16.0.0/16        10.106.172.15        /* default/nginx cluster IP */ tcp dpt:80
+    0     0 KUBE-SEP-DKSXNBNHBQPR4E25  all  --  *      *       0.0.0.0/0            0.0.0.0/0            /* default/nginx -&gt; 172.16.169.148:80 */ statistic mode random probability 0.33333333349
+    0     0 KUBE-SEP-W2PCRIIB3CH56EB2  all  --  *      *       0.0.0.0/0            0.0.0.0/0            /* default/nginx -&gt; 172.16.36.77:80 */ statistic mode random probability 0.50000000000
+    0     0 KUBE-SEP-D53NQAPERPOTILQO  all  --  *      *       0.0.0.0/0            0.0.0.0/0            /* default/nginx -&gt; 172.16.36.78:80 */
+</code></pre>
+<p>目的地址不是 Pod 的，会做标记，后续做 SNAT。</p>
+<p>对面三条规则，分别对应 Nginx service 的 3 个 Pod。这里使用了 iptables 的 statistics 模块的 random 模式，自上而下，1/3 的请求走匹配的第一条，1/2 的请求的匹配 第二条，剩下的匹配第三条。说明改模式下，流量并不是绝对平均的。</p>
+<h2 id="特殊用法">特殊用法</h2>
+<h3 id="会话保持">会话保持</h3>
+<p>Service支持通过设置sessionAffinity实现基于客户端IP的会话保持机制，即：<strong>首次将某个客户端来源IP发起的请求转发到后端的某个Pod上，之后从相同的客户端 IP发起的请求都将被转发到相同的后端Pod上</strong>。</p>
+<p>配置参数为 <code>service.spec.sessionAffinity</code>，也可以设置会话保持的最长时间（<code>service.spec.sessionAffinityConfig.clientIP.timeoutSeconds</code>），例如下面的服务将会话保持时间设置为10800s(3h)：</p>
+<pre><code class="language-yaml">apiVersion: v1
+kind: Service
+metadata:
+    name: webapp
+spec:
+    sessionAffinity: ClientIP 
+    sessionAffinityConfig:
+        clientIP:
+          timeoutSecondes: 10080
+    ports:
+    - protocol: TCP
+      port: 8080
+      targetPort: 8080
+    selector:
+      app: webapp
+</code></pre>
+<h3 id="将外部服务映射为-service">将外部服务映射为 Service</h3>
+<p>普通的Service通过Label Selector对后端Endpoint列表进行了一次抽象，如果后端的Endpoint不是由Pod副本集提供的，则Service还可以抽象定义任意其他服务，将一个Kubernetes集群外部的已知服务定义为Kubernetes内的一个Service， 供集群内的其他应用访问。</p>
+<p><strong>常见的应用场景包括：</strong></p>
+<ul>
+<li>已部署的一个集群外服务：例如数据库服务、缓存服务等；</li>
+<li>其他Kubernetes集群的某个服务；</li>
+<li>迁移过程中对某个服务进行Kubernetes内的服务名访问机制的验证。</li>
+</ul>
+<p>对于这种应用场景，<strong>用户在创建<strong><strong>Service</strong></strong>资源对象时不设置<strong><strong>Label Selector</strong></strong>（后端<strong><strong>Pod</strong></strong>也不存在），同时再定义一个与<strong><strong>Service</strong></strong>关联的<strong><strong>Endpoint</strong></strong>资源对象，在<strong><strong>Endpoint</strong></strong>中设置外部服务的<strong><strong>IP</strong></strong>地址和端口号</strong>，例如：</p>
+<pre><code class="language-yaml">apiVersion: v1
+kind: Service
+metadata:
+    name: my-service
+spec:
+    ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 80
+
+-----------
+apiversion: v1
+kind: Endpoints
+metadata:
+    name: my-service
+subsets:
+- addresses:
+  - IP: 1.2.3.4
+  ports:
+  - port: 80
+</code></pre>
+<h2 id="参考">参考</h2>
+<p>[1] <a href="%5Bhttps://kubernetes.io/zh-cn/docs/concepts/services-networking/service/%5D(https://kubernetes.io/zh-cn/docs/concepts/services-networking/service/)">Service</a></p>
+<p>[2] <a href="%5Bhttps://sq.sf.163.com/blog/article/174981072898940928%5D(https://sq.sf.163.com/blog/article/174981072898940928)">浅谈 kubernetes service 那些事（上篇）</a></p>
+<p>[3] <a href="%5Bhttps://developer.aliyun.com/article/1135519%5D(https://developer.aliyun.com/article/1135519)">k8s service 概念和原理</a></p>
+
+              </div>
+              <div class="toc-container">
+                <ul class="markdownIt-TOC">
+<li>
+<ul>
+<li><a href="#endpoints">Endpoints</a></li>
+<li><a href="#%E7%B1%BB%E5%9E%8B">类型</a>
+<ul>
+<li><a href="#clusterip">ClusterIP</a></li>
+<li><a href="#nodeport">NodePort</a></li>
+<li><a href="#loadbalance">LoadBalance</a>
+<ul>
+<li><a href="#externelname">ExternelName</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><a href="#%E6%B5%81%E9%87%8F%E7%9A%84%E6%B5%81%E8%BD%AC%E8%BF%87%E7%A8%8Biptables">流量的流转过程（iptables）</a></li>
+<li><a href="#%E7%89%B9%E6%AE%8A%E7%94%A8%E6%B3%95">特殊用法</a>
+<ul>
+<li><a href="#%E4%BC%9A%E8%AF%9D%E4%BF%9D%E6%8C%81">会话保持</a></li>
+<li><a href="#%E5%B0%86%E5%A4%96%E9%83%A8%E6%9C%8D%E5%8A%A1%E6%98%A0%E5%B0%84%E4%B8%BA-service">将外部服务映射为 Service</a></li>
+</ul>
+</li>
+<li><a href="#%E5%8F%82%E8%80%83">参考</a></li>
+</ul>
+</li>
+</ul>
+
+              </div>
+            </div>
+          </article>
+        </div>
+
+        
+          <div class="next-post">
+            <div class="next">下一篇</div>
+            <a href="https://protream.github.io/post/UZ9YEvrry/">
+              <h3 class="post-title">
+                记一次 Docker 容器网络问题排查
+              </h3>
+            </a>
+          </div>
+        
+
+        
+
+        <div class="site-footer">
+  Powered by <a href="https://github.com/getgridea/gridea" target="_blank">&nbsp;Gridea</a>
+  <a class="rss" href="https://protream.github.io/atom.xml" target="_blank">
+    <i class="ri-rss-line"></i> RSS
+  </a>
+</div>
+
+      </div>
+    </div>
+
+    <script>
+      hljs.initHighlightingOnLoad()
+
+      let mainNavLinks = document.querySelectorAll(".markdownIt-TOC a");
+
+      // This should probably be throttled.
+      // Especially because it triggers during smooth scrolling.
+      // https://lodash.com/docs/4.17.10#throttle
+      // You could do like...
+      // window.addEventListener("scroll", () => {
+      //    _.throttle(doThatStuff, 100);
+      // });
+      // Only not doing it here to keep this Pen dependency-free.
+
+      window.addEventListener("scroll", event => {
+        let fromTop = window.scrollY;
+
+        mainNavLinks.forEach((link, index) => {
+          let section = document.getElementById(decodeURI(link.hash).substring(1));
+          let nextSection = null
+          if (mainNavLinks[index + 1]) {
+            nextSection = document.getElementById(decodeURI(mainNavLinks[index + 1].hash).substring(1));
+          }
+          if (section.offsetTop <= fromTop) {
+            if (nextSection) {
+              if (nextSection.offsetTop > fromTop) {
+                link.classList.add("current");
+              } else {
+                link.classList.remove("current");    
+              }
+            } else {
+              link.classList.add("current");
+            }
+          } else {
+            link.classList.remove("current");
+          }
+        });
+      });
+
+    </script>
+  </body>
+</html>

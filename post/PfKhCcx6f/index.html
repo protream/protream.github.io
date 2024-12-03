@@ -1,0 +1,402 @@
+<html>
+  <head>
+    <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>go.mod 详解 | Protream&#39;s Notes</title>
+<link rel="shortcut icon" href="https://protream.github.io/favicon.ico?v=1733235889358">
+<link href="https://cdn.jsdelivr.net/npm/remixicon@2.3.0/fonts/remixicon.css" rel="stylesheet">
+<link rel="stylesheet" href="https://protream.github.io/styles/main.css">
+<link rel="alternate" type="application/atom+xml" title="go.mod 详解 | Protream&#39;s Notes - Atom Feed" href="https://protream.github.io/atom.xml">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Droid+Serif:400,700">
+
+
+
+    <meta name="description" content="Go 模块是Go 语言的依赖管理系统,它从 Go 1.11 版本开始引入。本文讲解 go mod 的使用细节。
+
+基本命令
+初始化模块
+在项目根目录下运行:
+go mod init [module-path]
+
+
+这会创建一个go.mod文..." />
+    <meta name="keywords" content="go" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.10.0/katex.min.css">
+    <script src="//cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.5.1/build/highlight.min.js"></script>
+  </head>
+  <body>
+    <div class="main">
+      <div class="main-content">
+        <div class="site-header">
+  <a href="https://protream.github.io">
+  <img class="avatar" src="https://protream.github.io/images/avatar.png?v=1733235889358" alt="">
+  </a>
+  <h1 class="site-title">
+    Protream&#39;s Notes
+  </h1>
+  <p class="site-description">
+    
+  </p>
+  <div class="menu-container">
+    
+      
+        <a href="/" class="menu">
+          首页
+        </a>
+      
+    
+      
+        <a href="/archives" class="menu">
+          归档
+        </a>
+      
+    
+      
+        <a href="/tags" class="menu">
+          标签
+        </a>
+      
+    
+      
+        <a href="/post/about" class="menu">
+          关于
+        </a>
+      
+    
+  </div>
+  <div class="social-container">
+    
+      
+    
+      
+    
+      
+    
+      
+    
+      
+    
+  </div>
+</div>
+
+        <div class="post-detail">
+          <article class="post">
+            <h2 class="post-title">
+              go.mod 详解
+            </h2>
+            <div class="post-info">
+              <span>
+                2024-08-29
+              </span>
+              <span>
+                5 min read
+              </span>
+              
+                <a href="https://protream.github.io/tag/go/" class="post-tag">
+                  # go
+                </a>
+              
+            </div>
+            
+            <div class="post-content-wrapper">
+              <div class="post-content" v-pre>
+                <p>Go 模块是Go 语言的依赖管理系统,它从 Go 1.11 版本开始引入。本文讲解 go mod 的使用细节。</p>
+<!-- more -->
+<h2 id="基本命令">基本命令</h2>
+<h3 id="初始化模块">初始化模块</h3>
+<p>在项目根目录下运行:</p>
+<pre><code class="language-bash">go mod init [module-path]
+
+</code></pre>
+<p>这会创建一个go.mod文件。[module-path]通常是你的代码仓库地址,如&quot;<a href="http://github.com/yourusername/yourproject">github.com/yourusername/yourproject</a>&quot;。</p>
+<h3 id="添加依赖">添加依赖</h3>
+<p>当你在代码中import一个外部包时,只需运行:</p>
+<pre><code class="language-bash">go get [package-name]
+
+</code></pre>
+<p>或者直接运行:</p>
+<pre><code class="language-bash">go mod tidy
+
+</code></pre>
+<p>这会自动下载依赖,并更新go.mod文件。</p>
+<h2 id="升级降级依赖">升级/降级依赖</h2>
+<p>要升级到最新版本:</p>
+<pre><code class="language-go">go get -u [package-name]
+
+</code></pre>
+<p>指定版本</p>
+<pre><code class="language-go">go get [package-name]@[version]
+
+</code></pre>
+<h3 id="复制依赖到本地">复制依赖到本地</h3>
+<pre><code class="language-go">go mod vendor
+
+</code></pre>
+<h3 id="清理模块缓存">清理模块缓存</h3>
+<pre><code class="language-go">go clean -modcache
+
+</code></pre>
+<h2 id="go-mod-tidy">go mod tidy</h2>
+<p><code>go mod tidy</code>是Go模块系统中一个非常有用的命令,它可以自动管理你的项目依赖。这个命令主要做以下几件事:</p>
+<ol>
+<li>添加缺失的依赖:
+<ul>
+<li>它会分析你的源代码,找出所有被引用但尚未在<code>go.mod</code>文件中列出的包。</li>
+<li>然后,它会自动下载这些包,并将它们添加到<code>go.mod</code>文件中。</li>
+</ul>
+</li>
+<li>移除未使用的依赖:
+<ul>
+<li>它会检查<code>go.mod</code>文件中列出的所有依赖,看是否在代码中被实际使用。</li>
+<li>如果发现某个依赖没有被使用,它会从<code>go.mod</code>文件中移除该依赖。</li>
+</ul>
+</li>
+<li>更新<code>go.sum</code>文件:
+<ul>
+<li><code>go.sum</code>文件包含了所有依赖的加密哈希值,用于验证下载的包的完整性。</li>
+<li><code>go mod tidy</code>会更新这个文件,确保它与当前的依赖列表匹配。</li>
+</ul>
+</li>
+</ol>
+<h2 id="gomod">go.mod</h2>
+<p>一个典型的 <code>go.mod</code> 文件可能看起来像这样：</p>
+<pre><code class="language-go">module github.com/username/project
+
+go 1.16
+
+require (
+    github.com/gin-gonic/gin v1.7.4
+    github.com/go-sql-driver/mysql v1.6.0
+)
+
+replace github.com/user/project =&gt; ../project
+
+exclude github.com/user/project v1.10.0
+
+retract v1.0.0
+
+</code></pre>
+<h3 id="组成">组成</h3>
+<h3 id="模块声明">模块声明</h3>
+<ul>
+<li>这通常是文件的第一行。</li>
+<li>格式：<code>module &lt;module-path&gt;</code></li>
+<li>例如：<code>module github.com/username/project</code></li>
+</ul>
+<h3 id="go-版本声明">Go 版本声明</h3>
+<ul>
+<li>指定模块的 Go 语言版本。</li>
+<li>格式：<code>go &lt;version&gt;</code></li>
+<li>例如：<code>go 1.16</code></li>
+</ul>
+<h3 id="依赖项声明">依赖项声明</h3>
+<ul>
+<li>列出模块的直接依赖。</li>
+<li>格式：<code>require &lt;module-path&gt; &lt;version&gt;</code></li>
+<li>例如：<code>require github.com/gin-gonic/gin v1.7.4</code></li>
+</ul>
+<h3 id="替换指令">替换指令</h3>
+<ul>
+<li>用于替换依赖的来源或版本。</li>
+<li>格式：<code>replace &lt;old-module-path&gt; =&gt; &lt;new-module-path&gt;</code></li>
+<li>例如：<code>replace github.com/user/project =&gt; ../project</code></li>
+</ul>
+<h3 id="排除指令">排除指令</h3>
+<ul>
+<li>用于排除某个依赖的特定版本。</li>
+<li>格式：<code>exclude &lt;module-path&gt; &lt;version&gt;</code></li>
+<li>例如：<code>exclude github.com/user/project v1.10.0</code></li>
+</ul>
+<h3 id="retract-指令go-116">retract 指令（Go 1.16+）</h3>
+<ul>
+<li>用于指定获取依赖时的重试策略。</li>
+<li>格式：<code>retract &lt;version&gt; 或 retract [&lt;version&gt;, &lt;version&gt;]</code></li>
+<li>例如：<code>retract v1.0.0</code></li>
+<li>retract指令不会物理删除代码或标签,它只是一个警告机制。</li>
+<li>使用<code>go get</code>或<code>go mod tidy</code>时,Go工具会避免选择被retract的版本。</li>
+</ul>
+<h3 id="替换指令的使用场景">替换指令的使用场景</h3>
+<h3 id="本地开发和测试">本地开发和测试</h3>
+<ul>
+<li>场景: 你正在开发一个依赖库,同时也在开发使用该库的主项目。</li>
+<li>使用: 你可以使用replace将依赖指向本地文件系统的路径。</li>
+<li>示例:</li>
+</ul>
+<pre><code>replace github.com/myuser/mylib =&gt; ../mylib
+
+</code></pre>
+<ul>
+<li>好处: 允许你在本地修改库代码并立即在主项目中测试,而无需推送到远程仓库。</li>
+</ul>
+<h3 id="使用未发布的版本">使用未发布的版本</h3>
+<ul>
+<li>场景: 你需要使用某个依赖的最新开发版本,但该版本还未正式发布。</li>
+<li>使用: 可以将依赖指向特定的git commit。</li>
+<li>示例:</li>
+</ul>
+<pre><code class="language-go">replace github.com/user/project =&gt; github.com/user/project@commit-hash
+
+</code></pre>
+<ul>
+<li>好处: 能够使用和测试最新的功能或修复。</li>
+</ul>
+<h3 id="依赖分叉fork">依赖分叉(Fork)</h3>
+<ul>
+<li>场景: 你fork了一个项目并做了修改,想在你的项目中使用这个修改后的版本。</li>
+<li>使用: 将原依赖替换为你fork的版本。</li>
+<li>示例:</li>
+</ul>
+<pre><code class="language-go">replace github.com/original/repo =&gt; github.com/youruser/repo v1.0.0
+
+</code></pre>
+<ul>
+<li>好处: 可以使用自定义的或修复bug的fork版本。</li>
+</ul>
+<h3 id="版本兼容性问题">版本兼容性问题</h3>
+<ul>
+<li>场景: 项目的某个依赖与另一个依赖不兼容。</li>
+<li>使用: 可以replace到一个兼容的版本。</li>
+<li>示例:</li>
+</ul>
+<pre><code class="language-go">replace golang.org/x/crypto v1.4.5 =&gt; golang.org/x/crypto v1.4.0
+
+</code></pre>
+<ul>
+<li>好处: 解决依赖冲突,确保项目可以正常构建。</li>
+</ul>
+<h3 id="私有模块">私有模块</h3>
+<ul>
+<li>场景: 你需要使用一个私有仓库中的模块。</li>
+<li>使用: 可以replace到一个可访问的地址。</li>
+<li>示例:</li>
+</ul>
+<pre><code class="language-go">replace github.com/company/privatemodule =&gt; gitlab.com/company/privatemodule v1.0.0
+
+</code></pre>
+<ul>
+<li>好处: 允许使用私有模块,同时保持go.mod文件的通用性。</li>
+</ul>
+<h3 id="临时修复">临时修复</h3>
+<ul>
+<li>场景: 依赖库中有一个bug,但维护者还没有修复。</li>
+<li>使用: 可以replace到一个包含修复的临时分支。</li>
+<li>示例:</li>
+</ul>
+<p>复制</p>
+<pre><code class="language-go">replace github.com/user/project =&gt; github.com/youruser/project@bugfix-branch
+
+</code></pre>
+<ul>
+<li>好处: 快速应用修复,而不必等待官方更新。</li>
+</ul>
+
+              </div>
+              <div class="toc-container">
+                <ul class="markdownIt-TOC">
+<li>
+<ul>
+<li><a href="#%E5%9F%BA%E6%9C%AC%E5%91%BD%E4%BB%A4">基本命令</a>
+<ul>
+<li><a href="#%E5%88%9D%E5%A7%8B%E5%8C%96%E6%A8%A1%E5%9D%97">初始化模块</a></li>
+<li><a href="#%E6%B7%BB%E5%8A%A0%E4%BE%9D%E8%B5%96">添加依赖</a></li>
+</ul>
+</li>
+<li><a href="#%E5%8D%87%E7%BA%A7%E9%99%8D%E7%BA%A7%E4%BE%9D%E8%B5%96">升级/降级依赖</a>
+<ul>
+<li><a href="#%E5%A4%8D%E5%88%B6%E4%BE%9D%E8%B5%96%E5%88%B0%E6%9C%AC%E5%9C%B0">复制依赖到本地</a></li>
+<li><a href="#%E6%B8%85%E7%90%86%E6%A8%A1%E5%9D%97%E7%BC%93%E5%AD%98">清理模块缓存</a></li>
+</ul>
+</li>
+<li><a href="#go-mod-tidy">go mod tidy</a></li>
+<li><a href="#gomod">go.mod</a>
+<ul>
+<li><a href="#%E7%BB%84%E6%88%90">组成</a></li>
+<li><a href="#%E6%A8%A1%E5%9D%97%E5%A3%B0%E6%98%8E">模块声明</a></li>
+<li><a href="#go-%E7%89%88%E6%9C%AC%E5%A3%B0%E6%98%8E">Go 版本声明</a></li>
+<li><a href="#%E4%BE%9D%E8%B5%96%E9%A1%B9%E5%A3%B0%E6%98%8E">依赖项声明</a></li>
+<li><a href="#%E6%9B%BF%E6%8D%A2%E6%8C%87%E4%BB%A4">替换指令</a></li>
+<li><a href="#%E6%8E%92%E9%99%A4%E6%8C%87%E4%BB%A4">排除指令</a></li>
+<li><a href="#retract-%E6%8C%87%E4%BB%A4go-116">retract 指令（Go 1.16+）</a></li>
+<li><a href="#%E6%9B%BF%E6%8D%A2%E6%8C%87%E4%BB%A4%E7%9A%84%E4%BD%BF%E7%94%A8%E5%9C%BA%E6%99%AF">替换指令的使用场景</a></li>
+<li><a href="#%E6%9C%AC%E5%9C%B0%E5%BC%80%E5%8F%91%E5%92%8C%E6%B5%8B%E8%AF%95">本地开发和测试</a></li>
+<li><a href="#%E4%BD%BF%E7%94%A8%E6%9C%AA%E5%8F%91%E5%B8%83%E7%9A%84%E7%89%88%E6%9C%AC">使用未发布的版本</a></li>
+<li><a href="#%E4%BE%9D%E8%B5%96%E5%88%86%E5%8F%89fork">依赖分叉(Fork)</a></li>
+<li><a href="#%E7%89%88%E6%9C%AC%E5%85%BC%E5%AE%B9%E6%80%A7%E9%97%AE%E9%A2%98">版本兼容性问题</a></li>
+<li><a href="#%E7%A7%81%E6%9C%89%E6%A8%A1%E5%9D%97">私有模块</a></li>
+<li><a href="#%E4%B8%B4%E6%97%B6%E4%BF%AE%E5%A4%8D">临时修复</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+              </div>
+            </div>
+          </article>
+        </div>
+
+        
+          <div class="next-post">
+            <div class="next">下一篇</div>
+            <a href="https://protream.github.io/post/es-82zsB0/">
+              <h3 class="post-title">
+                k8s operator 入门
+              </h3>
+            </a>
+          </div>
+        
+
+        
+
+        <div class="site-footer">
+  Powered by <a href="https://github.com/getgridea/gridea" target="_blank">&nbsp;Gridea</a>
+  <a class="rss" href="https://protream.github.io/atom.xml" target="_blank">
+    <i class="ri-rss-line"></i> RSS
+  </a>
+</div>
+
+      </div>
+    </div>
+
+    <script>
+      hljs.initHighlightingOnLoad()
+
+      let mainNavLinks = document.querySelectorAll(".markdownIt-TOC a");
+
+      // This should probably be throttled.
+      // Especially because it triggers during smooth scrolling.
+      // https://lodash.com/docs/4.17.10#throttle
+      // You could do like...
+      // window.addEventListener("scroll", () => {
+      //    _.throttle(doThatStuff, 100);
+      // });
+      // Only not doing it here to keep this Pen dependency-free.
+
+      window.addEventListener("scroll", event => {
+        let fromTop = window.scrollY;
+
+        mainNavLinks.forEach((link, index) => {
+          let section = document.getElementById(decodeURI(link.hash).substring(1));
+          let nextSection = null
+          if (mainNavLinks[index + 1]) {
+            nextSection = document.getElementById(decodeURI(mainNavLinks[index + 1].hash).substring(1));
+          }
+          if (section.offsetTop <= fromTop) {
+            if (nextSection) {
+              if (nextSection.offsetTop > fromTop) {
+                link.classList.add("current");
+              } else {
+                link.classList.remove("current");    
+              }
+            } else {
+              link.classList.add("current");
+            }
+          } else {
+            link.classList.remove("current");
+          }
+        });
+      });
+
+    </script>
+  </body>
+</html>

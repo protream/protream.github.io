@@ -1,0 +1,412 @@
+<html>
+  <head>
+    <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>MongoDB 查询优化 | Protream&#39;s Notes</title>
+<link rel="shortcut icon" href="https://protream.github.io/favicon.ico?v=1733235889358">
+<link href="https://cdn.jsdelivr.net/npm/remixicon@2.3.0/fonts/remixicon.css" rel="stylesheet">
+<link rel="stylesheet" href="https://protream.github.io/styles/main.css">
+<link rel="alternate" type="application/atom+xml" title="MongoDB 查询优化 | Protream&#39;s Notes - Atom Feed" href="https://protream.github.io/atom.xml">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Droid+Serif:400,700">
+
+
+
+    <meta name="description" content="本文总结了 MongoDB  查询的执行过程，如何读懂 Explain 信息、执行统计信息，如何创建索引，如何建立数据归档。
+
+MoongoDB 版本：v4.4
+查询的执行过程
+
+Explain 与 执行统计
+Mongodb也提供了expl..." />
+    <meta name="keywords" content="mongo" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.10.0/katex.min.css">
+    <script src="//cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.5.1/build/highlight.min.js"></script>
+  </head>
+  <body>
+    <div class="main">
+      <div class="main-content">
+        <div class="site-header">
+  <a href="https://protream.github.io">
+  <img class="avatar" src="https://protream.github.io/images/avatar.png?v=1733235889358" alt="">
+  </a>
+  <h1 class="site-title">
+    Protream&#39;s Notes
+  </h1>
+  <p class="site-description">
+    
+  </p>
+  <div class="menu-container">
+    
+      
+        <a href="/" class="menu">
+          首页
+        </a>
+      
+    
+      
+        <a href="/archives" class="menu">
+          归档
+        </a>
+      
+    
+      
+        <a href="/tags" class="menu">
+          标签
+        </a>
+      
+    
+      
+        <a href="/post/about" class="menu">
+          关于
+        </a>
+      
+    
+  </div>
+  <div class="social-container">
+    
+      
+    
+      
+    
+      
+    
+      
+    
+      
+    
+  </div>
+</div>
+
+        <div class="post-detail">
+          <article class="post">
+            <h2 class="post-title">
+              MongoDB 查询优化
+            </h2>
+            <div class="post-info">
+              <span>
+                2023-12-11
+              </span>
+              <span>
+                5 min read
+              </span>
+              
+                <a href="https://protream.github.io/tag/mongo/" class="post-tag">
+                  # mongo
+                </a>
+              
+            </div>
+            
+            <div class="post-content-wrapper">
+              <div class="post-content" v-pre>
+                <p>本文总结了 MongoDB  查询的执行过程，如何读懂 Explain 信息、执行统计信息，如何创建索引，如何建立数据归档。</p>
+<!-- more -->
+<p>MoongoDB 版本：v4.4</p>
+<h2 id="查询的执行过程">查询的执行过程</h2>
+<figure data-type="image" tabindex="1"><img src="https://www.mongodb.com/docs/v4.4/images/query-planner-logic.bakedsvg.svg" alt="" loading="lazy"></figure>
+<h2 id="explain-与-执行统计">Explain 与 执行统计</h2>
+<p>Mongodb也提供了explain语句，可以获取query语句的查询计划（queryPlanner）、以及执行过程中的统计信息（executionStats）。</p>
+<pre><code class="language-sh">land&gt; db.boxes.find({&quot;stopped_at&quot;:{&quot;$lt&quot;: ISODate(&quot;2023-12-07T21:12:00.957+0800&quot;)},&quot;status&quot;:&quot;running&quot;}).sort({&quot;created_at&quot;:1}).explain()
+{
+  queryPlanner: {
+    plannerVersion: 1,
+    namespace: 'land.boxes',
+    indexFilterSet: false,
+    parsedQuery: {
+      '$and': [
+        { status: { '$eq': 'running' } },
+        { stopped_at: { '$lt': ISODate(&quot;2023-12-07T13:12:00.957Z&quot;) } }
+      ]
+    },
+    winningPlan: {
+      stage: 'FETCH',
+      filter: {
+        '$and': [
+          { status: { '$eq': 'running' } },
+          {
+            stopped_at: { '$lt': ISODate(&quot;2023-12-07T13:12:00.957Z&quot;) }
+          }
+        ]
+      },
+      inputStage: {
+        stage: 'IXSCAN',
+        keyPattern: { created_at: 1 },
+        indexName: 'created_at_1',
+        isMultiKey: false,
+        multiKeyPaths: { created_at: [] },
+        isUnique: false,
+        isSparse: false,
+        isPartial: false,
+        indexVersion: 2,
+        direction: 'forward',
+        indexBounds: { created_at: [ '[MinKey, MaxKey]' ] }
+      }
+    },
+    rejectedPlans: []
+  },
+  serverInfo: {
+    host: 'mongo-0',
+    port: 27017,
+    version: '4.2.14',
+    gitVersion: '0e6db36e92d82cc81cbd40ffd607eae88dc1f09d'
+  },
+  ok: 1
+}
+</code></pre>
+<p>结果分为四部分：queryPlanner、executionStats、serverInfo、ok，仅关注queryPlanner、executionStats这两部分。</p>
+<ol>
+<li></li>
+</ol>
+<p>查询计划是按 <code>tree of stages</code> 组织的：</p>
+<pre><code>&quot;winningPlan&quot; : {
+   &quot;stage&quot; : &lt;STAGE1&gt;,
+   ...
+   &quot;inputStage&quot; : {
+      &quot;stage&quot; : &lt;STAGE2&gt;,
+      ...
+      &quot;inputStage&quot; : {
+         &quot;stage&quot; : &lt;STAGE3&gt;,
+         ...
+      }
+   }
+}
+</code></pre>
+<p>每个阶段将其结果(即文档或索引键)传递给父节点。叶节点访问集合或索引。内部节点操作子节点产生的文档或索引键。根节点是MongoDB从中派生结果集的最后阶段。</p>
+<p>阶段是对操作的描述，有以下几种类型：</p>
+<ul>
+<li>
+<p><code>COLLSCAN</code> for a collection scan</p>
+</li>
+<li>
+<p><code>IXSCAN</code> for scanning index keys</p>
+</li>
+<li>
+<p><code>FETCH</code> for retrieving documents</p>
+</li>
+<li>
+<p><code>SHARD_MERGE</code> for merging results from shards</p>
+</li>
+<li>
+<p><code>SHARDING_FILTER</code> for filtering out orphan documents from shards</p>
+</li>
+</ul>
+<p>executionStats 就是执行 queryPlanner.winningPlan 这个计划时的统计信息。在mongo shell中的使用方法是在query语句后面加上.explain('executionStats')。</p>
+<pre><code>land&gt; db.boxes.find({&quot;stopped_at&quot;:{&quot;$lt&quot;: ISODate(&quot;2023-12-07T21:12:00.957+0800&quot;)},&quot;status&quot;:&quot;running&quot;}).sort({&quot;created_at&quot;:1}).explain(&quot;executionStats&quot;)
+{
+  queryPlanner: {
+    plannerVersion: 1,
+    namespace: 'land.boxes',
+    indexFilterSet: false,
+    parsedQuery: {
+      '$and': [
+        { status: { '$eq': 'running' } },
+        { stopped_at: { '$lt': ISODate(&quot;2023-12-07T13:12:00.957Z&quot;) } }
+      ]
+    },
+    winningPlan: {
+      stage: 'FETCH',
+      filter: {
+        '$and': [
+          { status: { '$eq': 'running' } },
+          {
+            stopped_at: { '$lt': ISODate(&quot;2023-12-07T13:12:00.957Z&quot;) }
+          }
+        ]
+      },
+      inputStage: {
+        stage: 'IXSCAN',
+        keyPattern: { created_at: 1 },
+        indexName: 'created_at_1',
+        isMultiKey: false,
+        multiKeyPaths: { created_at: [] },
+        isUnique: false,
+        isSparse: false,
+        isPartial: false,
+        indexVersion: 2,
+        direction: 'forward',
+        indexBounds: { created_at: [ '[MinKey, MaxKey]' ] }
+      }
+    },
+    rejectedPlans: []
+  },
+  executionStats: {
+    executionSuccess: true,
+    nReturned: 0,
+    executionTimeMillis: 15818,
+    totalKeysExamined: 87411,
+    totalDocsExamined: 87411,
+    executionStages: {
+      stage: 'FETCH',
+      filter: {
+        '$and': [
+          { status: { '$eq': 'running' } },
+          {
+            stopped_at: { '$lt': ISODate(&quot;2023-12-07T13:12:00.957Z&quot;) }
+          }
+        ]
+      },
+      nReturned: 0,
+      executionTimeMillisEstimate: 14065,
+      works: 87412,
+      advanced: 0,
+      needTime: 87411,
+      needYield: 0,
+      saveState: 892,
+      restoreState: 892,
+      isEOF: 1,
+      docsExamined: 87411,
+      alreadyHasObj: 0,
+      inputStage: {
+        stage: 'IXSCAN',
+        nReturned: 87411,
+        executionTimeMillisEstimate: 846,
+        works: 87412,
+        advanced: 87411,
+        needTime: 0,
+        needYield: 0,
+        saveState: 892,
+        restoreState: 892,
+        isEOF: 1,
+        keyPattern: { created_at: 1 },
+        indexName: 'created_at_1',
+        isMultiKey: false,
+        multiKeyPaths: { created_at: [] },
+        isUnique: false,
+        isSparse: false,
+        isPartial: false,
+        indexVersion: 2,
+        direction: 'forward',
+        indexBounds: { created_at: [ '[MinKey, MaxKey]' ] },
+        keysExamined: 87411,
+        seeks: 1,
+        dupsTested: 0,
+        dupsDropped: 0
+      }
+    }
+  },
+  serverInfo: {
+    host: 'mongo-0',
+    port: 27017,
+    version: '4.2.14',
+    gitVersion: '0e6db36e92d82cc81cbd40ffd607eae88dc1f09d'
+  },
+  ok: 1
+}
+</code></pre>
+<p><code>explain.executionStats</code></p>
+<p>winning plan 执行的统计信息</p>
+<p><code>explain.executionStats.nReturned</code></p>
+<p>符合条件的总行数</p>
+<p><code>explain.executionStats.executionTimeMillis</code></p>
+<p>执行时间，毫秒</p>
+<p><code>explain.executionStats.totalKeysExamined</code></p>
+<p>索引扫描条目总数</p>
+<p><code>explain.executionStats.totalDocsExamined</code></p>
+<p>文档扫描条目总数，对应 <code>COLLSCAN</code> 和 <code>FETCH</code></p>
+<h2 id="索引操作">索引操作</h2>
+<p>查看索引</p>
+<pre><code>db.boxes.getIndexes();
+</code></pre>
+<p>创建索引</p>
+<pre><code>db.boxes.createIndex({&quot;status:&quot;: 1, &quot;stopped_at&quot;: -1});
+
+</code></pre>
+<p>删除索引</p>
+<pre><code>db.boxes.dropIndex(&quot;created_at_1_status_1_deleted_at_1&quot;)
+</code></pre>
+<h2 id="数据归档">数据归档</h2>
+<p>将用不到的历史数据分离出来建立归档，也是一种有效减少数据量提升查询性能的手段。</p>
+<p>1、备份 collection</p>
+<pre><code> db.boxes.aggregate([{$match: { created_at: { $lte: new Date(2023, 1, 1)} }}, {$out: &quot;boxes_archive&quot;}]);
+</code></pre>
+<p>2、删除历史数据</p>
+<pre><code>db.boxes.deleteMany({ created_at: { $lt: new Date(2023, 1, 1)}});
+
+</code></pre>
+<h2 id="参考">参考</h2>
+<p>[1] <a href="https://developer.aliyun.com/article/74635">MongoDB查询优化：从 10s 到 10ms</a><br>
+[2] <a href="https://www.mongodb.com/docs/v4.4/reference/explain-results/">Explain Results</a></p>
+
+              </div>
+              <div class="toc-container">
+                <ul class="markdownIt-TOC">
+<li>
+<ul>
+<li><a href="#%E6%9F%A5%E8%AF%A2%E7%9A%84%E6%89%A7%E8%A1%8C%E8%BF%87%E7%A8%8B">查询的执行过程</a></li>
+<li><a href="#explain-%E4%B8%8E-%E6%89%A7%E8%A1%8C%E7%BB%9F%E8%AE%A1">Explain 与 执行统计</a></li>
+<li><a href="#%E7%B4%A2%E5%BC%95%E6%93%8D%E4%BD%9C">索引操作</a></li>
+<li><a href="#%E6%95%B0%E6%8D%AE%E5%BD%92%E6%A1%A3">数据归档</a></li>
+<li><a href="#%E5%8F%82%E8%80%83">参考</a></li>
+</ul>
+</li>
+</ul>
+
+              </div>
+            </div>
+          </article>
+        </div>
+
+        
+          <div class="next-post">
+            <div class="next">下一篇</div>
+            <a href="https://protream.github.io/post/0ETr-qwow/">
+              <h3 class="post-title">
+                设计模式8：策略模式
+              </h3>
+            </a>
+          </div>
+        
+
+        
+
+        <div class="site-footer">
+  Powered by <a href="https://github.com/getgridea/gridea" target="_blank">&nbsp;Gridea</a>
+  <a class="rss" href="https://protream.github.io/atom.xml" target="_blank">
+    <i class="ri-rss-line"></i> RSS
+  </a>
+</div>
+
+      </div>
+    </div>
+
+    <script>
+      hljs.initHighlightingOnLoad()
+
+      let mainNavLinks = document.querySelectorAll(".markdownIt-TOC a");
+
+      // This should probably be throttled.
+      // Especially because it triggers during smooth scrolling.
+      // https://lodash.com/docs/4.17.10#throttle
+      // You could do like...
+      // window.addEventListener("scroll", () => {
+      //    _.throttle(doThatStuff, 100);
+      // });
+      // Only not doing it here to keep this Pen dependency-free.
+
+      window.addEventListener("scroll", event => {
+        let fromTop = window.scrollY;
+
+        mainNavLinks.forEach((link, index) => {
+          let section = document.getElementById(decodeURI(link.hash).substring(1));
+          let nextSection = null
+          if (mainNavLinks[index + 1]) {
+            nextSection = document.getElementById(decodeURI(mainNavLinks[index + 1].hash).substring(1));
+          }
+          if (section.offsetTop <= fromTop) {
+            if (nextSection) {
+              if (nextSection.offsetTop > fromTop) {
+                link.classList.add("current");
+              } else {
+                link.classList.remove("current");    
+              }
+            } else {
+              link.classList.add("current");
+            }
+          } else {
+            link.classList.remove("current");
+          }
+        });
+      });
+
+    </script>
+  </body>
+</html>

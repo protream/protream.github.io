@@ -1,0 +1,310 @@
+<html>
+  <head>
+    <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>设计模式1：工厂方法模式 | Protream&#39;s Notes</title>
+<link rel="shortcut icon" href="https://protream.github.io/favicon.ico?v=1733235889358">
+<link href="https://cdn.jsdelivr.net/npm/remixicon@2.3.0/fonts/remixicon.css" rel="stylesheet">
+<link rel="stylesheet" href="https://protream.github.io/styles/main.css">
+<link rel="alternate" type="application/atom+xml" title="设计模式1：工厂方法模式 | Protream&#39;s Notes - Atom Feed" href="https://protream.github.io/atom.xml">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Droid+Serif:400,700">
+
+
+
+    <meta name="description" content="工厂方法模式属于创建型设计模式，通常用于创建复杂对象。该模式将对象实例化的逻辑委托给子类来处理，即在父类中定义创建对象的接口，具体的实现由子类来完成。
+
+在工厂方法模式中，有一个抽象的工厂接口，定义了创建对象的方法，然后不同的子类去实现这个..." />
+    <meta name="keywords" content="design patterns" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.10.0/katex.min.css">
+    <script src="//cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.5.1/build/highlight.min.js"></script>
+  </head>
+  <body>
+    <div class="main">
+      <div class="main-content">
+        <div class="site-header">
+  <a href="https://protream.github.io">
+  <img class="avatar" src="https://protream.github.io/images/avatar.png?v=1733235889358" alt="">
+  </a>
+  <h1 class="site-title">
+    Protream&#39;s Notes
+  </h1>
+  <p class="site-description">
+    
+  </p>
+  <div class="menu-container">
+    
+      
+        <a href="/" class="menu">
+          首页
+        </a>
+      
+    
+      
+        <a href="/archives" class="menu">
+          归档
+        </a>
+      
+    
+      
+        <a href="/tags" class="menu">
+          标签
+        </a>
+      
+    
+      
+        <a href="/post/about" class="menu">
+          关于
+        </a>
+      
+    
+  </div>
+  <div class="social-container">
+    
+      
+    
+      
+    
+      
+    
+      
+    
+      
+    
+  </div>
+</div>
+
+        <div class="post-detail">
+          <article class="post">
+            <h2 class="post-title">
+              设计模式1：工厂方法模式
+            </h2>
+            <div class="post-info">
+              <span>
+                2023-11-06
+              </span>
+              <span>
+                3 min read
+              </span>
+              
+                <a href="https://protream.github.io/tag/design-patterns/" class="post-tag">
+                  # design patterns
+                </a>
+              
+            </div>
+            
+            <div class="post-content-wrapper">
+              <div class="post-content" v-pre>
+                <p>工厂方法模式属于创建型设计模式，通常用于创建复杂对象。该模式将对象实例化的逻辑委托给子类来处理，即在父类中定义创建对象的接口，具体的实现由子类来完成。</p>
+<!-- more -->
+<p>在工厂方法模式中，有一个抽象的工厂接口，定义了创建对象的方法，然后不同的子类去实现这个工厂接口，从而创建不同的产品。</p>
+<p>使用工厂方法模式的主要优点是能够降低耦合度，提高代码的可维护性和可扩展性，同时也能够方便地进行单元测试。</p>
+<ol>
+<li>隐藏具体实现：通常来说，工厂方法模式允许创建者与消费者之间的解耦，因为消费者不需要知道具体的实现方式，只需要调用工厂方法即可。</li>
+<li>可扩展性好：通过工厂方法模式，我们可以轻松地添加新的产品或者新的工厂类，而不需要修改已有的代码。</li>
+<li>灵活性高：工厂方法模式可以根据需要动态地创建对象，可以通过修改对象工厂类的配置来改变创建的产品类型。</li>
+<li>代码重用：通过工厂方法模式，可以避免在不同的地方重复地编写相同的代码，从而提高代码的重用率。</li>
+</ol>
+<p>其缺点是会增加代码的复杂度，需要进行更多的编码工作。</p>
+<h2 id="示例代码">示例代码</h2>
+<h3 id="示例1">示例1</h3>
+<pre><code class="language-go">package main
+
+import &quot;fmt&quot;
+
+
+type Animal interface {
+	Name() string
+	Sound() string
+}
+
+type Dog struct {}
+
+func (d *Dog) Name() string {
+	return &quot;dog&quot;
+}
+
+func (d *Dog) Sound() string {
+	return &quot;bark&quot;
+}
+
+type Cat struct {}
+
+func (c *Cat) Name() string {
+	return &quot;cat&quot;
+}
+
+func (c *Cat) Sound() string {
+	return &quot;meow&quot;
+}
+
+type AnimalFactory interface {
+	Create() Animal
+}
+
+type DogFactory struct {}
+
+func (f *DogFactory) Create() Animal {
+	return &amp;Dog{}
+}
+
+type CatFactory struct {}
+
+func (f *CatFactory) Create() Animal {
+	return &amp;Cat{}
+}
+
+func Client(f AnimalFactory) Animal {
+	return f.Create()
+}
+
+func main() {
+	dogFactory := DogFactory{}
+	dog := Client(&amp;dogFactory)
+	fmt.Println(dog.Name(), dog.Sound())
+
+	catFactory := CatFactory{}
+	cat := Client(&amp;catFactory)
+	fmt.Println(cat.Name(), cat.Sound())
+}
+</code></pre>
+<h3 id="示例2">示例2</h3>
+<pre><code class="language-go">package main
+
+import &quot;fmt&quot;
+
+// Connection 接口定义
+type Connection interface {
+	Connect()
+}
+
+// MySQLConnection 实现 Connection 接口
+type MySQLConnection struct{}
+
+func (c *MySQLConnection) Connect() {
+	fmt.Println(&quot;Connect to MySQL database...&quot;)
+}
+
+// PostgreSQLConnection 实现 Connection 接口
+type PostgreSQLConnection struct{}
+
+func (c *PostgreSQLConnection) Connect() {
+	fmt.Println(&quot;Connect to PostgreSQL database...&quot;)
+}
+
+// ConnectionFactory 定义工厂方法接口
+type ConnectionFactory interface {
+	CreateConnection() Connection
+}
+
+// MySQLConnectionFactory 实现 ConnectionFactory 接口
+type MySQLConnectionFactory struct{}
+
+func (f *MySQLConnectionFactory) CreateConnection() Connection {
+	return &amp;MySQLConnection{}
+}
+
+// PostgreSQLConnectionFactory 实现 ConnectionFactory 接口
+type PostgreSQLConnectionFactory struct{}
+
+func (f *PostgreSQLConnectionFactory) CreateConnection() Connection {
+	return &amp;PostgreSQLConnection{}
+}
+
+func main() {
+	// 使用 MySQLConnectionFactory 创建 MySQLConnection 对象
+	mysqlFactory := &amp;MySQLConnectionFactory{}
+	mysqlConn := mysqlFactory.CreateConnection()
+	mysqlConn.Connect()
+
+	// 使用 PostgreSQLConnectionFactory 创建 PostgreSQLConnection 对象
+	postgresFactory := &amp;PostgreSQLConnectionFactory{}
+	postgresConn := postgresFactory.CreateConnection()
+	postgresConn.Connect()
+}
+</code></pre>
+
+              </div>
+              <div class="toc-container">
+                <ul class="markdownIt-TOC">
+<li>
+<ul>
+<li><a href="#%E7%A4%BA%E4%BE%8B%E4%BB%A3%E7%A0%81">示例代码</a>
+<ul>
+<li><a href="#%E7%A4%BA%E4%BE%8B1">示例1</a></li>
+<li><a href="#%E7%A4%BA%E4%BE%8B2">示例2</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+              </div>
+            </div>
+          </article>
+        </div>
+
+        
+          <div class="next-post">
+            <div class="next">下一篇</div>
+            <a href="https://protream.github.io/post/xCjT_FVRH/">
+              <h3 class="post-title">
+                Shm And Docker
+              </h3>
+            </a>
+          </div>
+        
+
+        
+
+        <div class="site-footer">
+  Powered by <a href="https://github.com/getgridea/gridea" target="_blank">&nbsp;Gridea</a>
+  <a class="rss" href="https://protream.github.io/atom.xml" target="_blank">
+    <i class="ri-rss-line"></i> RSS
+  </a>
+</div>
+
+      </div>
+    </div>
+
+    <script>
+      hljs.initHighlightingOnLoad()
+
+      let mainNavLinks = document.querySelectorAll(".markdownIt-TOC a");
+
+      // This should probably be throttled.
+      // Especially because it triggers during smooth scrolling.
+      // https://lodash.com/docs/4.17.10#throttle
+      // You could do like...
+      // window.addEventListener("scroll", () => {
+      //    _.throttle(doThatStuff, 100);
+      // });
+      // Only not doing it here to keep this Pen dependency-free.
+
+      window.addEventListener("scroll", event => {
+        let fromTop = window.scrollY;
+
+        mainNavLinks.forEach((link, index) => {
+          let section = document.getElementById(decodeURI(link.hash).substring(1));
+          let nextSection = null
+          if (mainNavLinks[index + 1]) {
+            nextSection = document.getElementById(decodeURI(mainNavLinks[index + 1].hash).substring(1));
+          }
+          if (section.offsetTop <= fromTop) {
+            if (nextSection) {
+              if (nextSection.offsetTop > fromTop) {
+                link.classList.add("current");
+              } else {
+                link.classList.remove("current");    
+              }
+            } else {
+              link.classList.add("current");
+            }
+          } else {
+            link.classList.remove("current");
+          }
+        });
+      });
+
+    </script>
+  </body>
+</html>

@@ -1,0 +1,357 @@
+<html>
+  <head>
+    <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>记一个 PostgreSQL 事务未提交问题 | Protream&#39;s Notes</title>
+<link rel="shortcut icon" href="https://protream.github.io/favicon.ico?v=1733235889358">
+<link href="https://cdn.jsdelivr.net/npm/remixicon@2.3.0/fonts/remixicon.css" rel="stylesheet">
+<link rel="stylesheet" href="https://protream.github.io/styles/main.css">
+<link rel="alternate" type="application/atom+xml" title="记一个 PostgreSQL 事务未提交问题 | Protream&#39;s Notes - Atom Feed" href="https://protream.github.io/atom.xml">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Droid+Serif:400,700">
+
+
+
+    <meta name="description" content="最近遇到一个因应用端查询事务未提交导致数仓跑书脚本阻塞的问题。
+
+通过查看数据库的状态信息，定位到原因是：查询对表持有 Access Share 锁，而跑数脚本要先清空这张表，调用了 truncate 命令，而 truncate 命令会请求..." />
+    <meta name="keywords" content="db,postgres" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.10.0/katex.min.css">
+    <script src="//cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.5.1/build/highlight.min.js"></script>
+  </head>
+  <body>
+    <div class="main">
+      <div class="main-content">
+        <div class="site-header">
+  <a href="https://protream.github.io">
+  <img class="avatar" src="https://protream.github.io/images/avatar.png?v=1733235889358" alt="">
+  </a>
+  <h1 class="site-title">
+    Protream&#39;s Notes
+  </h1>
+  <p class="site-description">
+    
+  </p>
+  <div class="menu-container">
+    
+      
+        <a href="/" class="menu">
+          首页
+        </a>
+      
+    
+      
+        <a href="/archives" class="menu">
+          归档
+        </a>
+      
+    
+      
+        <a href="/tags" class="menu">
+          标签
+        </a>
+      
+    
+      
+        <a href="/post/about" class="menu">
+          关于
+        </a>
+      
+    
+  </div>
+  <div class="social-container">
+    
+      
+    
+      
+    
+      
+    
+      
+    
+      
+    
+  </div>
+</div>
+
+        <div class="post-detail">
+          <article class="post">
+            <h2 class="post-title">
+              记一个 PostgreSQL 事务未提交问题
+            </h2>
+            <div class="post-info">
+              <span>
+                2021-03-28
+              </span>
+              <span>
+                7 min read
+              </span>
+              
+                <a href="https://protream.github.io/tag/db/" class="post-tag">
+                  # db
+                </a>
+              
+                <a href="https://protream.github.io/tag/postgres/" class="post-tag">
+                  # postgres
+                </a>
+              
+            </div>
+            
+            <div class="post-content-wrapper">
+              <div class="post-content" v-pre>
+                <p>最近遇到一个因应用端查询事务未提交导致数仓跑书脚本阻塞的问题。</p>
+<!--more-->
+<p>通过查看数据库的状态信息，定位到原因是：查询对表持有 <code>Access Share</code> 锁，而跑数脚本要先清空这张表，调用了 truncate 命令，而 truncate 命令会请求 <code>Access Exclusive</code> 锁。这两个锁是互斥的，一个事务持有了其中一个锁，只要事务未提交，另一个请求互斥锁的事务必须等待。</p>
+<p>但是什么导致事务未提交呢？</p>
+<h2 id="初步分析">初步分析</h2>
+<p>应用的代码是基于 Flask，使用了 SQLAclhemy 这个 ORM，并在查询的地方做了一层封装</p>
+<pre><code class="language-python">@staticmethod
+def fetch_data_sql(sql, params, bind_key=None):
+    result = []
+    render_sql(sql=sql, params=params)
+    try:
+        sql = text(sql)
+        con = db.session.execute(sql, params, bind=db.get_engine(current_app, bind=bind_key))
+        if con.returns_rows:
+            result = con.fetchall()
+    except Exception as er:
+        LOG.error(&quot;fetch data error: {0}, sql is: {1}&quot;.format(er, sql))
+        raise DBError()
+    else:
+        return result
+</code></pre>
+<p>注意到这里 <code>db.session.exuecute()</code> 发起了一个查询，而 db.session 在默认 <code>autocommit=False</code> 的情况下是会自动开启事务的（参见：<a href="">Flask-SQLAlchmey 是如何执行查询的</a>），问题似乎是开启了事务，而没有调用 <code>db.session.commit()</code> 提交事务。</p>
+<p>但仔细一想，有两个疑问：</p>
+<ol>
+<li>如果是因为没有调用 <code>db.session.commit()</code>，那这个问题应该存在已久，数据库应该存在大量未提交的事务；</li>
+<li>既然自动开启了事务，为什么没有自动关闭事务呢？按理说事务的生命周期应该和请求保持一致的。</li>
+</ol>
+<p>第一个疑问很好验证，从应用发起一个查询，通过 <code>pg_stat_activity</code>  和 <code>pg_locks</code> 查看事务和锁的状态，结果是，查询结束后，事务自动提交了，持有的锁也自动释放了。</p>
+<p>可以得到初步结论，即使没有调用 <code>db.session.commit()</code> ，事务也是会自动提交的。</p>
+<p>那是在什么地方提交的呢？SQLAlchemy 虽然帮我们自动开启了事务，但是它是不知道我们要在事务里提交几个查询的，所以它应该不会帮我们去提交，那应该就是在 flask-sqlalchemy 里处理的了。一个请求结束了，事务也应该提交，可以猜想，flask-sqlalchemy 里应该是注册了 flask 的 <code>request hook</code>，在请求结束时去自动去提交事务。</p>
+<h2 id="源码验证">源码验证</h2>
+<p>去源码里验证一下，相关软件版本：flask 1.1.1，SQLAlchemy 1.3.10，flask-sqlalchmey 2.4.1。</p>
+<p>发现，flask-sqlalchmey 的确是注册是一个关闭 session 的 hook 函数，和预想的不太一样的是，它是在 <code>app context</code> 而不是  <code>reqest context</code>。</p>
+<pre><code class="language-sql">@app.teardown_appcontext
+def shutdown_session(response_or_exc):
+    if app.config['SQLALCHEMY_COMMIT_ON_TEARDOWN']:
+        if response_or_exc is None:
+            self.session.commit()
+
+    self.session.remove()
+    return response_or_exc
+</code></pre>
+<p><code>SQLALCHEMY_COMMIT_ON_TEARDOWN</code> 模式是 <code>False</code>，这里会进入到 <code>self.session.remove()</code>，触发的是 <code>scope_session</code> 的 <code>remove</code> 方法，这里面调用的 <code>close()</code> 方法正是去关闭事务的。</p>
+<pre><code class="language-python">class scoped_session(object):
+
+    def remove(self):
+        if self.registry.has():
+            self.registry().close()
+        self.registry.clear()
+</code></pre>
+<p>再去 flask 里面看一下，</p>
+<pre><code class="language-python">class Flask(_PackageBoundObject):
+    # ...
+    self.teardown_appcontext_funcs = []
+
+    @setupmethod
+    def teardown_appcontext(self, f):
+        &quot;&quot;&quot;Registers a function to be called when the application context
+        ends.  These functions are typically also called when the request
+        context is popped.
+        &quot;&quot;&quot;
+        self.teardown_appcontext_funcs.append(f)
+        return f
+
+    def do_teardown_appcontext(self, exc=_sentinel):
+        &quot;&quot;&quot;Called right before the application context is popped.
+        When handling a request, the application context is popped
+        after the request context.
+        &quot;&quot;&quot;
+        if exc is _sentinel:
+            exc = sys.exc_info()[1]
+        for func in reversed(self.teardown_appcontext_funcs):
+            func(exc)
+        appcontext_tearing_down.send(self, exc=exc)
+</code></pre>
+<p><code>teardown_appcontext</code> 装饰器将 hook 函数保存在了 <code>teardown_appcontext_funcs</code> 列表里，在某一个时刻，会通过 <code>do_teardown_appcontext</code> 调用这些函数。从  <code>do_teardown_appcontext</code> 的注释可以得知，这些函数一般是请求上下文被删除时调用的，而请求上下文正是在一个请求处理结束时被删除。</p>
+<p>看来猜想是没错的，只是实现上的一点差异，继续看在哪触发的调用。</p>
+<p>flask 通过 <code>RequestContxt</code> 管理请求上下文，</p>
+<pre><code class="language-python">class RequestContext(object):
+    # ...
+
+    def pop(self, exc=_sentinel):
+        app_ctx = self._implicit_app_ctx_stack.pop()
+
+        try:
+            clear_request = False
+            if not self._implicit_app_ctx_stack:
+                self.preserved = False
+                self._preserved_exc = None
+                if exc is _sentinel:
+                    exc = sys.exc_info()[1]
+                self.app.do_teardown_request(exc)
+
+                if hasattr(sys, &quot;exc_clear&quot;):
+                    sys.exc_clear()
+
+                request_close = getattr(self.request, &quot;close&quot;, None)
+                if request_close is not None:
+                    request_close()
+                clear_request = True
+        finally:
+            rv = _request_ctx_stack.pop()
+
+            if clear_request:
+                rv.request.environ[&quot;werkzeug.request&quot;] = None
+
+            # Get rid of the app as well if necessary.
+            if app_ctx is not None:
+                app_ctx.pop(exc)
+
+            assert rv is self, &quot;Popped wrong request context. (%r instead of %r)&quot; % (
+                rv,
+                self,
+            )
+</code></pre>
+<p>在请求处理结束时，会调用  <code>pop</code> 清除请求上下文，在这一行：</p>
+<pre><code class="language-python"> self.app.do_teardown_request(exc)
+</code></pre>
+<p>调用了注册的请求结束时需要执行的 hook 函数。继续往下，在 finally 里面调用了 <code>app context </code> 的 <code>pop</code> 方法：</p>
+<pre><code>if app_ctx is not None:
+    app_ctx.pop(exc)
+</code></pre>
+<p>在 <code>app context</code> 的 <code>pop</code> 方法里，触发了 <code>self.app.do_teardown_appcontext(exc)</code> 。</p>
+<pre><code class="language-python">class AppContext(object):
+    #...
+    def pop(self, exc=_sentinel):
+        &quot;&quot;&quot;Pops the app context.&quot;&quot;&quot;
+        try:
+            self._refcnt -= 1
+            if self._refcnt &lt;= 0:
+                if exc is _sentinel:
+                    exc = sys.exc_info()[1]
+                self.app.do_teardown_appcontext(exc)
+        finally:
+            rv = _app_ctx_stack.pop()
+        assert rv is self, &quot;Popped wrong app context.  (%r instead of %r)&quot; % (rv, self)
+        appcontext_popped.send(self.app)
+</code></pre>
+<h2 id="再次分析">再次分析</h2>
+<p>现在已经清晰了，即使没有主动调用 <code>db.session.commit()</code>，只要请求正常处理结束，flask-sqlalchemy 会自动帮我们清理事务的。</p>
+<p>看来导致查询事务未提交的根本原因是：<strong>请求非正常结束</strong>，也就是说 <code>db.session.execute</code> 提交了查询，数据库开启了事务，执行查询，但是还没等到触发 hook 函数，请求非正常终止了。</p>
+<p>经实验验证了一种情况：Flask App 是跑在 Docker 里的，在一个查询请求提交后，hook 函数执行前通过 <code>docker restart</code> 重启服务，就会导致事务不会被提交。</p>
+<p>当然，也不能完全排除有人从一些客户端、命令行开启事务没有提交，但这种可能性非常低。</p>
+<h2 id="解决方案">解决方案</h2>
+<ol>
+<li>
+<p>还是要确保 <code>db.session.execute()/db.session.commit()</code> 成对出现，虽然 <code>flask-sqlalchemy</code> 会帮我们在自动清理，但是在发起请求和自动清理之间有很多其他指令要执行，这增加了触发问题的概率。</p>
+</li>
+<li>
+<p>设置 <strong>idle_in_transaction_session_timeout</strong> 参数，如果一个事务长期处于 <code>idle in transaction</code> 状态，超过设置的时长（单位毫秒）时，数据库会自动清理掉这些事务。</p>
+</li>
+</ol>
+<p>对于 1：</p>
+<p>可以最好是统一使用上下文管理器：</p>
+<pre><code class="language-python">class SQLAlchemy(_SQLAlchemy):
+
+    @contextmanager
+    def auto_commit(self):
+        try:
+            yield
+            self.session.commit()
+        except Exception as e:
+            logger.exception(e)
+            db.session.rollback()
+            raise
+
+
+with db.auto_commit():
+  	# some query
+</code></pre>
+<h2 id="参考">参考</h2>
+<p>[1] <a href="https://www.postgresql.org/docs/10/runtime-config-client.html"> Server Configuration</a></p>
+
+              </div>
+              <div class="toc-container">
+                <ul class="markdownIt-TOC">
+<li>
+<ul>
+<li><a href="#%E5%88%9D%E6%AD%A5%E5%88%86%E6%9E%90">初步分析</a></li>
+<li><a href="#%E6%BA%90%E7%A0%81%E9%AA%8C%E8%AF%81">源码验证</a></li>
+<li><a href="#%E5%86%8D%E6%AC%A1%E5%88%86%E6%9E%90">再次分析</a></li>
+<li><a href="#%E8%A7%A3%E5%86%B3%E6%96%B9%E6%A1%88">解决方案</a></li>
+<li><a href="#%E5%8F%82%E8%80%83">参考</a></li>
+</ul>
+</li>
+</ul>
+
+              </div>
+            </div>
+          </article>
+        </div>
+
+        
+          <div class="next-post">
+            <div class="next">下一篇</div>
+            <a href="https://protream.github.io/post/BgAYmJ6c-/">
+              <h3 class="post-title">
+                Flask-SQLAlchemy 是如何执行一条查询的
+              </h3>
+            </a>
+          </div>
+        
+
+        
+
+        <div class="site-footer">
+  Powered by <a href="https://github.com/getgridea/gridea" target="_blank">&nbsp;Gridea</a>
+  <a class="rss" href="https://protream.github.io/atom.xml" target="_blank">
+    <i class="ri-rss-line"></i> RSS
+  </a>
+</div>
+
+      </div>
+    </div>
+
+    <script>
+      hljs.initHighlightingOnLoad()
+
+      let mainNavLinks = document.querySelectorAll(".markdownIt-TOC a");
+
+      // This should probably be throttled.
+      // Especially because it triggers during smooth scrolling.
+      // https://lodash.com/docs/4.17.10#throttle
+      // You could do like...
+      // window.addEventListener("scroll", () => {
+      //    _.throttle(doThatStuff, 100);
+      // });
+      // Only not doing it here to keep this Pen dependency-free.
+
+      window.addEventListener("scroll", event => {
+        let fromTop = window.scrollY;
+
+        mainNavLinks.forEach((link, index) => {
+          let section = document.getElementById(decodeURI(link.hash).substring(1));
+          let nextSection = null
+          if (mainNavLinks[index + 1]) {
+            nextSection = document.getElementById(decodeURI(mainNavLinks[index + 1].hash).substring(1));
+          }
+          if (section.offsetTop <= fromTop) {
+            if (nextSection) {
+              if (nextSection.offsetTop > fromTop) {
+                link.classList.add("current");
+              } else {
+                link.classList.remove("current");    
+              }
+            } else {
+              link.classList.add("current");
+            }
+          } else {
+            link.classList.remove("current");
+          }
+        });
+      });
+
+    </script>
+  </body>
+</html>

@@ -1,0 +1,278 @@
+<html>
+  <head>
+    <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>基于 SQLAlchemy 批量更新数据 | Protream&#39;s Notes</title>
+<link rel="shortcut icon" href="https://protream.github.io/favicon.ico?v=1733235889358">
+<link href="https://cdn.jsdelivr.net/npm/remixicon@2.3.0/fonts/remixicon.css" rel="stylesheet">
+<link rel="stylesheet" href="https://protream.github.io/styles/main.css">
+<link rel="alternate" type="application/atom+xml" title="基于 SQLAlchemy 批量更新数据 | Protream&#39;s Notes - Atom Feed" href="https://protream.github.io/atom.xml">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Droid+Serif:400,700">
+
+
+
+    <meta name="description" content="订单系统上线，迁移历史数据后，要批量更新一些数据，需要一种简单快速的方法。
+
+解法
+通过 Python + SQLAlchemy 实现批量更新，找到了下面这种方法，实测速度是挺快的。
+from sqlalchemy.sql.expressi..." />
+    <meta name="keywords" content="technique" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.10.0/katex.min.css">
+    <script src="//cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.5.1/build/highlight.min.js"></script>
+  </head>
+  <body>
+    <div class="main">
+      <div class="main-content">
+        <div class="site-header">
+  <a href="https://protream.github.io">
+  <img class="avatar" src="https://protream.github.io/images/avatar.png?v=1733235889358" alt="">
+  </a>
+  <h1 class="site-title">
+    Protream&#39;s Notes
+  </h1>
+  <p class="site-description">
+    
+  </p>
+  <div class="menu-container">
+    
+      
+        <a href="/" class="menu">
+          首页
+        </a>
+      
+    
+      
+        <a href="/archives" class="menu">
+          归档
+        </a>
+      
+    
+      
+        <a href="/tags" class="menu">
+          标签
+        </a>
+      
+    
+      
+        <a href="/post/about" class="menu">
+          关于
+        </a>
+      
+    
+  </div>
+  <div class="social-container">
+    
+      
+    
+      
+    
+      
+    
+      
+    
+      
+    
+  </div>
+</div>
+
+        <div class="post-detail">
+          <article class="post">
+            <h2 class="post-title">
+              基于 SQLAlchemy 批量更新数据
+            </h2>
+            <div class="post-info">
+              <span>
+                2022-07-13
+              </span>
+              <span>
+                3 min read
+              </span>
+              
+                <a href="https://protream.github.io/tag/technique/" class="post-tag">
+                  # technique
+                </a>
+              
+            </div>
+            
+            <div class="post-content-wrapper">
+              <div class="post-content" v-pre>
+                <p>订单系统上线，迁移历史数据后，要批量更新一些数据，需要一种简单快速的方法。</p>
+<!-- more -->
+<h2 id="解法">解法</h2>
+<p>通过 Python + SQLAlchemy 实现批量更新，找到了下面这种方法，实测速度是挺快的。</p>
+<pre><code class="language-python">from sqlalchemy.sql.expression import bindparam
+stmt = update(TableName)\
+    where(TableName.id == bindparam('_id')).\
+    values({
+        'user_id': bindparam('user_id'),
+        'email_address': bindparam('email_address'),
+    })
+
+conn.execute(stmt, [
+    {'user_id': 1, 'email_address' : 'jack@yahoo.com', '_id':1},
+    {'user_id': 1, 'email_address' : 'jack@msn.com', '_id':2},
+    {'user_id': 2, 'email_address' : 'www@www.org', '_id':3},
+    {'user_id': 2, 'email_address' : 'wendy@aol.com', '_id':4},
+])
+</code></pre>
+<p>核心是基于 bindparam，将待更新的行的主键及待更新字段一起构造一个字典列表，基于构造好的类似于模板的语句实现批量更新。</p>
+<h2 id="实战">实战</h2>
+<pre><code class="language-python">import sys
+import logging
+from sqlalchemy import create_engine
+from sqlalchemy.orm import declarative_base, Session
+from sqlalchemy import Column, Integer, String, Boolean, DateTime, Float, Text
+from sqlalchemy.sql.expression import bindparam
+
+logging.basicConfig(filename='sync_order_address_id.log',
+                    filemode='a',
+                    format='%(asctime)s,%(msecs)d %(name)s %(levelname)s %(message)s',
+                    datefmt='%H:%M:%S',
+                    level=logging.DEBUG)
+
+
+log = logging.getLogger(__name__)
+
+is_dev = sys.argv[1] == 'dev'
+
+if is_dev:
+    DATABASE_URI = ''
+    PROJECT_ID = 34
+else:
+    DATABASE_URI = ''
+    PROJECT_ID = 2
+
+
+Base = declarative_base()
+
+
+class Order(Base):
+    __tablename__ = 'od_order'
+
+    id = Column(Integer, primary_key=True)
+    # ...
+
+
+class Address(Base):
+    __tablename__ = 'od_address'
+
+    id = Column(Integer, primary_key=True)
+    # ...
+
+
+def main():
+    engine = create_engine(DATABASE_URI, encoding='utf8', echo=True)
+    map2 = {}
+    lst = []
+    with Session(engine) as session:
+        orders = session.query(Order).filter(Order.lanqiao_project_id==PROJECT_ID, Order.search_field4.isnot(None)).order_by(Order.create_time.desc()).all()
+        addresses = session.query(Address).filter(Address.old_id.isnot(None)).all()
+        for address in addresses:
+            map2[address.old_id] = address.id
+        for order in orders:
+            lst.append({
+                '_id': order.id,
+                'new_address_id': map2.get(int(order.search_field4), 0)
+            })
+        stmp = Order.__table__.update().\
+        where(Order.__table__.c.id==bindparam('_id')).\
+        values({
+            'address_id': bindparam('new_address_id')
+        })
+        session.execute(stmp, lst)
+        session.commit()
+
+
+if __name__ == '__main__':
+    main()
+</code></pre>
+<p>要点：</p>
+<ol>
+<li>TableClass.<strong>table</strong>  访问到 table；</li>
+<li>TableClass.__table.c.id 访问到具体某个列；</li>
+</ol>
+<h2 id="参考">参考</h2>
+<p>[1] <a href="https://onebite.dev/how-to-bulk-update-in-sqlalchemy-python/">how-to-bulk-update-in-sqlalchemy-python</a></p>
+
+              </div>
+              <div class="toc-container">
+                <ul class="markdownIt-TOC">
+<li>
+<ul>
+<li><a href="#%E8%A7%A3%E6%B3%95">解法</a></li>
+<li><a href="#%E5%AE%9E%E6%88%98">实战</a></li>
+<li><a href="#%E5%8F%82%E8%80%83">参考</a></li>
+</ul>
+</li>
+</ul>
+
+              </div>
+            </div>
+          </article>
+        </div>
+
+        
+          <div class="next-post">
+            <div class="next">下一篇</div>
+            <a href="https://protream.github.io/post/aYsHAba41/">
+              <h3 class="post-title">
+                学点大数据1：拉链表
+              </h3>
+            </a>
+          </div>
+        
+
+        
+
+        <div class="site-footer">
+  Powered by <a href="https://github.com/getgridea/gridea" target="_blank">&nbsp;Gridea</a>
+  <a class="rss" href="https://protream.github.io/atom.xml" target="_blank">
+    <i class="ri-rss-line"></i> RSS
+  </a>
+</div>
+
+      </div>
+    </div>
+
+    <script>
+      hljs.initHighlightingOnLoad()
+
+      let mainNavLinks = document.querySelectorAll(".markdownIt-TOC a");
+
+      // This should probably be throttled.
+      // Especially because it triggers during smooth scrolling.
+      // https://lodash.com/docs/4.17.10#throttle
+      // You could do like...
+      // window.addEventListener("scroll", () => {
+      //    _.throttle(doThatStuff, 100);
+      // });
+      // Only not doing it here to keep this Pen dependency-free.
+
+      window.addEventListener("scroll", event => {
+        let fromTop = window.scrollY;
+
+        mainNavLinks.forEach((link, index) => {
+          let section = document.getElementById(decodeURI(link.hash).substring(1));
+          let nextSection = null
+          if (mainNavLinks[index + 1]) {
+            nextSection = document.getElementById(decodeURI(mainNavLinks[index + 1].hash).substring(1));
+          }
+          if (section.offsetTop <= fromTop) {
+            if (nextSection) {
+              if (nextSection.offsetTop > fromTop) {
+                link.classList.add("current");
+              } else {
+                link.classList.remove("current");    
+              }
+            } else {
+              link.classList.add("current");
+            }
+          } else {
+            link.classList.remove("current");
+          }
+        });
+      });
+
+    </script>
+  </body>
+</html>

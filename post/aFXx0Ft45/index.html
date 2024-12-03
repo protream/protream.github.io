@@ -1,0 +1,585 @@
+<html>
+  <head>
+    <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>深入 Python —— == 和 is 的区别 | Protream&#39;s Notes</title>
+<link rel="shortcut icon" href="https://protream.github.io/favicon.ico?v=1733235889358">
+<link href="https://cdn.jsdelivr.net/npm/remixicon@2.3.0/fonts/remixicon.css" rel="stylesheet">
+<link rel="stylesheet" href="https://protream.github.io/styles/main.css">
+<link rel="alternate" type="application/atom+xml" title="深入 Python —— == 和 is 的区别 | Protream&#39;s Notes - Atom Feed" href="https://protream.github.io/atom.xml">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Droid+Serif:400,700">
+
+
+
+    <meta name="description" content="== 和 is 的区别这个问题对于使用过 Python 一段时间开发人员的来说相信不是一个困难的问题。本文将剖析 Python3.6 源码，旨在从实现细节层面把这个问题说清楚，
+
+从字节码看起
+我们先来看看 == 和 is 编译后字节码的区..." />
+    <meta name="keywords" content="python" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.10.0/katex.min.css">
+    <script src="//cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.5.1/build/highlight.min.js"></script>
+  </head>
+  <body>
+    <div class="main">
+      <div class="main-content">
+        <div class="site-header">
+  <a href="https://protream.github.io">
+  <img class="avatar" src="https://protream.github.io/images/avatar.png?v=1733235889358" alt="">
+  </a>
+  <h1 class="site-title">
+    Protream&#39;s Notes
+  </h1>
+  <p class="site-description">
+    
+  </p>
+  <div class="menu-container">
+    
+      
+        <a href="/" class="menu">
+          首页
+        </a>
+      
+    
+      
+        <a href="/archives" class="menu">
+          归档
+        </a>
+      
+    
+      
+        <a href="/tags" class="menu">
+          标签
+        </a>
+      
+    
+      
+        <a href="/post/about" class="menu">
+          关于
+        </a>
+      
+    
+  </div>
+  <div class="social-container">
+    
+      
+    
+      
+    
+      
+    
+      
+    
+      
+    
+  </div>
+</div>
+
+        <div class="post-detail">
+          <article class="post">
+            <h2 class="post-title">
+              深入 Python —— == 和 is 的区别
+            </h2>
+            <div class="post-info">
+              <span>
+                2019-04-26
+              </span>
+              <span>
+                10 min read
+              </span>
+              
+                <a href="https://protream.github.io/tag/A0Yg_mO4u/" class="post-tag">
+                  # python
+                </a>
+              
+            </div>
+            
+            <div class="post-content-wrapper">
+              <div class="post-content" v-pre>
+                <p>== 和 is 的区别这个问题对于使用过 Python 一段时间开发人员的来说相信不是一个困难的问题。本文将剖析 Python3.6 源码，旨在从实现细节层面把这个问题说清楚，</p>
+<!--more-->
+<h2 id="从字节码看起">从字节码看起</h2>
+<p>我们先来看看 == 和 is 编译后字节码的区别：</p>
+<pre><code class="language-py">In [1]: def test():
+   ...:     a = 1
+   ...:     b = 1
+   ...:     a == b
+   ...:     a is b
+   ...:
+
+In [2]: import dis
+
+In [3]: dis.dis(test)
+  2           0 LOAD_CONST               1 (1)
+              2 STORE_FAST               0 (a)
+
+  3           4 LOAD_CONST               1 (1)
+              6 STORE_FAST               1 (b)
+
+  4           8 LOAD_FAST                0 (a)
+             10 LOAD_FAST                1 (b)
+             12 COMPARE_OP               2 (==)
+             14 POP_TOP
+
+  5          16 LOAD_FAST                0 (a)
+             18 LOAD_FAST                1 (b)
+             20 COMPARE_OP               8 (is)
+             22 POP_TOP
+             24 LOAD_CONST               0 (None)
+             26 RETURN_VALUE
+
+</code></pre>
+<p>从字节码可以看出来，<code>is</code> 和 <code>==</code> 都是交给 <code>COMPARE_OP</code> 来执行的，通过 oparg（== 是 2，is 是 8） 参数执行不同的处理，顺藤摸瓜，我们来到 <code>COMPARE_OP</code>：</p>
+<pre><code class="language-c">TARGET(COMPARE_OP) {
+    PyObject *right = POP();
+    PyObject *left = TOP();
+    PyObject *res = cmp_outcome(oparg, left, right);
+    Py_DECREF(left);
+    Py_DECREF(right);
+    SET_TOP(res);
+    if (res == NULL)
+        goto error;
+    PREDICT(POP_JUMP_IF_FALSE);
+    PREDICT(POP_JUMP_IF_TRUE);
+    DISPATCH();
+}
+</code></pre>
+<p><code>COMPARE_OP</code> 将待比较的对象和参数又传入到 <code>cmp_outcome</code>：</p>
+<pre><code class="language-c"> static PyObject * cmp_outcome(int op, PyObject *v, PyObject *w)；
+</code></pre>
+<h2 id="is-比较的本质">is 比较的本质</h2>
+<p>先看 <code>cmp_outcome</code> 函数中处理 <code>is</code> 和 <code>is not</code> 的部分：</p>
+<pre><code class="language-c">static PyObject *
+cmp_outcome(int op, register PyObject *v, register PyObject *w) {
+    int res = 0;
+    switch (op) {
+    case PyCmp_IS:
+        res = (v == w);
+        break;
+    case PyCmp_IS_NOT:
+        res = (v != w);
+        break;
+    ...
+}
+</code></pre>
+<p>可以看出，is 和 is not 比较的就是 v 和 w 这俩个指针变量！而指针变量本质上是一个内存地址，它在 32 位系统中就是一个 32 整数，在 64 位系统中就是一个 64 位整数。由此我们可以得出一个结论：<strong>is 比较的是俩个对象在内存中是否是同一个地址，换句话说，它们是否是同一个对象</strong>。</p>
+<h2 id="richcompare">richcompare</h2>
+<p>继续往下之前，先来了解下 Python 中 richcompare 的概念。其实不单单是 Python，编程语言应该都会提供 &lt;，&lt;=，==，!=，&gt;，&gt;= 这六中比较，在 Python 源码中，它们统称为 richcompare。每一个比较，Python 都提供了一个重载方法和一个参数码，对应关系如下</p>
+<pre><code>符号    重载方法    参数码
+&lt;       __lt__      0
+&lt;=      __le__      1
+==      __eq__      2
+!=      __le__      3
+&gt;       __gt__      4
+&gt;=      __ge__      5
+</code></pre>
+<p>可以通过重写上面任意一个或多个方法来重载对应的操作符号，</p>
+<p>Python 中每个对象都关联一个类型，类型中有一个 <code>tp_richcompare</code> 函数指针来决定对象之间做 rich compare 时的行为，所有对象的基类型提供了一个默认的实现，我们将在后面介绍。</p>
+<h2 id="比较的本质">== 比较的本质</h2>
+<p>== 比较只是 richcompare 的一种，所有 richcompare 的比较最终都是要交给这个对象关联类型的 <code>tp_richcompare</code>。大部分内置类型，如 int，list，dict 都重写了这个函数，对于用户自建的类型，会优先调用用户重载的方法，没有再调用默认的 <code>tp_richcompare</code>。这只是大概的逻辑，具体到细节，相同类型对象之间、不同类型对象之间、对象与其基类对象之间的比较又有所差异。</p>
+<p>继续往下看 <code>cmp_outcome</code> 是怎么处理 richcompare 的：</p>
+<pre><code class="language-c">static PyObject *
+cmp_outcome(int op, register PyObject *v, register PyObject *w)
+{
+	   ...
+    default:
+        return PyObject_RichCompare(v, w, op);
+    }
+    v = res ? Py_True : Py_False;
+    Py_INCREF(v);
+    return v;
+}
+</code></pre>
+<p>richcompare 会进入到 <code>PyObject_RichCompare</code>：</p>
+<pre><code class="language-c">  PyObject *
+  PyObject_RichCompare(PyObject *v, PyObject *w, int op)
+  {
+      PyObject *res;
+
+      assert(Py_LT &lt;= op &amp;&amp; op &lt;= Py_GE);
+      if (v == NULL || w == NULL) {
+          if (!PyErr_Occurred())
+              PyErr_BadInternalCall();
+          return NULL;
+      }
+      if (Py_EnterRecursiveCall(&quot; in comparison&quot;))
+          return NULL;
+      res = do_richcompare(v, w, op);
+      Py_LeaveRecursiveCall();
+      return res;
+  }
+
+</code></pre>
+<p>这个函数主要是对参数的检查，真正做事的是 <code>do_richcompare</code> ：</p>
+<pre><code class="language-c">/* Perform a rich comparison, raising TypeError when the requested comparison
+     operator is not supported. */
+  static PyObject *
+  do_richcompare(PyObject *v, PyObject *w, int op)
+  {
+      richcmpfunc f;
+      PyObject *res;
+      int checked_reverse_op = 0;
+
+      /* 第一种情况 */
+      ...
+      /* 第二种情况 */
+      ...
+      /* 第三种情况 */
+      ...
+      /* 第四种情况 */
+      ...
+
+      Py_INCREF(res);
+      return res;
+  }
+</code></pre>
+<p>这里分为几种情况：</p>
+<ol>
+<li>v 和 w 类型不同，w 是 v 的子类，w 如果重载了某个 richcompare 方法，则调用 w 中的 richcompare 方法：</li>
+</ol>
+<pre><code class="language-c">if (v-&gt;ob_type != w-&gt;ob_type &amp;&amp;
+      PyType_IsSubtype(w-&gt;ob_type, v-&gt;ob_type) &amp;&amp;
+      (f = w-&gt;ob_type-&gt;tp_richcompare) != NULL) {
+      checked_reverse_op = 1;
+      res = (*f)(w, v, _Py_SwappedOp[op]);
+      if (res != Py_NotImplemented)
+          return res;
+      Py_DECREF(res);
+  }
+</code></pre>
+<p>例子：</p>
+<pre><code class="language-py">In [1]: class A:
+   ...:     pass
+   ...:
+
+In [2]: class B(A):
+   ...:     def __eq__(self, o):
+   ...:         print('eq richcompare in B')
+   ...:         return True
+   ...:
+
+In [3]: a = A()
+
+In [4]: b = B()
+
+In [5]: a == b
+eq richcompare in B
+Out[5]: True
+</code></pre>
+<ol start="2">
+<li>v 和 w 类型不同，或者 w 不是 v 的子类，或者 w 没有相应的 richcompare 方法，如果 v 定义了相应的 richcompare 方法，就调用 v 中相应的 richcompare 方法：</li>
+</ol>
+<pre><code class="language-c">if ((f = v-&gt;ob_type-&gt;tp_richcompare) != NULL) {
+      res = (*f)(v, w, op);
+      if (res != Py_NotImplemented)
+          return res;
+      Py_DECREF(res);
+  }
+</code></pre>
+<p>例子：</p>
+<pre><code class="language-c">In [1]: class A:
+   ...:     def __eq__(self, o):
+   ...:         print('eq richcompare in A')
+   ...:
+
+In [2]: class B:
+   ...:     pass
+   ...:
+
+In [3]: class C(A):
+   ...:     pass
+   ...:
+
+In [4]: class D(B):
+   ...:     def __eq__(self, o):
+   ...:         print('eq richcompare in D')
+   ...:
+
+In [5]: a = A()
+
+In [6]: b = B()
+
+In [7]: c = C()
+
+In [8]: d = D()
+
+In [9]: a == b
+eq richcompare in A
+
+In [10]: a == c
+eq richcompare in A
+
+In [11]: a == d
+eq richcompare in A
+
+</code></pre>
+<ol start="3">
+<li>w 不是 v 的子类，v 中没有定义或者继承相应的 richcompare 方法而 w 中定义了相应的 richcompare 方法，就调用 w 中相应的 richcompare 方法：</li>
+</ol>
+<pre><code class="language-c">if (!checked_reverse_op &amp;&amp; (f = w-&gt;ob_type-&gt;tp_richcompare) != NULL) {
+    res = (*f)(w, v, _Py_SwappedOp[op]);
+    if (res != Py_NotImplemented)
+        return res;
+    Py_DECREF(res);
+}
+</code></pre>
+<p>例子，接第二种情况的例子：</p>
+<pre><code class="language-python">In [12]: c == d
+eq richcompare in A
+
+In [13]: b == d
+eq richcompare in D
+
+</code></pre>
+<p>以上三种情况总结起来就是：<em>如果 w 是 v 的子类对象，优先调用 w 相应的 richcompare 方法，否则，v 和和 w 中谁有就调用谁的</em>。</p>
+<ol start="4">
+<li>如果 v 和 w 都没有相应的 richcompare 方法，那么默认的处理是：</li>
+</ol>
+<pre><code class="language-c">switch (op) {
+case Py_EQ:
+    res = (v == w) ? Py_True : Py_False;
+    break;
+case Py_NE:
+    res = (v != w) ? Py_True : Py_False;
+    break;
+default:
+    PyErr_Format(PyExc_TypeError,
+                 &quot;'%s' not supported between instances of '%.100s' and '%.100s'&quot;,
+                 opstrings[op],
+                 v-&gt;ob_type-&gt;tp_name,
+                 w-&gt;ob_type-&gt;tp_name);
+    return NULL;
+}
+</code></pre>
+<p>可以看到如果比较的是 == 和 !=，结果又回到 v 和 w 指针变量的直接比较，和 is 比较的结果相同，否则会引发一个类型错误。</p>
+<p>例子：</p>
+<pre><code class="language-py">In [1]: class A:
+   ...:     pass
+   ...:
+
+In [2]: class B:
+   ...:     pass
+   ...:
+
+In [3]: a = A()
+
+In [4]: b = B()
+
+In [5]: a == b
+Out[5]: False
+
+In [6]: a is b
+Out[6]: False
+
+In [7]: a != b
+Out[7]: True
+
+In [8]: a is not b
+Out[8]: True
+
+In [9]: a &gt; b
+---------------------------------------------------------------------------
+TypeError                                 Traceback (most recent call last)
+&lt;ipython-input-9-1e61210fe837&gt; in &lt;module&gt;()
+----&gt; 1 a &gt; b
+
+TypeError: '&gt;' not supported between instances of 'A' and 'B'
+
+</code></pre>
+<h2 id="object-的默认-richcompare">object 的默认 richcompare</h2>
+<p>所有的类的基类<code>object</code> 提供了一个默认的 richcompare 函数：</p>
+<pre><code class="language-c">PyTypeObject PyBaseObject_Type = {
+    ...
+    object_richcompare,                         /* tp_richcompare */
+    ...
+}
+</code></pre>
+<p>实现如下：</p>
+<pre><code class="language-c">  static PyObject *
+  object_richcompare(PyObject *self, PyObject *other, int op)
+  {
+      PyObject *res;
+
+      switch (op) {
+
+      case Py_EQ:
+          /* Return NotImplemented instead of False, so if two
+             objects are compared, both get a chance at the
+             comparison.  See issue #1393. */
+          res = (self == other) ? Py_True : Py_NotImplemented;
+          Py_INCREF(res);
+          break;
+
+      case Py_NE:
+          /* By default, __ne__() delegates to __eq__() and inverts the result,
+             unless the latter returns NotImplemented. */
+          if (self-&gt;ob_type-&gt;tp_richcompare == NULL) {
+              res = Py_NotImplemented;
+              Py_INCREF(res);
+              break;
+          }
+          res = (*self-&gt;ob_type-&gt;tp_richcompare)(self, other, Py_EQ);
+          if (res != NULL &amp;&amp; res != Py_NotImplemented) {
+              int ok = PyObject_IsTrue(res);
+              Py_DECREF(res);
+              if (ok &lt; 0)
+                  res = NULL;
+              else {
+                  if (ok)
+                      res = Py_False;
+                  else
+                      res = Py_True;
+                  Py_INCREF(res);
+              }
+          }
+          break;
+
+     default:
+          res = Py_NotImplemented;
+          Py_INCREF(res);
+          break;
+      }
+      return res;
+  }
+
+</code></pre>
+<p>可以看出，对于俩个相同类型的对象而言，== 默认比较的内存地址是否相同，即会否是同一个对象。对于 !=，如果类没有重载 !=（实现 <strong>ne</strong>），返回 Py_NotImplemented，这时候又回到上面的第 4 种情况，继续比较内存地址。其他比较也是回到上述第 4 中情况，引发类型错误。</p>
+<p>例子：</p>
+<pre><code class="language-c">In [1]: class A:
+   ...:     pass
+   ...:
+
+In [2]: class B:
+   ...:     def __ne__(self, o):
+   ...:         print('ne richcompare in B')
+   ...:         return False
+   ...:
+
+In [3]: a1 = A()
+
+In [4]: a2 = A()
+
+In [5]: a3 = a1
+
+In [6]: a1 == a2
+Out[6]: False
+
+In [7]: a1 == a3
+Out[7]: True
+
+In [8]: a1 != a2
+Out[8]: True
+
+In [9]: b1 = B()
+
+In [10]: b2 = B()
+
+In [11]: b1 == b2
+Out[11]: False
+
+In [12]: b1 != b2
+ne richcompare in B
+Out[12]: False
+
+In [13]: a1 &lt;= a2
+---------------------------------------------------------------------------
+TypeError                                 Traceback (most recent call last)
+&lt;ipython-input-13-7ba1adc4bd61&gt; in &lt;module&gt;()
+----&gt; 1 a1 &lt;= a2
+
+TypeError: '&lt;=' not supported between instances of 'A' and 'A'
+
+</code></pre>
+<h2 id="总结">总结</h2>
+<p>本文深入源码，剖析了 is 和 == 的区别和联系，总的来说就是：</p>
+<ul>
+<li>is 比较的是俩个对象内存地址是不是一样，即是否是同一个对象</li>
+<li>== 是 richcompare 的一种，除非对象的类型重写了 tp_richcompare，否则默认的 == 比较的也是俩个对象的内存地址，和 is 一致</li>
+</ul>
+<p>Python 的常用内置类型如 int，string，list，dict 都有默认实现的 tp_richcompare 实现，这个可以另写一篇文章介绍了。</p>
+<p>此外，与 Python2 相比，整个比较的逻辑是做了简化的，这里就不剖析 Python2 了，只提一点，Python2 中用户是可以通过重写 <strong>cmp</strong> 方法来决定对象之间的比较逻辑的，从 Python 3.0.1 版本后，这个方法被移除了。</p>
+
+              </div>
+              <div class="toc-container">
+                <ul class="markdownIt-TOC">
+<li>
+<ul>
+<li><a href="#%E4%BB%8E%E5%AD%97%E8%8A%82%E7%A0%81%E7%9C%8B%E8%B5%B7">从字节码看起</a></li>
+<li><a href="#is-%E6%AF%94%E8%BE%83%E7%9A%84%E6%9C%AC%E8%B4%A8">is 比较的本质</a></li>
+<li><a href="#richcompare">richcompare</a></li>
+<li><a href="#%E6%AF%94%E8%BE%83%E7%9A%84%E6%9C%AC%E8%B4%A8">== 比较的本质</a></li>
+<li><a href="#object-%E7%9A%84%E9%BB%98%E8%AE%A4-richcompare">object 的默认 richcompare</a></li>
+<li><a href="#%E6%80%BB%E7%BB%93">总结</a></li>
+</ul>
+</li>
+</ul>
+
+              </div>
+            </div>
+          </article>
+        </div>
+
+        
+          <div class="next-post">
+            <div class="next">下一篇</div>
+            <a href="https://protream.github.io/post/8VtPmaS47/">
+              <h3 class="post-title">
+                深入 Python —— Python 是如何管理内存的 （下）
+              </h3>
+            </a>
+          </div>
+        
+
+        
+
+        <div class="site-footer">
+  Powered by <a href="https://github.com/getgridea/gridea" target="_blank">&nbsp;Gridea</a>
+  <a class="rss" href="https://protream.github.io/atom.xml" target="_blank">
+    <i class="ri-rss-line"></i> RSS
+  </a>
+</div>
+
+      </div>
+    </div>
+
+    <script>
+      hljs.initHighlightingOnLoad()
+
+      let mainNavLinks = document.querySelectorAll(".markdownIt-TOC a");
+
+      // This should probably be throttled.
+      // Especially because it triggers during smooth scrolling.
+      // https://lodash.com/docs/4.17.10#throttle
+      // You could do like...
+      // window.addEventListener("scroll", () => {
+      //    _.throttle(doThatStuff, 100);
+      // });
+      // Only not doing it here to keep this Pen dependency-free.
+
+      window.addEventListener("scroll", event => {
+        let fromTop = window.scrollY;
+
+        mainNavLinks.forEach((link, index) => {
+          let section = document.getElementById(decodeURI(link.hash).substring(1));
+          let nextSection = null
+          if (mainNavLinks[index + 1]) {
+            nextSection = document.getElementById(decodeURI(mainNavLinks[index + 1].hash).substring(1));
+          }
+          if (section.offsetTop <= fromTop) {
+            if (nextSection) {
+              if (nextSection.offsetTop > fromTop) {
+                link.classList.add("current");
+              } else {
+                link.classList.remove("current");    
+              }
+            } else {
+              link.classList.add("current");
+            }
+          } else {
+            link.classList.remove("current");
+          }
+        });
+      });
+
+    </script>
+  </body>
+</html>

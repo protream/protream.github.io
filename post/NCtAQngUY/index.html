@@ -1,0 +1,707 @@
+<html>
+  <head>
+    <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>深入 Python —— Python 是如何管理内存的（上） | Protream&#39;s Notes</title>
+<link rel="shortcut icon" href="https://protream.github.io/favicon.ico?v=1733235889358">
+<link href="https://cdn.jsdelivr.net/npm/remixicon@2.3.0/fonts/remixicon.css" rel="stylesheet">
+<link rel="stylesheet" href="https://protream.github.io/styles/main.css">
+<link rel="alternate" type="application/atom+xml" title="深入 Python —— Python 是如何管理内存的（上） | Protream&#39;s Notes - Atom Feed" href="https://protream.github.io/atom.xml">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Droid+Serif:400,700">
+
+
+
+    <meta name="description" content="
+&quot;Memory management is where the rubber meets the road -- if we do the wrong thing at any level, the results will n..." />
+    <meta name="keywords" content="python" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.10.0/katex.min.css">
+    <script src="//cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.5.1/build/highlight.min.js"></script>
+  </head>
+  <body>
+    <div class="main">
+      <div class="main-content">
+        <div class="site-header">
+  <a href="https://protream.github.io">
+  <img class="avatar" src="https://protream.github.io/images/avatar.png?v=1733235889358" alt="">
+  </a>
+  <h1 class="site-title">
+    Protream&#39;s Notes
+  </h1>
+  <p class="site-description">
+    
+  </p>
+  <div class="menu-container">
+    
+      
+        <a href="/" class="menu">
+          首页
+        </a>
+      
+    
+      
+        <a href="/archives" class="menu">
+          归档
+        </a>
+      
+    
+      
+        <a href="/tags" class="menu">
+          标签
+        </a>
+      
+    
+      
+        <a href="/post/about" class="menu">
+          关于
+        </a>
+      
+    
+  </div>
+  <div class="social-container">
+    
+      
+    
+      
+    
+      
+    
+      
+    
+      
+    
+  </div>
+</div>
+
+        <div class="post-detail">
+          <article class="post">
+            <h2 class="post-title">
+              深入 Python —— Python 是如何管理内存的（上）
+            </h2>
+            <div class="post-info">
+              <span>
+                2019-04-07
+              </span>
+              <span>
+                24 min read
+              </span>
+              
+                <a href="https://protream.github.io/tag/A0Yg_mO4u/" class="post-tag">
+                  # python
+                </a>
+              
+            </div>
+            
+            <div class="post-content-wrapper">
+              <div class="post-content" v-pre>
+                <blockquote>
+<p>&quot;Memory management is where the rubber meets the road -- if we do the wrong thing at any level, the results will not be good. And if we don't make the levels work well together, we are in serious trouble.” —— “Dynamic Storage Allocation: A Survey and Critical Review”</p>
+</blockquote>
+<!--more-->
+<p>内存管理可以说是任何基于 C/C++ 的系统程序的基石，需要谨慎对待。我们知道原生的 Python 解释权就是用 C 编写的，它的内部有一套自己的内存管理方案。这篇文章就是要来探究这套管理方案的实现细节，我们将会看到 Python 运行时内存是如何组织的，创建一个对象需要的内存又是如何分配的以及不再需要的垃圾内存又是如何被回收的。本文基于 Python 2.7。</p>
+<h2 id="概览">概览</h2>
+<p>如果把一台计算机中所有的内存看做一块蛋糕的话，要从这块蛋糕成功切下一小块给一个 Python 对象，需要经过一个个层级的申请。</p>
+<figure data-type="image" tabindex="1"><img src="https://github.com/protream/protream.github.io/blob/images/62914c14ad90108f4e77430594aada69/31a08a56-3f2f-4698-813e-d536d77278f7.png?raw=true" alt="" loading="lazy"></figure>
+<p>最底层，也就是图中的 -2 层，就是原始的物理存储，包含主存与二级存储；在这之上也就是 -1 层是我们的操作系统层，系统内核负责对物理存储进行管理和分配; 再上一层来到 0 层，这一层负责向操作系统申请内存，典型的如 C 语言的 <code>malloc</code> 库，Python 运行时需要的内存最终要通过这一层从操作系统申请；0 层往上才是 Python 运行时的内存管理层级。</p>
+<p>第 1 层中提供的<code>PyMem</code> 相关 API 主要是为了屏蔽不同平台 <code>malloc/free</code> 的差异，比如对于 malloc(0)，有的系统返回 NULL，有的系统返回一个指针但是指向的地方没有内存。解决这个问题的方法简单粗暴，就是不允许分配 0 内存，至少分配 1，PyMem_MALLOC(0) 会被转化成 malloc(1)。</p>
+<pre><code class="language-c">#define PyMem_MALLOC(n)        ((size_t)(n) &gt; (size_t)PY_SSIZE_T_MAX ? NULL \
+                : malloc((n) ? (n) : 1))
+#define PyMem_REALLOC(p, n)    ((size_t)(n) &gt; (size_t)PY_SSIZE_T_MAX  ? NULL \
+                : realloc((p), (n) ? (n) : 1))
+#define PyMem_FREE        free
+</code></pre>
+<p>第 2 层从第 1 层获取内存，这些内存如何组织，如何分配给第 3 层的各种对象，以及垃圾内存是怎么被回收的就是这篇文章要关注的点。</p>
+<h2 id="pool">pool</h2>
+<p>一个 pool 可以理解为一块大小为 4k（一个系统内存页的大小） 的蛋糕。当要为一个对象分配内存时，会从某个 pool 切下来一块分给这个对象。这里存在的限制是：</p>
+<ul>
+<li>每个 pool 能被切下来的蛋糕大小是固定的，依次是 8，16，32，…，256 bytes，每个切下来的蛋糕块就是一个 <em>block</em>；</li>
+<li>超过 256 bytes 的蛋糕块不再通过 pool 切，而是由 malloc 直接从操作系统申请；</li>
+<li>请求 0 bytes 的蛋糕块也不通过 pool 切，0 会被改成 1 由 malloc 直接从操作系统申请；</li>
+</ul>
+<p>这样的话，对于 [1, 256] bytes 这个范围内存请求与实际分配的内存（block）的关系如下：</p>
+<pre><code>Request in bytes     Size of allocated block      Size class idx
+----------------------------------------------------------------
+        1-8                     8                       0
+        9-16                   16                       1
+       17-24                   24                       2
+       25-32                   32                       3
+       33-40                   40                       4
+       41-48                   48                       5
+       49-56                   56                       6
+       57-64                   64                       7
+       65-72                   72                       8
+        ...                   ...                     ...
+      241-248                 248                      30
+      249-256                 256                      31
+</code></pre>
+<p>现在我们回过头来聚焦到单个 pool ，可以想象，在任意时刻，这个 pool 会有三种状态：</p>
+<ol>
+<li><code>used</code>：已经切分了部分小蛋糕块（block）出去，但还有剩余；</li>
+<li><code>full</code>：所有的蛋糕块都被切分出去了；</li>
+<li><code>empty</code>：还没有切分蛋糕块出去；</li>
+</ol>
+<p>Python 会在每个 pool 的开始位置存放这个 pool 能切分蛋糕块大小以及当前状态等相关信息，它们存放在 <code>pool_header</code> 结构体中，其定义如下：</p>
+<pre><code class="language-c">struct pool_header {
+    union { block *_padding;
+        uint count; } ref;              /* number of allocated blocks    */
+    block *freeblock;                   /* pool's free list head         */
+    struct pool_header *nextpool;       /* next pool of this size class  */
+    struct pool_header *prevpool;       /* previous pool                 */
+    uint arenaindex;                    /* index into arenas of base adr */
+    uint szidx;                         /* block size class index        */
+    uint nextoffset;                    /* bytes to virgin block         */
+    uint maxnextoffset;                 /* largest valid nextoffset      */
+};
+</code></pre>
+<p>假设现在有一块 4K 内存要被初始化为一个 pool，这个 pool 只能切割出 16 bytes 大小的 block ，下面是它的初始化过程：</p>
+<pre><code class="language-c">/*
+ * Initialize the pool header, set up the free list to
+ * contain just the second block.
+ */
+pool-&gt;szidx = size;
+size = INDEX2SIZE(size);
+bp = (block *)pool + POOL_OVERHEAD;
+pool-&gt;nextoffset = POOL_OVERHEAD + (size &lt;&lt; 1);
+pool-&gt;maxnextoffset = POOL_SIZE - size;
+pool-&gt;freeblock = bp + size;
+*(block **)(pool-&gt;freeblock) = NULL;
+UNLOCK();
+return (void *)bp;
+</code></pre>
+<p>pool_header 中 <code>szidx</code> 存放的就是 size class index，这里只能切割 16 bytes ，那么传过来的 size 就是 size class index，对应的值必定是 1。</p>
+<p><code>INDEX2SIZE</code> 是一个宏，将 size class index 转化成对应的 block 的大小，这里将 1 转化成 16 又赋给了 size，size 变成了 16。</p>
+<pre><code class="language-c">#define ALIGNMENT_SHIFT         3
+#define INDEX2SIZE(I) (((uint)(I) + 1) &lt;&lt; ALIGNMENT_SHIFT)
+</code></pre>
+<p><code>POOL_OVERHEAD </code> 也是一个宏，它的作用是将 pool_header 占用的内存对齐为 8 的倍数。对齐后的位置才是可分配 block 的开始位置，这个位置值存放在了 <code>bp</code> 中，最后作为当前内存分配请求的结果被返回。</p>
+<pre><code class="language-c">#define ALIGNMENT               8
+#define ALIGNMENT_MASK          (ALIGNMENT - 1)
+#define ROUNDUP(x)              (((x) + ALIGNMENT_MASK) &amp; ~ALIGNMENT_MASK)
+#define POOL_OVERHEAD           ROUNDUP(sizeof(struct pool_header))
+</code></pre>
+<p><code>nextoffset</code> 指向的是这个 pool 中下一个处女 block，也就是还没有被分配给任何对象使用过的 block（被使用后释放的 block 会被加入到 <code>freeblock</code> 链表），<code>maxnextoffset</code> 指向了这个 pool 的最后一个 block，<code>freeblock</code> 被初始化为下一个可用的 block，又通过二级指针将 block 里面的值设置为 NULL，当这个 pool 里面有一个 block 需要被回收时，也会通过类似的二级指针操作加入到 freeblock 中：</p>
+<pre><code class="language-c">/* 回收 p 指向的 block */
+*(block **)p = lastfree = pool-&gt;freeblock;
+pool-&gt;freeblock = (block *)p;
+</code></pre>
+<p>这样 freeblock 就形成了一个特殊的链表结构。</p>
+<p>某一时刻一个处于 <em>used</em> 状态的 pool 的可能的内存分布图：</p>
+<figure data-type="image" tabindex="2"><img src="https://github.com/protream/protream.github.io/blob/images/62914c14ad90108f4e77430594aada69/da62cab4-a825-4ef4-ae9d-d4564aa58844.png?raw=true" alt="" loading="lazy"></figure>
+<h2 id="usedpools">usedpools</h2>
+<p>所有处于 <code>used</code> 状态的 pool 都是通过 <code>usedpools</code> —— 一个特殊的数组管理的，前面没有介绍的 <code>szidx</code> 在这里排上用场了。我们已经知道 <code>szidx</code> 的取值范围是 [0, 31]，Python 会初始化一个特殊的数组存放所有处于 used 状态的 pool，这个数组的定义如下：</p>
+<pre><code class="language-c">#define SMALL_REQUEST_THRESHOLD 256
+#define NB_SMALL_SIZE_CLASSES   (SMALL_REQUEST_THRESHOLD / ALIGNMENT)  /* 256 / 8 = 32 */
+
+#define PTA(x)  ((poolp )((uchar *)&amp;(usedpools[2*(x)]) - 2*sizeof(block *)))
+#define PT(x)   PTA(x), PTA(x)
+
+static poolp usedpools[2 * ((NB_SMALL_SIZE_CLASSES + 7) / 8) * 8] = {
+    PT(0), PT(1), PT(2), PT(3), PT(4), PT(5), PT(6), PT(7)
+#if NB_SMALL_SIZE_CLASSES &gt; 8
+    , PT(8), PT(9), PT(10), PT(11), PT(12), PT(13), PT(14), PT(15)
+#if NB_SMALL_SIZE_CLASSES &gt; 16
+    , PT(16), PT(17), PT(18), PT(19), PT(20), PT(21), PT(22), PT(23)
+#if NB_SMALL_SIZE_CLASSES &gt; 24
+    , PT(24), PT(25), PT(26), PT(27), PT(28), PT(29), PT(30), PT(31)
+#endif /* NB_SMALL_SIZE_CLASSES &gt; 24 */
+#endif /* NB_SMALL_SIZE_CLASSES &gt; 16 */
+#endif /* NB_SMALL_SIZE_CLASSES &gt;  8 */
+};
+</code></pre>
+<p>这个数组的设计很巧妙，我们结合图片来看，下面是 <code>usedpools</code> 初始化后的内存布局：</p>
+<figure data-type="image" tabindex="3"><img src="https://github.com/protream/protream.github.io/blob/images/62914c14ad90108f4e77430594aada69/d88c6c9b-e92e-4d8d-931c-08d7c62de205.png?raw=true" alt="" loading="lazy"></figure>
+<p>每个元素的初始化值为相应 szidx 在数组中的开始位置向前偏移 2 个 sizeof(block *) 的距离，也就是图中 2 个方块的距离。<br>
+如果需要检查是否有 szidx 为 1 处于 used 状态的 pool，我们来到  usedpools[1 + 1]，也就是图中的 p，如果把 p 当做 pool_head 指针，那么 nextpool 就是 szidx 为 2 的第一个内存块，因为 p 到 nextpool 之间间隔的俩块内存大小为 <code>2*sizeof(block *)</code>，正好抵消了</p>
+<pre><code class="language-c">union { block *_padding; uint count; } ref;
+block *freeblock;
+</code></pre>
+<p>占用的内存，这里存放的正是 p ！这时候 p-&gt;nextpool 与 usedpools[1 + 1] 是相等的，也就是说 szidx 为 1 还没有对应的处于 used 状态的 pool。</p>
+<p>假设现在申请到了一个 szidx 为 1 的 pool，在其 header 被初始化之前，Python 首先做的其实是把它放到 usedpools 中：</p>
+<pre><code class="language-c">init_pool:
+    /* Frontlink to used pools. */
+    next = usedpools[size + size]; /* == prev */
+    pool-&gt;nextpool = next;
+    pool-&gt;prevpool = next;
+    next-&gt;nextpool = pool;
+    next-&gt;prevpool = pool;
+    pool-&gt;ref.count = 1;
+</code></pre>
+<p>此时 usedpools 的布局：</p>
+<figure data-type="image" tabindex="4"><img src="https://github.com/protream/protream.github.io/blob/images/62914c14ad90108f4e77430594aada69/d3fc3c13-3eef-45a8-9523-4def6f2f477e.png?raw=true" alt="" loading="lazy"></figure>
+<p>这时候 usedpools[1 + 1] != pool-&gt;nextpool，也就是说存在 szidx 为 1 的可用 pool。</p>
+<p>现在再结合 pool 来看请求的内存是如何通过 usedpools 分配出去的，这也是整个内存分配中最常见的情况：</p>
+<pre><code class="language-c">/* 请求 nbytes 个字节，转化成 szidx */
+size = (uint)(nbytes - 1) &gt;&gt; ALIGNMENT_SHIFT;
+/* 找到对应的 usedpool */
+pool = usedpools[size + size];
+/* 判断 usedpool 是否可用，不等于说明 usedpool 可用 */
+if (pool != pool-&gt;nextpool) {
+    ++pool-&gt;ref.count;
+    bp = pool-&gt;freeblock;
+      /* used 状态的 pool 必定存在 freeblock */
+    assert(bp != NULL);
+       /* 如果 freeblock 链表元素多余一个，将当前指向的 block 返回并将 freeblock 指向下一个 block */
+    if ((pool-&gt;freeblock = *(block **)bp) != NULL) {
+        UNLOCK();
+        return (void *)bp;
+    }
+    /* freeblock 的数量只有一个，说明分配出去的都没有释放，因为只有一个，当前的 freeblock
+     * 被分配出去以后需要指向一个新的 block，那么就需要开荒下一块处女地，也就是 nextoffset
+     * 指向的 block，需要先判断是否到达了最后一块 bock */
+    if (pool-&gt;nextoffset &lt;= pool-&gt;maxnextoffset) {
+        /* freeblock 指向处女地 */
+        pool-&gt;freeblock = (block*)pool + pool-&gt;nextoffset;
+        /* nextoffset 指向下一块处女地 */
+        pool-&gt;nextoffset += INDEX2SIZE(size);
+        *(block **)(pool-&gt;freeblock) = NULL;
+        UNLOCK();
+        return (void *)bp;
+    }
+    /* 走到这里说明当前 freeblock 指向的是最后一块可用的 block 了，分配出去以后
+     * 这个 pool 也就由 used 状态变成了 full 状态，需要从 usedpools 中移除，
+     * 也即是将 usedpools 中对应的位置恢复到初始化时的状态 */
+    next = pool-&gt;nextpool;
+    pool = pool-&gt;prevpool;
+    next-&gt;prevpool = pool;
+    pool-&gt;nextpool = next;
+    UNLOCK();
+    return (void *)bp;
+}
+</code></pre>
+<h2 id="arena">arena</h2>
+<p>如果 usedpools 对应 szidx 位置里并没有可用 pool ，Python 会申请一块 4k 内存进行初始化，放入到 usedpools 中。那么又是从哪申请的 4k 内存呢？答案是 arena。简单来说，如果 pool 是一块 4k 大小的蛋糕，那么 arena 就是一块 <em>256k</em> 大小的蛋糕。当 usedpools 中与某个 szidx 对应的 pool 不存在时就会从 arena 这个更大块的蛋糕上切一块 4k 的小块，初始化为 pool 放入到 usedpools 中。</p>
+<p>详细一点来说，arena 只是一个 struct 结构体，里面有一个指针指向  256k 内存，arena 定义如下：</p>
+<pre><code class="language-c">/* Record keeping for arenas. */
+struct arena_object {
+    /* 与 pool 不同，pool 的 header 是包含在 4k 内存里面的，arena 的
+     * header 与它管理的 256k 内存是相关独立的，256k 内存的地址存在这里 */
+    uptr address;
+
+    /* 下一块 pool 处女地的开始地址，类似于 pool 中的 nextoffset */
+    block* pool_address;
+
+    /* 剩余可用 pool 的数量，可以推断其初始值必定是 256k / 4k = 64 */
+    uint nfreepools;
+
+    /* 可用 pool 的总数量，可以推断其值必定是 256k / 4k = 64 */
+    uint ntotalpools;
+
+    /* 一个单链表，将所有可用的 pool 链接起来，类似于 pool 中的 freeblock */
+    struct pool_header* freepools;
+
+    struct arena_object* nextarena;
+    struct arena_object* prevarena;
+};
+</code></pre>
+<p>arena 并不是系统初始化就存在的，本着不能浪费的原则，系统每次只申请一块 256k 的内存，用完了才会申请第二块，但是系统会一次初始化多个 <code>arena_object</code> 头结构，由 <code>arenas</code> 管理，<code>arenas</code> 是一个全局的 <code>arena_object</code> 指针：</p>
+<pre><code class="language-c">/* Array of objects used to track chunks of memory (arenas). */
+static struct arena_object* arenas = NULL;
+</code></pre>
+<p>大家看到 arenas 是一个指针，结合 arena_object 定义中的 nextarena 和 prevarena，可能会以为 arenas 指向的是双向链表，但是并不是，arenas 其实是一个数组。 nextarea 是负责将所有还没有使用（包括用完释放的）的 arena_object 连接成一个单链表，头指针是 <em>unused_arena_objects</em>。此外，next arena 和 prevarena 共同负责将在使用中的 arena_object 连接成一个双链表，头指针是 <em>usable_arenas</em>，这俩个头指针的定义如下：</p>
+<pre><code class="language-c">static struct arena_object* unused_arena_objects = NULL;
+static struct arena_object* usable_arenas = NULL
+</code></pre>
+<p>还有俩个相关的定义：</p>
+<pre><code class="language-c">/* 上一次创建的 arena_object 的数量 */
+static uint maxarenas = 0;
+
+/* 首次创建的 arena_object 的数量 */
+#define INITIAL_ARENA_OBJECTS 16
+</code></pre>
+<p>现在可以来看一下 <em>arenas</em> 的初始化了：</p>
+<pre><code class="language-c">/* 没有还没有使用的 arena_object 才进行新的初始化 */
+if (unused_arena_objects == NULL) {
+        uint i;
+        uint numarenas;
+        size_t nbytes;
+
+        /* maxarenas 为 0 表示首次创建，创建数量为 16，
+         * 如果不为 0，创建数量为上次创建数量的 2 倍 */
+        numarenas = maxarenas ? maxarenas &lt;&lt; 1 : INITIAL_ARENA_OBJECTS;
+
+        /* overflow 相关判断略过 */
+
+          /* 计算 numarenas 个 arena_object 占用的内存然后申请 */
+        nbytes = numarenas * sizeof(*arenas);
+        /* 申请内存，注意，用的是 realloc，表示扩大当前的数组 */
+        arenaobj = (struct arena_object *)realloc(arenas, nbytes);
+        if (arenaobj == NULL)
+            return NULL;
+        arenas = arenaobj;
+
+        /* 将新创建的 arena_object 链接到 unused_arena_objects */
+        for (i = maxarenas; i &lt; numarenas; ++i) {
+            arenas[i].address = 0;              /* 还没有分配内存 */
+            arenas[i].nextarena = i &lt; numarenas - 1 ?
+                                   &amp;arenas[i+1] : NULL;
+        }
+
+        /* 更新全局变量 */
+        unused_arena_objects = &amp;arenas[maxarenas];
+        maxarenas = numarenas;
+    }
+</code></pre>
+<p>假设是首次初始化 arenas，经过上面的步骤后，arenas 现在是包含 16 个 arena_object 的数组，unused_arena_objects 则是包含 16 个<br>
+arena_object 的链表，下面才进入到切蛋糕给 arena 的环节：</p>
+<pre><code class="language-c">    /* 取第一个没有使用的 area_object */
+    assert(unused_arena_objects != NULL);
+    arenaobj = unused_arena_objects;
+    unused_arena_objects = arenaobj-&gt;nextarena;
+    assert(arenaobj-&gt;address == 0);
+
+      /* 切 256k 大小的蛋糕给这个 area_object */
+    arenaobj-&gt;address = (uptr)malloc(ARENA_SIZE);
+      /* 内存分配失败 */
+    if (arenaobj-&gt;address == 0) {
+        ...
+    }
+    /* 更新全局变量 */
+    ++narenas_currently_allocated;
+
+    /* 设置 arena_object 的初始化信息 */
+    /* freepools 指向的是用完释放的 pool，所以初始化的时候是 NULL */
+    arenaobj-&gt;freepools = NULL;
+    arenaobj-&gt;pool_address = (block*)arenaobj-&gt;address;
+    /* 可以切出来的 pool 的剩余数量 */
+    arenaobj-&gt;nfreepools = ARENA_SIZE / POOL_SIZE;
+    assert(POOL_SIZE * arenaobj-&gt;nfreepools == ARENA_SIZE);
+
+    excess = (uint)(arenaobj-&gt;address &amp; POOL_SIZE_MASK);
+    if (excess != 0) {
+        --arenaobj-&gt;nfreepools;
+        arenaobj-&gt;pool_address += POOL_SIZE - excess;
+    }
+    /* 可以切出来的 pool 的总数量数量 */
+    arenaobj-&gt;ntotalpools = arenaobj-&gt;nfreepools;
+
+    return arenaobj;
+</code></pre>
+<p>上面的俩段代码整合起来就是这个函数的逻辑：</p>
+<pre><code class="language-c">static struct arena_object* new_arena(void);
+</code></pre>
+<p>当要切一块蛋糕给 pool 时，如果还没有可以用的 arena，就会调用 <code>new_arena</code> 进行初始化：</p>
+<pre><code class="language-c">/* 没有可用的 arena */
+if (usable_arenas == NULL) {
+    /* 创建新的 arena */
+    usable_arenas = new_arena();
+    if (usable_arenas == NULL) {
+        UNLOCK();
+        goto redirect;
+    }
+    usable_arenas-&gt;nextarena =
+        usable_arenas-&gt;prevarena = NULL;
+}
+assert(usable_arenas-&gt;address != 0);
+</code></pre>
+<p>从初始化后的 arena 中切下4k 给然后初始化为 pool：</p>
+<pre><code class="language-c">/* pool_address 指向的处女地给 pool */
+pool = (poolp)usable_arenas-&gt;pool_address;
+pool-&gt;arenaindex = usable_arenas - arenas;
+assert(&amp;arenas[pool-&gt;arenaindex] == usable_arenas);
+/* pool 的 szidx 初始值为 0xffff */
+pool-&gt;szidx = DUMMY_SIZE_IDX;
+/* pool_address 移到下一个位置 */
+usable_arenas-&gt;pool_address += POOL_SIZE;
+/* anena 中剩余可用的 pool 数量减 1 */
+--usable_arenas-&gt;nfreepools;
+
+goto init_pool;
+</code></pre>
+<p>在这个切给 pool 以后，如果剩余的可用 pool 的数量 nfreepools 变成 0 了，那么这个 arena 就不再是可用的 arena 了，所有在减少 nfreepools 的操作后，有下面的处理：</p>
+<pre><code class="language-c">if (usable_arenas-&gt;nfreepools == 0) {
+    assert(usable_arenas-&gt;nextarena == NULL ||
+           usable_arenas-&gt;nextarena-&gt;prevarena ==
+           usable_arenas);
+    /* 从 usable_arenas 链表中移除 */
+    usable_arenas = usable_arenas-&gt;nextarena;
+    if (usable_arenas != NULL) {
+        usable_arenas-&gt;prevarena = NULL;
+        assert(usable_arenas-&gt;address != 0);
+    }
+}
+</code></pre>
+<p>当一个 pool 中的 block 都被释放后，这个 pool 就变成了一个 freepool，多个 freepool 链接成一个链表，链表头正是 arena 中的 <em>freepools</em>，相当于一个缓存，这一点和 freeblock 很相似，从可用的 arena 中申请 pool 是优先从 <em>freepools</em> 获取的：</p>
+<pre><code class="language-c">/* 尝试从 freepools 获取一个 pool */
+pool = usable_arenas-&gt;freepools;
+if (pool != NULL) {
+    /* freepools 指向下一个 */
+    usable_arenas-&gt;freepools = pool-&gt;nextpool;
+    --usable_arenas-&gt;nfreepools;
+    if (usable_arenas-&gt;nfreepools == 0) {
+        /* 最后一个 pool 被分配出去了，arena 变成了 full 状态，需要从 usable_arenas 移除 */
+        assert(usable_arenas-&gt;freepools == NULL);
+        assert(usable_arenas-&gt;nextarena == NULL ||
+               usable_arenas-&gt;nextarena-&gt;prevarena ==
+               usable_arenas);
+
+        usable_arenas = usable_arenas-&gt;nextarena;
+        if (usable_arenas != NULL) {
+            usable_arenas-&gt;prevarena = NULL;
+            assert(usable_arenas-&gt;address != 0);
+        }
+    }
+    else {
+        /* nfreepools &gt; 0:  那么 freepools 必定不为空，或者 arena 中还有未被切出来的 pool */
+        assert(usable_arenas-&gt;freepools != NULL ||
+               usable_arenas-&gt;pool_address &lt;=
+               (block*)usable_arenas-&gt;address +
+                   ARENA_SIZE - POOL_SIZE);
+    }
+</code></pre>
+<p>现在可以来看看某一时刻 Python 程序 block，pool 和 arean 组成的内存池的全景了：</p>
+<figure data-type="image" tabindex="5"><img src="https://github.com/protream/protream.github.io/blob/images/62914c14ad90108f4e77430594aada69/9b6ee5f9-d287-46e2-ac21-b6c6487bd8b1.png?raw=true" alt="" loading="lazy"></figure>
+<h2 id="内存回收">内存回收</h2>
+<p>Python 中一切都是对象，每个对象都有一个 <em>refcnt</em> 变量记录这个对象的引用计数，当引用计数变成零的时候，这个对象就会被回收，内存被释放（这句话不是绝对准确，不过这不是本文重点，我们姑且就这样认为吧）。这里说的内存被释放，并不是立刻还给操作系统，而是还给 pool。</p>
+<p>假设要释放 <em>p</em> 指向的内存，最简单的情形是，交还给 pool 后，pool 依然处于 used 状态，这时候只需要将 p 添加到 pool 的 freeblock 链表中即可：</p>
+<pre><code class="language-c">assert(pool-&gt;ref.count &gt; 0);            /* pool 不是 empty 状态 */
+/* 获取当前 freeblock 的值给 lastfree，再 p 链接到 freeblock */
+*(block **)p = lastfree = pool-&gt;freeblock;
+pool-&gt;freeblock = (block *)p;
+if (lastfree) {
+    struct arena_object* ao;
+    uint nf;  /* ao-&gt;nfreepools */
+
+    /* 释放 p 前，pool 是 used 状态，释放后，ref.count（先减 1）不为 0，说明还是 used
+     * 状态，这就是最简单的情形，不需要额外的改变 */
+    if (--pool-&gt;ref.count != 0) {
+        /* pool isn't empty:  leave it in usedpools */
+        UNLOCK();
+        return;
+    }
+
+    ...
+}
+</code></pre>
+<p>如果释放 p 前，lastfree 是 NULL，那就说明 pool 处于 full 状态，当 p 释放后，pool 由 full 变成了 used 状态，这时候需要将这个 pool 放回到 usedpools 的对应位置中，并和对应位置上的值链接成链表：</p>
+<pre><code class="language-c">if (lastfree) {
+    ...
+}
+
+--pool-&gt;ref.count;
+assert(pool-&gt;ref.count &gt; 0);
+size = pool-&gt;szidx;
+next = usedpools[size + size];    /* 得到在 usedpools 中的位置 */
+prev = next-&gt;prevpool;
+/* pool 插入到 next 前面:   prev &lt;-&gt; pool &lt;-&gt; next */
+pool-&gt;nextpool = next;
+pool-&gt;prevpool = prev;
+next-&gt;prevpool = pool;
+prev-&gt;nextpool = pool;
+UNLOCK();
+return;
+</code></pre>
+<p>假设 pool 只分配出去了一个 block，就是 p，那么现在 p 释放后，pool 的状态将由 used 变成 empty，这时候 Python 会将 这个 pool 从 usedpools 中移除并链接到所在 arena 的 freepools 中：</p>
+<pre><code class="language-c">if (--pool-&gt;ref.count != 0) {
+    ...
+}
+/* pool 状态变成 empty，从 usedpools 中移除 */
+next = pool-&gt;nextpool;
+prev = pool-&gt;prevpool;
+next-&gt;prevpool = prev;
+prev-&gt;nextpool = next;
+
+/* 加入到所在 arena 的 freepools 中 */
+ao = &amp;arenas[pool-&gt;arenaindex];
+pool-&gt;nextpool = ao-&gt;freepools;
+ao-&gt;freepools = pool;
+nf = ++ao-&gt;nfreepools;
+</code></pre>
+<p>以上三种情况就是当一个对象的内存被释放后， pool 的状态变化和相应处理。总的来说就是将 block 归还给 pool，pool 变成 empty 再归还给 arena，Python 2.5 之前的内存释放逻辑到这里就结束了。但是这里还隐藏了一个问题，那就是从始至终都没有归还 arena 的内存！假如一个应用程序在开一始由于某种需要申请了大量内存，到内面不需要这么多内存了，释放的内存归还给了 arena，但是 arena 不会再归还给操作系统，这就造成类似内存泄漏的效果！虽然这种情况很少见，但小概率事件必然发生，还是有人碰到了。后来 Python 紧接着上面的代码后面加入了 arena 管理解决这个问题。</p>
+<p>现在考虑当一个 pool 归还给 arena 后， 也将引起 arena 的状态变化：</p>
+<ol>
+<li>由 used 状态变成了 free 状态</li>
+<li>由 full 状态变成了 used 状态</li>
+<li>释放之前是 used 状态，释放后还是 used 状态</li>
+<li>不做任何处理</li>
+</ol>
+<p>对于第一种情况，Python 会释放整个 arena 占用的内存：</p>
+<pre><code class="language-c">/* nfreepools == ntotalpools：说明 arena 变成 empty */
+if (nf == ao-&gt;ntotalpools) {
+    /* Case 1.  First unlink ao from usable_arenas.
+     */
+    assert(ao-&gt;prevarena == NULL ||
+           ao-&gt;prevarena-&gt;address != 0);
+    assert(ao -&gt;nextarena == NULL ||
+           ao-&gt;nextarena-&gt;address != 0);
+
+    /* Fix the pointer in the prevarena, or the
+     * usable_arenas pointer.
+     */
+    if (ao-&gt;prevarena == NULL) {
+        usable_arenas = ao-&gt;nextarena;
+        assert(usable_arenas == NULL ||
+               usable_arenas-&gt;address != 0);
+    } else {
+        assert(ao-&gt;prevarena-&gt;nextarena == ao);
+        ao-&gt;prevarena-&gt;nextarena =
+            ao-&gt;nextarena;
+    }
+    /* Fix the pointer in the nextarena. */
+    if (ao-&gt;nextarena != NULL) {
+        assert(ao-&gt;nextarena-&gt;prevarena == ao);
+        ao-&gt;nextarena-&gt;prevarena =
+            ao-&gt;prevarena;
+    }
+    /* Record that this arena_object slot is
+     * available to be reused.
+     */
+    ao-&gt;nextarena = unused_arena_objects;
+    unused_arena_objects = ao;
+
+    /* Free the entire arena. */
+    free((void *)ao-&gt;address);
+    ao-&gt;address = 0;                        /* mark unassociated */
+    --narenas_currently_allocated;
+
+    UNLOCK();
+    return;
+}
+</code></pre>
+<p>第二种情况，将 arena 直接插入到 <em>usable_arenas</em> 头部：</p>
+<pre><code class="language-c">/* ntotalpools == 1：表示 arena 由 full 变成了 used */
+if (nf == 1) {
+    ao-&gt;nextarena = usable_arenas;
+    ao-&gt;prevarena = NULL;
+    if (usable_arenas)
+        usable_arenas-&gt;prevarena = ao;
+    usable_arenas = ao;
+    assert(usable_arenas-&gt;address != 0);
+
+    UNLOCK();
+    return;
+}
+</code></pre>
+<p>第三种情况，由于状态没有变化，arena  还是处于 usable_arenas 中。而 usable_arenas 是按照 arenas 中 nfreepools 的数量从小到大排序的。为什么要这样做呢？分配 arena 是优先从 usable_arenas 头获取了，这样的话，nfreepools 越大越靠后被使用的机会也就越小，随着其中 pool 的释放早点归还给操作系统的机会也就越大。现在我们可以看出来 Python 内存管理总的原则就是：<em>能不占着的内存就不占着，能早点归还给系统就早点归还</em>。</p>
+<p>现在一个 pool 释放，nfreepools 的数量增加，如果增加后比它右边 arena 的 nfreepools 要多，就需要重新调整顺序：</p>
+<pre><code class="language-c">/* 首先将 ao 从 useable_arenas 中移出来，分来 ao 是头结点和不是头结点俩种情况 */
+if (ao-&gt;prevarena != NULL) {
+    /* ao 不是头结点 */
+    assert(ao-&gt;prevarena-&gt;nextarena == ao);
+    ao-&gt;prevarena-&gt;nextarena = ao-&gt;nextarena;
+}
+else {
+    /* ao 是头结点 */
+    assert(usable_arenas == ao);
+    usable_arenas = ao-&gt;nextarena;
+}
+ao-&gt;nextarena-&gt;prevarena = ao-&gt;prevarena;
+
+/* 遍历 usable_arenas 链表，找到 ao 要插入的位置 */
+while (ao-&gt;nextarena != NULL &amp;&amp;
+                nf &gt; ao-&gt;nextarena-&gt;nfreepools) {
+    ao-&gt;prevarena = ao-&gt;nextarena;
+    ao-&gt;nextarena = ao-&gt;nextarena-&gt;nextarena;
+}
+
+/* 插入到新的位置 */
+assert(ao-&gt;nextarena == NULL ||
+    ao-&gt;prevarena == ao-&gt;nextarena-&gt;prevarena);
+assert(ao-&gt;prevarena-&gt;nextarena == ao-&gt;nextarena);
+
+ao-&gt;prevarena-&gt;nextarena = ao;
+if (ao-&gt;nextarena != NULL)
+    ao-&gt;nextarena-&gt;prevarena = ao;
+</code></pre>
+<p>第四种情况就是第三种的特例，虽然 nfreepools 数量增加但是并没有超过它右边 arena 的 nfreepools 数量，这时候什么不用做什么：</p>
+<pre><code class="language-c">if (ao-&gt;nextarena == NULL || nf &lt;= ao-&gt;nextarena-&gt;nfreepools) {
+    UNLOCK();
+    return;
+}
+</code></pre>
+<p>这一节的代码整合起来就是</p>
+<pre><code class="language-c">void PyObject_Free(void *p);
+</code></pre>
+<p>这个函数的逻辑。</p>
+<h2 id="总结">总结</h2>
+<p>本文详细剖析了 Python 运行时的内存组织方式、对象的内存分配以和内存回收过程。核心的概念包括 block、pool、usedpools 和 arenas。本文的代码片段整合起来就是 <code>obmalloc.c</code> 中最主要的三个函数：</p>
+<pre><code class="language-c">
+void PyObject_Free(void *p);
+void *PyObject_Malloc(size_t nbytes);
+static struct arena_object* new_arena(void);
+</code></pre>
+<p>在 Python3 中，block 最大值增加到了 <em>512</em>，对应的 szindex 最大到 63，除此之外，整个内存的组织和分配、回收逻辑并没有什么变化。</p>
+
+              </div>
+              <div class="toc-container">
+                <ul class="markdownIt-TOC">
+<li>
+<ul>
+<li><a href="#%E6%A6%82%E8%A7%88">概览</a></li>
+<li><a href="#pool">pool</a></li>
+<li><a href="#usedpools">usedpools</a></li>
+<li><a href="#arena">arena</a></li>
+<li><a href="#%E5%86%85%E5%AD%98%E5%9B%9E%E6%94%B6">内存回收</a></li>
+<li><a href="#%E6%80%BB%E7%BB%93">总结</a></li>
+</ul>
+</li>
+</ul>
+
+              </div>
+            </div>
+          </article>
+        </div>
+
+        
+          <div class="next-post">
+            <div class="next">下一篇</div>
+            <a href="https://protream.github.io/post/OsIp1WmGH/">
+              <h3 class="post-title">
+                深入 Python —— 切片（Slice）原理
+              </h3>
+            </a>
+          </div>
+        
+
+        
+
+        <div class="site-footer">
+  Powered by <a href="https://github.com/getgridea/gridea" target="_blank">&nbsp;Gridea</a>
+  <a class="rss" href="https://protream.github.io/atom.xml" target="_blank">
+    <i class="ri-rss-line"></i> RSS
+  </a>
+</div>
+
+      </div>
+    </div>
+
+    <script>
+      hljs.initHighlightingOnLoad()
+
+      let mainNavLinks = document.querySelectorAll(".markdownIt-TOC a");
+
+      // This should probably be throttled.
+      // Especially because it triggers during smooth scrolling.
+      // https://lodash.com/docs/4.17.10#throttle
+      // You could do like...
+      // window.addEventListener("scroll", () => {
+      //    _.throttle(doThatStuff, 100);
+      // });
+      // Only not doing it here to keep this Pen dependency-free.
+
+      window.addEventListener("scroll", event => {
+        let fromTop = window.scrollY;
+
+        mainNavLinks.forEach((link, index) => {
+          let section = document.getElementById(decodeURI(link.hash).substring(1));
+          let nextSection = null
+          if (mainNavLinks[index + 1]) {
+            nextSection = document.getElementById(decodeURI(mainNavLinks[index + 1].hash).substring(1));
+          }
+          if (section.offsetTop <= fromTop) {
+            if (nextSection) {
+              if (nextSection.offsetTop > fromTop) {
+                link.classList.add("current");
+              } else {
+                link.classList.remove("current");    
+              }
+            } else {
+              link.classList.add("current");
+            }
+          } else {
+            link.classList.remove("current");
+          }
+        });
+      });
+
+    </script>
+  </body>
+</html>

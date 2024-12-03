@@ -1,0 +1,346 @@
+<html>
+  <head>
+    <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>k8s 入门 3：Pod | Protream&#39;s Notes</title>
+<link rel="shortcut icon" href="https://protream.github.io/favicon.ico?v=1733235889358">
+<link href="https://cdn.jsdelivr.net/npm/remixicon@2.3.0/fonts/remixicon.css" rel="stylesheet">
+<link rel="stylesheet" href="https://protream.github.io/styles/main.css">
+<link rel="alternate" type="application/atom+xml" title="k8s 入门 3：Pod | Protream&#39;s Notes - Atom Feed" href="https://protream.github.io/atom.xml">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Droid+Serif:400,700">
+
+
+
+    <meta name="description" content="Pod 是可以在 Kubernetes 中创建和管理的、最小的可计算单元。Pod 英文意思是豌豆荚，意如其名，Pod 就像是一个豌豆荚，容器就行里面的豆子。 这些容器共享存储、网络、以及怎样运行这些容器的声明。
+
+Kubernetes 集群..." />
+    <meta name="keywords" content="k8s" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.10.0/katex.min.css">
+    <script src="//cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.5.1/build/highlight.min.js"></script>
+  </head>
+  <body>
+    <div class="main">
+      <div class="main-content">
+        <div class="site-header">
+  <a href="https://protream.github.io">
+  <img class="avatar" src="https://protream.github.io/images/avatar.png?v=1733235889358" alt="">
+  </a>
+  <h1 class="site-title">
+    Protream&#39;s Notes
+  </h1>
+  <p class="site-description">
+    
+  </p>
+  <div class="menu-container">
+    
+      
+        <a href="/" class="menu">
+          首页
+        </a>
+      
+    
+      
+        <a href="/archives" class="menu">
+          归档
+        </a>
+      
+    
+      
+        <a href="/tags" class="menu">
+          标签
+        </a>
+      
+    
+      
+        <a href="/post/about" class="menu">
+          关于
+        </a>
+      
+    
+  </div>
+  <div class="social-container">
+    
+      
+    
+      
+    
+      
+    
+      
+    
+      
+    
+  </div>
+</div>
+
+        <div class="post-detail">
+          <article class="post">
+            <h2 class="post-title">
+              k8s 入门 3：Pod
+            </h2>
+            <div class="post-info">
+              <span>
+                2024-01-01
+              </span>
+              <span>
+                8 min read
+              </span>
+              
+                <a href="https://protream.github.io/tag/k8s/" class="post-tag">
+                  # k8s
+                </a>
+              
+            </div>
+            
+            <div class="post-content-wrapper">
+              <div class="post-content" v-pre>
+                <p>Pod 是可以在 Kubernetes 中创建和管理的、最小的可计算单元。Pod 英文意思是豌豆荚，意如其名，Pod 就像是一个豌豆荚，容器就行里面的豆子。 这些容器共享存储、网络、以及怎样运行这些容器的声明。</p>
+<!-- more -->
+<p>Kubernetes 集群中的 Pod 主要有两种用法：</p>
+<p>• <strong>运行单个容器的 Pod</strong>。&quot;每个 Pod 一个容器&quot; 模型是最常见的 Kubernetes 用例； 在这种情况下，可以将 Pod 看作单个容器的包装器，并且 Kubernetes 直接管理 Pod，而不是容器。<br>
+• <strong>运行多个协同工作的容器的 Pod</strong>。 Pod 可能封装由多个紧密耦合且需要共享资源的共处容器组成的应用程序。 这些位于同一位置的容器可能形成单个内聚的服务单元 —— 一个容器将文件从共享卷提供给公众， 而另一个单独的 “边车”（sidecar）容器则刷新或更新这些文件。 Pod 将这些容器和存储资源打包为一个可管理的实体。</p>
+<p>Pod 示例：</p>
+<figure data-type="image" tabindex="1"><img src="https://github.com/protream/protream.github.io/blob/images/20240101-k8s-pod-principle/1.jpg?raw=true" alt="Pod" loading="lazy"></figure>
+<p>一个包含多个容器的 Pod 中包含一个用来拉取文件的程序和一个 Web 服务器， 均使用持久卷作为容器间共享的存储。</p>
+<h2 id="一个简单的-pod">一个简单的 Pod</h2>
+<p>下面是一个 Pod 示例，它由一个运行镜像 nginx:1.14.2 的容器组成。</p>
+<pre><code class="language-yaml">apiVersion: v1
+kind: Pod
+metadata:
+  name: nginx
+spec:
+  containers:
+  - name: nginx
+    image: nginx:1.14.2
+    ports:
+    - containerPort: 80
+</code></pre>
+<p>要创建上面显示的 Pod，请运行以下命令：</p>
+<pre><code>kubectl apply -f https://k8s.io/examples/pods/simple-pod.yaml
+</code></pre>
+<h2 id="可以创建-pod-的工作负载">可以创建 Pod 的工作负载</h2>
+<p>Pod 通常不是直接创建的，而是使用工作负载资源创建的。<br>
+• Deployment<br>
+• StatefulSet<br>
+• DaemonSet<br>
+• Job</p>
+<p>在工作负载中，通过下面的 Pod 模板来创建 Pod：</p>
+<pre><code class="language-yaml">kind: Job
+metadata:
+  name: hello
+spec:
+  template:
+    # 这里是 Pod 模板
+    spec:
+      containers:
+      - name: hello
+        image: busybox:1.28
+        command: ['sh', '-c', 'echo &quot;Hello, Kubernetes!&quot; &amp;&amp; sleep 3600']
+      restartPolicy: OnFailure
+    # 以上为 Pod 模板
+</code></pre>
+<h2 id="实现原理">实现原理</h2>
+<h3 id="网络">网络</h3>
+<p>在 Kubernetes 中，每个 Pod 都有一个 Pause 容器。</p>
+<figure data-type="image" tabindex="2"><img src="https://github.com/protream/protream.github.io/blob/images/20240101-k8s-pod-principle/2.png?raw=true" alt="Pod Network" loading="lazy"></figure>
+<p>Pause 容器的作用包括：</p>
+<ol>
+<li>创建网络命名空间：Pause 容器会创建一个网络命名空间，所有其他容器都会在这个命名空间中启动，这样它们就可以相互通信，但与其他 Pod 中的容器隔离。</li>
+<li>共享文件系统：Pause 容器会挂载一个共享文件系统，其他容器可以访问这个文件系统，以便它们可以共享数据和配置。</li>
+<li>维持 Pod 的生命周期：Pause 容器会一直运行，直到 Pod 被删除或重新调度。它的存在可以确保 Pod 中至少有一个容器在运行，以便 Kubernetes 可以正确地管理 Pod 的生命周期。</li>
+</ol>
+<p>Pod 中容器都共享 Pause 容器的网络命名空间，意味着普通容器不会有自己的网卡，不会配置自己的 IP，而是和 Pause 容器共享 IP，端口范围等，容器之间的通信可以通过 lo 网卡设备进行。</p>
+<ol>
+<li>容器与容器之间，使用 localhost 进行通信；</li>
+<li>同一个 Pod 不同的容器中的进程不能绑定相同的端口；</li>
+</ol>
+<h3 id="文件存储">文件存储</h3>
+<p>一个 Pod 里面的多个容器可以通过共享同一个 Volume 来实现共享存储。？默认情况下容器的文件系统是互相隔离的，要实现共享只需要在 Pod 的顶层声明一个 Volume，然后在需要共享这个 Volume 的容器中声明挂载即可。</p>
+<figure data-type="image" tabindex="3"><img src="https://github.com/protream/protream.github.io/blob/images/20240101-k8s-pod-principle/3.jpg?raw=true" alt="Pod Volume" loading="lazy"></figure>
+<p>示例：</p>
+<pre><code class="language-yaml">apiVersion: v1
+kind: Pod
+metadata:
+  name: counter
+spec:
+  volumes: 
+  - name: varlog
+    hostPath: 
+      path: /var/log/counter
+  containers:
+  - name: count
+    image: busybox
+    args:
+    - /bin/sh
+    - -c
+    - &gt;
+      i=0;
+      while true;
+      do
+        echo &quot;$i: $(date)&quot; &gt;&gt; /var/log/1.log;
+        i=$((i+1));
+        sleep 1;
+      done
+    volumeMounts:
+    - name: varlog
+      mountPath: /var/log
+  - name: count-log
+    image: busybox
+    args: [/bin/sh, -c, 'tail -n+1 -f /var/log/1.log']
+    volumeMounts:
+    - name: varlog
+      mountPath: /var/log
+</code></pre>
+<p>示例中我们在 Pod 的顶层声明了一个名为 varlog 的 Volume，而这个 Volume 的类型是 hostPath，也就意味这个宿主机的 /var/log/counter 目录将被这个 Pod 共享，共享给谁呢？在需要用到这个数据目录的容器上声明挂载即可，也就是通过 volumeMounts 声明挂载的部分，这样我们这个 Pod 就实现了共享容器的 /var/log 目录，而且数据被持久化到了宿主机目录上。</p>
+<p>这个方式也是 Kubernetes 中一个非常重要的设计模式：sidecar 模式的常用方式。典型的场景就是容器日志收集，比如上面我们的这个应用，其中应用的日志是被输出到容器的 /var/log 目录上的，这个时候我们可以把 Pod 声明的 Volume 挂载到容器的 /var/log 目录上，然后在这个 Pod 里面同时运行一个 sidecar 容器，他也声明挂载相同的 Volume 到自己容器的 /var/log （或其他）目录上，这样我们这个 sidecar 容器就只需要从 /var/log 目录下面不断消费日志发送到 Elasticsearch 中存储起来就完成了最基本的应用日志的基本收集工作了。</p>
+<h2 id="init-容器">Init 容器</h2>
+<p>在应用容器运行之前执行的，用来包含一些应用镜像中不存在的实用工具或安装脚本。Init 容器与普通的容器非常像，除了如下两点：</p>
+<p>1、它们总是运行到完成。<br>
+2、每个都必须在下一个启动之前成功完成。</p>
+<p>如果 Pod 的 Init 容器失败，kubelet 会不断地重启该 Init 容器直到该容器成功为止。 然而，如果 Pod 对应的 restartPolicy 值为 &quot;Never&quot;，并且 Pod 的 Init 容器失败， 则 Kubernetes 会将整个 Pod 状态设置为失败。</p>
+<h3 id="运行机制">运行机制</h3>
+<ul>
+<li>先于应用容器启动，仅当应用容器完成后，才能运行应用容器；</li>
+<li>一个 Pod 允许有多个 init 容器做不同的初始化任务，它们顺序执行；</li>
+</ul>
+<h3 id="与应用容器的不同">与应用容器的不同</h3>
+<p>1、定义位置不同。</p>
+<p>应用容器定义在 Pod.Spec.Containers，是必填字段，而 init 是定义在 Pod.Spec.initContainers 中，是可选字段。</p>
+<p>2、部分配置不同。</p>
+<p>init 容器没有 Lifecycle actions, Readiness probes, Liveness probes 和 Startup probes，而这些应用容器都有。</p>
+<p>另外，虽然 init 容器与应用容器是两个类别的容器，但由于属于同一个 Pod ，因此容器的名字，是不能重复的。</p>
+<h3 id="使用场景">使用场景</h3>
+<p>1、等待一个 Service 完成创建，通过类似如下 Shell 命令：</p>
+<pre><code>for i in {1..100}; do sleep 1; if nslookup myservice; then exit 0; fi; done; exit 1
+
+</code></pre>
+<p>2、注册这个 Pod 到远程服务器，通过在命令中调用 API，类似如下：</p>
+<pre><code>curl -X POST http://$MANAGEMENT_SERVICE_HOST:$MANAGEMENT_SERVICE_PORT/register -d 'instance=$(&lt;POD_NAME&gt;)&amp;ip=$(&lt;POD_IP&gt;)'
+</code></pre>
+<p>3、在启动应用容器之前等一段时间，使用类似命令：</p>
+<pre><code>sleep 60
+</code></pre>
+<p>4、克隆 Git 仓库到卷中。</p>
+<p>5、将配置值放到配置文件中，运行模板工具为主应用容器动态地生成配置文件。 例如，在配置文件中存放 POD_IP 值，并使用 Jinja 生成主应用配置文件。</p>
+<h3 id="使用示例">使用示例</h3>
+<p>下面的例子定义了一个具有 2 个 Init 容器的简单 Pod。 第一个等待 myservice 启动， 第二个等待 mydb 启动。 一旦这两个 Init 容器都启动完成，Pod 将启动 spec 节中的应用容器。</p>
+<pre><code class="language-yaml">apiVersion: v1
+kind: Pod
+metadata:
+  name: myapp-pod
+  labels:
+    app.kubernetes.io/name: MyApp
+spec:
+  containers:
+  - name: myapp-container
+    image: busybox:1.28
+    command: ['sh', '-c', 'echo The app is running! &amp;&amp; sleep 3600']
+  initContainers:
+  - name: init-myservice
+    image: busybox:1.28
+    command: ['sh', '-c', &quot;until nslookup myservice.$(cat /var/run/secrets/kubernetes.io/serviceaccount/namespace).svc.cluster.local; do echo waiting for myservice; sleep 2; done&quot;]
+  - name: init-mydb
+    image: busybox:1.28
+    command: ['sh', '-c', &quot;until nslookup mydb.$(cat /var/run/secrets/kubernetes.io/serviceaccount/namespace).svc.cluster.local; do echo waiting
+</code></pre>
+<h2 id="参考">参考</h2>
+<p>[1] <a href="https://kubernetes.io/zh-cn/docs/concepts/workloads/pods/">Pod</a><br>
+[2] <a href="https://www.qikqiak.com/k8strain/k8s-basic/pod/">Pod 原理</a><br>
+[3] <a href="https://k8s.iswbm.com/c02/p03_kubernetes-pod-init-container.html">吃透 Init 容器</a></p>
+
+              </div>
+              <div class="toc-container">
+                <ul class="markdownIt-TOC">
+<li>
+<ul>
+<li><a href="#%E4%B8%80%E4%B8%AA%E7%AE%80%E5%8D%95%E7%9A%84-pod">一个简单的 Pod</a></li>
+<li><a href="#%E5%8F%AF%E4%BB%A5%E5%88%9B%E5%BB%BA-pod-%E7%9A%84%E5%B7%A5%E4%BD%9C%E8%B4%9F%E8%BD%BD">可以创建 Pod 的工作负载</a></li>
+<li><a href="#%E5%AE%9E%E7%8E%B0%E5%8E%9F%E7%90%86">实现原理</a>
+<ul>
+<li><a href="#%E7%BD%91%E7%BB%9C">网络</a></li>
+<li><a href="#%E6%96%87%E4%BB%B6%E5%AD%98%E5%82%A8">文件存储</a></li>
+</ul>
+</li>
+<li><a href="#init-%E5%AE%B9%E5%99%A8">Init 容器</a>
+<ul>
+<li><a href="#%E8%BF%90%E8%A1%8C%E6%9C%BA%E5%88%B6">运行机制</a></li>
+<li><a href="#%E4%B8%8E%E5%BA%94%E7%94%A8%E5%AE%B9%E5%99%A8%E7%9A%84%E4%B8%8D%E5%90%8C">与应用容器的不同</a></li>
+<li><a href="#%E4%BD%BF%E7%94%A8%E5%9C%BA%E6%99%AF">使用场景</a></li>
+<li><a href="#%E4%BD%BF%E7%94%A8%E7%A4%BA%E4%BE%8B">使用示例</a></li>
+</ul>
+</li>
+<li><a href="#%E5%8F%82%E8%80%83">参考</a></li>
+</ul>
+</li>
+</ul>
+
+              </div>
+            </div>
+          </article>
+        </div>
+
+        
+          <div class="next-post">
+            <div class="next">下一篇</div>
+            <a href="https://protream.github.io/post/kPCWYYUrD/">
+              <h3 class="post-title">
+                k8s 入门 2：Service 
+              </h3>
+            </a>
+          </div>
+        
+
+        
+
+        <div class="site-footer">
+  Powered by <a href="https://github.com/getgridea/gridea" target="_blank">&nbsp;Gridea</a>
+  <a class="rss" href="https://protream.github.io/atom.xml" target="_blank">
+    <i class="ri-rss-line"></i> RSS
+  </a>
+</div>
+
+      </div>
+    </div>
+
+    <script>
+      hljs.initHighlightingOnLoad()
+
+      let mainNavLinks = document.querySelectorAll(".markdownIt-TOC a");
+
+      // This should probably be throttled.
+      // Especially because it triggers during smooth scrolling.
+      // https://lodash.com/docs/4.17.10#throttle
+      // You could do like...
+      // window.addEventListener("scroll", () => {
+      //    _.throttle(doThatStuff, 100);
+      // });
+      // Only not doing it here to keep this Pen dependency-free.
+
+      window.addEventListener("scroll", event => {
+        let fromTop = window.scrollY;
+
+        mainNavLinks.forEach((link, index) => {
+          let section = document.getElementById(decodeURI(link.hash).substring(1));
+          let nextSection = null
+          if (mainNavLinks[index + 1]) {
+            nextSection = document.getElementById(decodeURI(mainNavLinks[index + 1].hash).substring(1));
+          }
+          if (section.offsetTop <= fromTop) {
+            if (nextSection) {
+              if (nextSection.offsetTop > fromTop) {
+                link.classList.add("current");
+              } else {
+                link.classList.remove("current");    
+              }
+            } else {
+              link.classList.add("current");
+            }
+          } else {
+            link.classList.remove("current");
+          }
+        });
+      });
+
+    </script>
+  </body>
+</html>

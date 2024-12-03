@@ -1,0 +1,361 @@
+<html>
+  <head>
+    <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Flask-SQLAlchemy 是如何执行一条查询的 | Protream&#39;s Notes</title>
+<link rel="shortcut icon" href="https://protream.github.io/favicon.ico?v=1733235889358">
+<link href="https://cdn.jsdelivr.net/npm/remixicon@2.3.0/fonts/remixicon.css" rel="stylesheet">
+<link rel="stylesheet" href="https://protream.github.io/styles/main.css">
+<link rel="alternate" type="application/atom+xml" title="Flask-SQLAlchemy 是如何执行一条查询的 | Protream&#39;s Notes - Atom Feed" href="https://protream.github.io/atom.xml">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Droid+Serif:400,700">
+
+
+
+    <meta name="description" content="最近在排查一个问题时发现，对于使用 flask-sqlalchemy 的 db.session.exeute()  提交的查询是如何被执行的不甚明了，这篇文章就是探究这一过程的。
+
+下面我们分俩个部分来看下 db.session.execu..." />
+    <meta name="keywords" content="db,python" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.10.0/katex.min.css">
+    <script src="//cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.5.1/build/highlight.min.js"></script>
+  </head>
+  <body>
+    <div class="main">
+      <div class="main-content">
+        <div class="site-header">
+  <a href="https://protream.github.io">
+  <img class="avatar" src="https://protream.github.io/images/avatar.png?v=1733235889358" alt="">
+  </a>
+  <h1 class="site-title">
+    Protream&#39;s Notes
+  </h1>
+  <p class="site-description">
+    
+  </p>
+  <div class="menu-container">
+    
+      
+        <a href="/" class="menu">
+          首页
+        </a>
+      
+    
+      
+        <a href="/archives" class="menu">
+          归档
+        </a>
+      
+    
+      
+        <a href="/tags" class="menu">
+          标签
+        </a>
+      
+    
+      
+        <a href="/post/about" class="menu">
+          关于
+        </a>
+      
+    
+  </div>
+  <div class="social-container">
+    
+      
+    
+      
+    
+      
+    
+      
+    
+      
+    
+  </div>
+</div>
+
+        <div class="post-detail">
+          <article class="post">
+            <h2 class="post-title">
+              Flask-SQLAlchemy 是如何执行一条查询的
+            </h2>
+            <div class="post-info">
+              <span>
+                2021-03-25
+              </span>
+              <span>
+                8 min read
+              </span>
+              
+                <a href="https://protream.github.io/tag/db/" class="post-tag">
+                  # db
+                </a>
+              
+                <a href="https://protream.github.io/tag/A0Yg_mO4u/" class="post-tag">
+                  # python
+                </a>
+              
+            </div>
+            
+            <div class="post-content-wrapper">
+              <div class="post-content" v-pre>
+                <p>最近在排查一个问题时发现，对于使用 flask-sqlalchemy 的 <code>db.session.exeute()</code>  提交的查询是如何被执行的不甚明了，这篇文章就是探究这一过程的。</p>
+<!--more-->
+<p>下面我们分俩个部分来看下 db.session.execute 是如何执行的：</p>
+<ol>
+<li>db.session：session 的创建</li>
+<li>session.execute：查询的执行</li>
+</ol>
+<p>在 1 和 2 之间，为了更好的理解查询的执过程，先看下 SQLAlchemy 的整体架构。此外，之前对 autocommit 参数有一些误解，这里说明一下。</p>
+<p>软件版本： SQLAlchemy 1.3.10，flask-sqlalchmey 2.4.1。</p>
+<h2 id="session-的创建">session 的创建</h2>
+<p><code>db</code> 对象是从 <code>SQLAlchemy</code> 实例化来的，在 <code>SQLAlchemy</code> 的初始化方法中</p>
+<pre><code class="language-python">class SQLAlchemy(object):
+
+    def __init(self, ...):
+        # ...
+        self.session = self.create_scoped_session(session_options)
+
+    # ...
+
+    def create_scoped_session(self, options=None):
+          if options is None:
+              options = {}
+
+          scopefunc = options.pop('scopefunc', _app_ctx_stack.__ident_func__)
+          options.setdefault('query_cls', self.Query)
+          return orm.scoped_session(
+              self.create_session(options), scopefunc=scopefunc
+          )
+</code></pre>
+<p>从 <code>create_scoped_session</code> 的注释来看，所谓的 <code>scoped</code> 其实是类似于 <code>ThreadLocal</code> ，session 只在请求上下文内有效，传入的 <code>__ident_func__</code> 其实就是获取线程 ID 的，可以猜想，会有一个字典，当前请求的线程 ID 为 KEY，每个请求会通过工厂方法创建一个请求自己的 session。</p>
+<p>下面去 <code>sqlalchemy</code> 的代码中验证：</p>
+<pre><code class="language-python">class scoped_session(object):
+
+    def __init__(self, session_factory, scopefunc=None):
+
+    self.session_factory = session_factory
+
+    if scopefunc:
+        self.registry = ScopedRegistry(session_factory, scopefunc)
+    else:
+        self.registry = ThreadLocalRegistry(session_factory)
+
+    def __call__(self, **kw):
+        if kw:
+            if self.registry.has():
+                raise sa_exc.InvalidRequestError(
+                    &quot;Scoped session is already present; &quot;
+                    &quot;no new arguments may be specified.&quot;
+                )
+            else:
+                sess = self.session_factory(**kw)
+                self.registry.set(sess)
+                return sess
+        else:
+            return self.registry()
+</code></pre>
+<p><code>scoped_session</code> （<a href="https://github.com/zzzeek/sqlalchemy/blob/rel_1_3_10/lib/sqlalchemy/orm/scoping.py#L20">源码</a>）只是一个中转站，</p>
+<pre><code class="language-python">
+class ScopedRegistry(object):
+
+    def __init__(self, createfunc, scopefunc):
+        self.createfunc = createfunc
+        self.scopefunc = scopefunc
+        self.registry = {}
+
+    def __call__(self):
+        key = self.scopefunc()
+        try:
+            return self.registry[key]
+        except KeyError:
+            return self.registry.setdefault(key, self.createfunc())
+
+    def has(self):
+        &quot;&quot;&quot;Return True if an object is present in the current scope.&quot;&quot;&quot;
+
+        return self.scopefunc() in self.registry
+</code></pre>
+<p>通过上面两段代码可以发现，事实正如我们想的一样，<code>ScopedRegistry</code> 内部维护了一个字典，通过传入的 <code>scopefunc</code> 生成 key，传入的 <code>session_factory</code> 工厂方法生成 sessoin 对象。</p>
+<p>下面看看工厂方法  <code>create_session</code> 创建 session 的过程：</p>
+<pre><code class="language-python">class SQLAlchemy(object):
+
+    # ...
+
+    def create_session(self, options):
+        return orm.sessionmaker(class_=SignallingSession, db=self, **options)
+</code></pre>
+<p><code>SignallingSession</code> 是对 <code>SQLAlchemy</code> 内部的 <code>Session</code> 类做了一些数据库事件信号方面的拓展封装，这里我们忽略这些拓展，就认为传入的是 SQLAlchemy 原生的 Session 类。<code>sessionmaker</code> 也是一个工厂方法，它做的事是将传入的参数经过一些处理，在传入到 <code>Session</code> 类中，最终返回了一个 session 对象。</p>
+<p>这样，每个 HTTP 请求内调用 <code>db.session</code> 都会创建一个只在这个请求范围内有效的 session。</p>
+<h2 id="sqlalchemy-架构">SQLAlchemy 架构</h2>
+<figure data-type="image" tabindex="1"><img src="https://www.aosabook.org/images/sqlalchemy/layers.png" alt="img" loading="lazy"></figure>
+<p>上图是 SQLAlchemy 整体的架构，可以分成三个部分：</p>
+<ul>
+<li>ORM：对象关系映射处理。</li>
+<li>Core：底层的查询处理、连接池等。</li>
+<li>DBAPI：最底层的数据访问接口。</li>
+</ul>
+<figure data-type="image" tabindex="2"><img src="https://www.aosabook.org/images/sqlalchemy/engine.png" alt="img" loading="lazy"></figure>
+<p>上图是 Core 里面核心类之间的关系。</p>
+<p><strong>DBAPI</strong>：Python 在 pep249 中定义的数据库访问接口规范，核心是 <code>Connection</code> 和 <code>Cursor</code> 两个类，<code>Connection</code> 类封装数据库连           接，<code>Cursor</code> 封装了数据库查询的上下文信息。</p>
+<p><strong>Dialect</strong>：本身是一个抽象类，如何与数据库交互都是通过这个类定义的，包括元信息、查询语句生成、执行、结果集处理等，不同的数据库对应不同的实现。<a href="https://github.com/zzzeek/sqlalchemy/blob/57e2433dcd8fc2d030d43b72009079ae175c5480/lib/sqlalchemy/engine/interfaces.py#L15">源码</a></p>
+<p><strong>Connection</strong>：对 DB-API 更高层次的封装，提供了对 SQL 语句执行的相关支持，里面包含了一个从数据库连接池拿来的一个 DBAPI 连接。</p>
+<p><strong>Engine</strong>：协调 Connection、Pool，提供用户级的接口，一般是通过外观方法 <code>create_engine()</code>来创建。</p>
+<p><strong>ExecutionContext</strong>：执行的过程中由 Connection 创建，<code>Dialect</code> 的信使，表示一个查询执行。</p>
+<p>每执行一个查询，Engine 会创建一个 Connection 对象，并从连接池 Pool 中取一个数据库连接传入 Connection，connection 通过 Dialect 与不同的数据库对话，最终的查询结果封装中 ResultProxy 中。</p>
+<h2 id="查询的执行">查询的执行</h2>
+<p>由上面的分析我们知道 <code>db.session</code> 最终返回的是一个 session 对象。从下面的 Session 类的代码中我们发现 session 对象在初始化时，就默认开始了一个事务（autocommit 参数默认为 False），也就是说 <code>db.session</code> 开启了一个事务。</p>
+<pre><code class="language-python">class Session(_SessionClassMethods):
+
+		def __init__(self, ...):
+      	# ...
+      	if not self.autocommit:
+            self.begin()
+
+  	def begin(self, subtransactions=False, nested=False):
+        if self.transaction is not None:
+            # ...
+        else:
+            self.transaction = SessionTransaction(self, nested=nested)
+        return self.transaction  # needed for __enter__/__exit__ hook
+</code></pre>
+<pre><code class="language-python">class Session(_SessionClassMethods):
+
+    # ...
+
+    def execute(self, clause, params=None, mapper=None, bind=None, **kw):
+        # 处理查询语句
+   		  clause = expression._literal_as_text(
+            clause, allow_coercion_to_text=True
+        )
+			  # 获取 Engine 对象
+        if bind is None:
+            bind = self.get_bind(mapper, clause=clause, **kw)
+				# 创建 Connection 对象，执行查询
+        return self._connection_for_bind(bind, close_with_result=True).execute(
+            clause, params or {}
+        )
+</code></pre>
+<p>事务在 session 初始化时自动开启了，但是在 execute 里面没有看到提交，因为一个事务里面可能有多次查询，对应多个 execute，所以，所有 execute 执行完后要自己调用 commit 方法提交事务。</p>
+<pre><code class="language-python">class Session(_SessionClassMethods):
+
+    def commit(self):
+        # ...
+        self.transaction.commit()
+
+class SessionTransaction(object):
+
+    def commit(self):
+        # ...
+        self.close()
+        return self._parent
+
+    def close(self, invalidate=False):
+        # 关闭事务...
+        # 同时开启另一个事务
+        if not self.session.autocommit:
+           self.session.begin()
+</code></pre>
+<h2 id="autocommit">Autocommit</h2>
+<p><a href="https://docs.sqlalchemy.org/en/13/orm/session_api.html?highlight=autocommit#sqlalchemy.orm.session.Session.params.autocommit">原文1</a></p>
+<blockquote>
+<p>The autocommit flag is <strong>not for general use</strong>, and if it is used, queries should only be invoked within the span of a <a href="https://docs.sqlalchemy.org/en/13/orm/session_api.html?highlight=autocommit#sqlalchemy.orm.session.Session.begin"><code>Session.begin()</code></a> / <a href="https://docs.sqlalchemy.org/en/13/orm/session_api.html?highlight=autocommit#sqlalchemy.orm.session.Session.commit"><code>Session.commit()</code></a> pair. Executing queries outside of a demarcated transaction is a legacy mode of usage, and can in some cases lead to concurrent connection checkouts.</p>
+</blockquote>
+<p>autocommit 并不是字面意思那样会自动提交，相反，开启了 autocommit 后，要手动的调用， sesession.begin()/session.commit()。在事务外执行查询时历史遗留问题，可能会导致并发问题。</p>
+<blockquote>
+<p>Defaults to <code>False</code>. When <code>True</code>, the <a href="https://docs.sqlalchemy.org/en/13/orm/session_api.html?highlight=autocommit#sqlalchemy.orm.session.Session"><code>Session</code></a> does not keep a persistent transaction running, and will acquire connections from the engine on an as-needed basis, returning them immediately after their use. Flushes will begin and commit (or possibly rollback) their own transaction if no transaction is present. When using this mode, the <a href="https://docs.sqlalchemy.org/en/13/orm/session_api.html?highlight=autocommit#sqlalchemy.orm.session.Session.begin"><code>Session.begin()</code></a> method is used to explicitly start transactions.</p>
+</blockquote>
+<p>默认为 Flase。当为 True 时，session 不会维持一个持久化的事务，并且会需要时才从 engine 获取 connection，用完后立刻归还。</p>
+<p><a href="https://docs.sqlalchemy.org/en/13/orm/session_transaction.html#autocommit-mode">原文2</a></p>
+<blockquote>
+<p><strong>Deprecated since version 1.4:</strong> “autocommit” mode is a <strong>legacy mode of use</strong> and should not be considered for new projects. The feature will be deprecated in SQLAlchemy 1.4 and removed in version 2.0; both versions provide a more refined “autobegin” approach that allows the <a href="https://docs.sqlalchemy.org/en/13/orm/session_api.html#sqlalchemy.orm.session.Session.begin"><code>Session.begin()</code></a> method to be used normally. If autocommit mode is used, it is strongly advised that the application at least ensure that transaction scope is made present via the <a href="https://docs.sqlalchemy.org/en/13/orm/session_api.html#sqlalchemy.orm.session.Session.begin"><code>Session.begin()</code></a> method, rather than using the session in pure autocommit mode.</p>
+</blockquote>
+<p>概述在 1.4 被废弃，2.0 移除，会提供一个更合理的参数 <code>autobegin</code>。</p>
+<h2 id="参考">参考</h2>
+<p>[1] <a href="https://www.aosabook.org/en/sqlalchemy.html">The Architecture of SQLAlchemy</a></p>
+<p>[2] <a href="https://www.python.org/dev/peps/pep-0249/"> Python Database API Specification v2.0</a></p>
+<p>[3] <a href="https://docs.sqlalchemy.org/en/14/orm/session_basics.html#when-do-i-construct-a-session-when-do-i-commit-it-and-when-do-i-close-it">session_basics</a></p>
+
+              </div>
+              <div class="toc-container">
+                <ul class="markdownIt-TOC">
+<li>
+<ul>
+<li><a href="#session-%E7%9A%84%E5%88%9B%E5%BB%BA">session 的创建</a></li>
+<li><a href="#sqlalchemy-%E6%9E%B6%E6%9E%84">SQLAlchemy 架构</a></li>
+<li><a href="#%E6%9F%A5%E8%AF%A2%E7%9A%84%E6%89%A7%E8%A1%8C">查询的执行</a></li>
+<li><a href="#autocommit">Autocommit</a></li>
+<li><a href="#%E5%8F%82%E8%80%83">参考</a></li>
+</ul>
+</li>
+</ul>
+
+              </div>
+            </div>
+          </article>
+        </div>
+
+        
+          <div class="next-post">
+            <div class="next">下一篇</div>
+            <a href="https://protream.github.io/post/T46yQBzzI/">
+              <h3 class="post-title">
+                读懂 PostgreSQL 的 Explain
+              </h3>
+            </a>
+          </div>
+        
+
+        
+
+        <div class="site-footer">
+  Powered by <a href="https://github.com/getgridea/gridea" target="_blank">&nbsp;Gridea</a>
+  <a class="rss" href="https://protream.github.io/atom.xml" target="_blank">
+    <i class="ri-rss-line"></i> RSS
+  </a>
+</div>
+
+      </div>
+    </div>
+
+    <script>
+      hljs.initHighlightingOnLoad()
+
+      let mainNavLinks = document.querySelectorAll(".markdownIt-TOC a");
+
+      // This should probably be throttled.
+      // Especially because it triggers during smooth scrolling.
+      // https://lodash.com/docs/4.17.10#throttle
+      // You could do like...
+      // window.addEventListener("scroll", () => {
+      //    _.throttle(doThatStuff, 100);
+      // });
+      // Only not doing it here to keep this Pen dependency-free.
+
+      window.addEventListener("scroll", event => {
+        let fromTop = window.scrollY;
+
+        mainNavLinks.forEach((link, index) => {
+          let section = document.getElementById(decodeURI(link.hash).substring(1));
+          let nextSection = null
+          if (mainNavLinks[index + 1]) {
+            nextSection = document.getElementById(decodeURI(mainNavLinks[index + 1].hash).substring(1));
+          }
+          if (section.offsetTop <= fromTop) {
+            if (nextSection) {
+              if (nextSection.offsetTop > fromTop) {
+                link.classList.add("current");
+              } else {
+                link.classList.remove("current");    
+              }
+            } else {
+              link.classList.add("current");
+            }
+          } else {
+            link.classList.remove("current");
+          }
+        });
+      });
+
+    </script>
+  </body>
+</html>

@@ -1,0 +1,278 @@
+<html>
+  <head>
+    <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>设计模式2：单例模式 | Protream&#39;s Notes</title>
+<link rel="shortcut icon" href="https://protream.github.io/favicon.ico?v=1733235889358">
+<link href="https://cdn.jsdelivr.net/npm/remixicon@2.3.0/fonts/remixicon.css" rel="stylesheet">
+<link rel="stylesheet" href="https://protream.github.io/styles/main.css">
+<link rel="alternate" type="application/atom+xml" title="设计模式2：单例模式 | Protream&#39;s Notes - Atom Feed" href="https://protream.github.io/atom.xml">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Droid+Serif:400,700">
+
+
+
+    <meta name="description" content="单例模式保证一个类仅有一个实例，并提供一个全局访问点。
+
+应用场景如：
+
+配置文件管理器：在一个应用程序中，通常会有一些全局的配置信息需要被读取和管理，这些配置信息只需要被读取一次，而且希望能够在整个应用程序中共享。这时候，单例模式就非常适..." />
+    <meta name="keywords" content="design patterns" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.10.0/katex.min.css">
+    <script src="//cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.5.1/build/highlight.min.js"></script>
+  </head>
+  <body>
+    <div class="main">
+      <div class="main-content">
+        <div class="site-header">
+  <a href="https://protream.github.io">
+  <img class="avatar" src="https://protream.github.io/images/avatar.png?v=1733235889358" alt="">
+  </a>
+  <h1 class="site-title">
+    Protream&#39;s Notes
+  </h1>
+  <p class="site-description">
+    
+  </p>
+  <div class="menu-container">
+    
+      
+        <a href="/" class="menu">
+          首页
+        </a>
+      
+    
+      
+        <a href="/archives" class="menu">
+          归档
+        </a>
+      
+    
+      
+        <a href="/tags" class="menu">
+          标签
+        </a>
+      
+    
+      
+        <a href="/post/about" class="menu">
+          关于
+        </a>
+      
+    
+  </div>
+  <div class="social-container">
+    
+      
+    
+      
+    
+      
+    
+      
+    
+      
+    
+  </div>
+</div>
+
+        <div class="post-detail">
+          <article class="post">
+            <h2 class="post-title">
+              设计模式2：单例模式
+            </h2>
+            <div class="post-info">
+              <span>
+                2023-11-06
+              </span>
+              <span>
+                3 min read
+              </span>
+              
+                <a href="https://protream.github.io/tag/design-patterns/" class="post-tag">
+                  # design patterns
+                </a>
+              
+            </div>
+            
+            <div class="post-content-wrapper">
+              <div class="post-content" v-pre>
+                <p>单例模式保证一个类仅有一个实例，并提供一个全局访问点。</p>
+<!-- more -->
+<p>应用场景如：</p>
+<ol>
+<li>配置文件管理器：在一个应用程序中，通常会有一些全局的配置信息需要被读取和管理，这些配置信息只需要被读取一次，而且希望能够在整个应用程序中共享。这时候，单例模式就非常适合用来管理这些配置信息。</li>
+<li>日志记录器：在一个应用程序中，通常需要记录一些日志信息，这些日志信息需要被记录到同一个文件中，而且希望能够在整个应用程序中共享。这时候，单例模式就非常适合用来管理这些日志信息。</li>
+<li>数据库连接池：在一个应用程序中，通常需要连接到数据库来读取和写入数据，这些数据库连接需要被管理和共享。这时候，单例模式就非常适合用来管理这些数据库连接。</li>
+<li>线程池：在一个应用程序中，通常需要创建和管理多个线程来处理任务，而且希望能够在整个应用程序中共享这些线程。这时候，单例模式就非常适合用来管理这些线程。</li>
+</ol>
+<h2 id="示例">示例</h2>
+<h3 id="示例1">示例1</h3>
+<pre><code class="language-go">package main
+
+import (
+	&quot;fmt&quot;
+	&quot;sync&quot;
+)
+
+type singleton struct{}
+
+var instance *singleton
+
+var once sync.Once
+
+func GetInstance() *singleton {
+	once.Do(func() {
+		instance = &amp;singleton{}
+	})
+
+	return instance
+}
+
+func main() {
+	instance1 := GetInstance()
+	instance2 := GetInstance()
+
+	if instance1 != instance2 {
+		fmt.Println(&quot;Instances are not the same!&quot;)
+	} else {
+		fmt.Println(&quot;Instances are the same!&quot;)
+	}
+}
+
+</code></pre>
+<h3 id="示例2">示例2</h3>
+<pre><code class="language-go">package main
+
+import (
+    &quot;fmt&quot;
+    &quot;sync&quot;
+)
+
+type ThreadPool struct {
+    maxWorkers int
+    queue      chan func()
+    once       sync.Once
+}
+
+var instance *ThreadPool
+
+func GetInstance() *ThreadPool {
+    if instance == nil {
+        instance = &amp;ThreadPool{}
+        instance.once.Do(func() {
+            instance.maxWorkers = 10
+            instance.queue = make(chan func(), 100)
+            for i := 0; i &lt; instance.maxWorkers; i++ {
+                go instance.worker()
+            }
+        })
+    }
+    return instance
+}
+
+func (tp *ThreadPool) worker() {
+    for f := range tp.queue {
+        f()
+    }
+}
+
+func (tp *ThreadPool) AddTask(f func()) {
+    tp.queue &lt;- f
+}
+
+func main() {
+    tp := GetInstance()
+
+    for i := 0; i &lt; 100; i++ {
+        tp.AddTask(func() {
+            fmt.Println(&quot;Hello, world!&quot;)
+        })
+    }
+}
+</code></pre>
+
+              </div>
+              <div class="toc-container">
+                <ul class="markdownIt-TOC">
+<li>
+<ul>
+<li><a href="#%E7%A4%BA%E4%BE%8B">示例</a>
+<ul>
+<li><a href="#%E7%A4%BA%E4%BE%8B1">示例1</a></li>
+<li><a href="#%E7%A4%BA%E4%BE%8B2">示例2</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+              </div>
+            </div>
+          </article>
+        </div>
+
+        
+          <div class="next-post">
+            <div class="next">下一篇</div>
+            <a href="https://protream.github.io/post/HcVmL5YdR/">
+              <h3 class="post-title">
+                设计模式1：工厂方法模式
+              </h3>
+            </a>
+          </div>
+        
+
+        
+
+        <div class="site-footer">
+  Powered by <a href="https://github.com/getgridea/gridea" target="_blank">&nbsp;Gridea</a>
+  <a class="rss" href="https://protream.github.io/atom.xml" target="_blank">
+    <i class="ri-rss-line"></i> RSS
+  </a>
+</div>
+
+      </div>
+    </div>
+
+    <script>
+      hljs.initHighlightingOnLoad()
+
+      let mainNavLinks = document.querySelectorAll(".markdownIt-TOC a");
+
+      // This should probably be throttled.
+      // Especially because it triggers during smooth scrolling.
+      // https://lodash.com/docs/4.17.10#throttle
+      // You could do like...
+      // window.addEventListener("scroll", () => {
+      //    _.throttle(doThatStuff, 100);
+      // });
+      // Only not doing it here to keep this Pen dependency-free.
+
+      window.addEventListener("scroll", event => {
+        let fromTop = window.scrollY;
+
+        mainNavLinks.forEach((link, index) => {
+          let section = document.getElementById(decodeURI(link.hash).substring(1));
+          let nextSection = null
+          if (mainNavLinks[index + 1]) {
+            nextSection = document.getElementById(decodeURI(mainNavLinks[index + 1].hash).substring(1));
+          }
+          if (section.offsetTop <= fromTop) {
+            if (nextSection) {
+              if (nextSection.offsetTop > fromTop) {
+                link.classList.add("current");
+              } else {
+                link.classList.remove("current");    
+              }
+            } else {
+              link.classList.add("current");
+            }
+          } else {
+            link.classList.remove("current");
+          }
+        });
+      });
+
+    </script>
+  </body>
+</html>

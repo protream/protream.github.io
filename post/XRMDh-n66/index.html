@@ -1,0 +1,274 @@
+<html>
+  <head>
+    <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>设计模式4：建造者模式 | Protream&#39;s Notes</title>
+<link rel="shortcut icon" href="https://protream.github.io/favicon.ico?v=1733235889358">
+<link href="https://cdn.jsdelivr.net/npm/remixicon@2.3.0/fonts/remixicon.css" rel="stylesheet">
+<link rel="stylesheet" href="https://protream.github.io/styles/main.css">
+<link rel="alternate" type="application/atom+xml" title="设计模式4：建造者模式 | Protream&#39;s Notes - Atom Feed" href="https://protream.github.io/atom.xml">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Droid+Serif:400,700">
+
+
+
+    <meta name="description" content="建造者模式是一种设计模式，它主要用于创建复杂的对象。这种模式将构造对象的过程和对象本身的表示分离，使得同样的构造过程可以创建不同的表示。这种模式通常被用于创建具有许多属性或者包含许多成员的对象。
+
+**意图：**将一个复杂的构建与其表示相分..." />
+    <meta name="keywords" content="design patterns" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.10.0/katex.min.css">
+    <script src="//cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.5.1/build/highlight.min.js"></script>
+  </head>
+  <body>
+    <div class="main">
+      <div class="main-content">
+        <div class="site-header">
+  <a href="https://protream.github.io">
+  <img class="avatar" src="https://protream.github.io/images/avatar.png?v=1733235889358" alt="">
+  </a>
+  <h1 class="site-title">
+    Protream&#39;s Notes
+  </h1>
+  <p class="site-description">
+    
+  </p>
+  <div class="menu-container">
+    
+      
+        <a href="/" class="menu">
+          首页
+        </a>
+      
+    
+      
+        <a href="/archives" class="menu">
+          归档
+        </a>
+      
+    
+      
+        <a href="/tags" class="menu">
+          标签
+        </a>
+      
+    
+      
+        <a href="/post/about" class="menu">
+          关于
+        </a>
+      
+    
+  </div>
+  <div class="social-container">
+    
+      
+    
+      
+    
+      
+    
+      
+    
+      
+    
+  </div>
+</div>
+
+        <div class="post-detail">
+          <article class="post">
+            <h2 class="post-title">
+              设计模式4：建造者模式
+            </h2>
+            <div class="post-info">
+              <span>
+                2023-11-09
+              </span>
+              <span>
+                3 min read
+              </span>
+              
+                <a href="https://protream.github.io/tag/design-patterns/" class="post-tag">
+                  # design patterns
+                </a>
+              
+            </div>
+            
+            <div class="post-content-wrapper">
+              <div class="post-content" v-pre>
+                <p>建造者模式是一种设计模式，它主要用于创建复杂的对象。这种模式将构造对象的过程和对象本身的表示分离，使得同样的构造过程可以创建不同的表示。这种模式通常被用于创建具有许多属性或者包含许多成员的对象。</p>
+<!-- more -->
+<p>**意图：**将一个复杂的构建与其表示相分离，使得同样的构建过程可以创建不同的表示。</p>
+<p>**主要解决：**主要解决在软件系统中，有时候面临着&quot;一个复杂对象&quot;的创建工作，其通常由各个部分的子对象用一定的算法构成；由于需求的变化，这个复杂对象的各个部分经常面临着剧烈的变化，但是将它们组合在一起的算法却相对稳定。</p>
+<p>**何时使用：**一些基本部件不会变，而其组合经常变化的时候。</p>
+<h2 id="示例">示例</h2>
+<h3 id="示例1">示例1</h3>
+<pre><code class="language-go">package main
+
+import &quot;fmt&quot;
+
+// Car struct
+type Car struct {
+	brand     string
+	color     string
+	engineType string
+	tireType  string
+}
+
+// CarBuilder struct
+type CarBuilder struct {
+	car *Car
+}
+
+// NewCarBuilder function
+func NewCarBuilder() *CarBuilder {
+	return &amp;CarBuilder{&amp;Car{}}
+}
+
+// SetBrand function
+func (cb *CarBuilder) SetBrand(brand string) *CarBuilder {
+	cb.car.brand = brand
+	return cb
+}
+
+// SetColor function
+func (cb *CarBuilder) SetColor(color string) *CarBuilder {
+	cb.car.color = color
+	return cb
+}
+
+// SetEngineType function
+func (cb *CarBuilder) SetEngineType(engineType string) *CarBuilder {
+	cb.car.engineType = engineType
+	return cb
+}
+
+// SetTireType function
+func (cb *CarBuilder) SetTireType(tireType string) *CarBuilder {
+	cb.car.tireType = tireType
+	return cb
+}
+
+// Build function
+func (cb *CarBuilder) Build() *Car {
+	return cb.car
+}
+
+func main() {
+	carBuilder := NewCarBuilder()
+	car := carBuilder.SetBrand(&quot;Toyota&quot;).SetColor(&quot;Red&quot;).SetEngineType(&quot;Hybrid&quot;).SetTireType(&quot;All-Season&quot;).Build()
+
+	fmt.Printf(&quot;Car: %+v\n&quot;, car)
+}
+</code></pre>
+<h3 id="示例2">示例2</h3>
+<pre><code class="language-go">package rest
+
+type Config struct {
+	Host string
+	// 其他配置项...
+}
+
+type ConfigBuilder struct {
+	config *Config
+}
+
+func NewConfigBuilder() *ConfigBuilder {
+	return &amp;ConfigBuilder{config: &amp;Config{}}
+}
+
+func (b *ConfigBuilder) SetHost(host string) *ConfigBuilder {
+	b.config.Host = host
+	return b
+}
+
+// 其他设置方法...
+
+func (b *ConfigBuilder) Build() *Config {
+	return b.config
+}
+</code></pre>
+
+              </div>
+              <div class="toc-container">
+                <ul class="markdownIt-TOC">
+<li>
+<ul>
+<li><a href="#%E7%A4%BA%E4%BE%8B">示例</a>
+<ul>
+<li><a href="#%E7%A4%BA%E4%BE%8B1">示例1</a></li>
+<li><a href="#%E7%A4%BA%E4%BE%8B2">示例2</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+              </div>
+            </div>
+          </article>
+        </div>
+
+        
+          <div class="next-post">
+            <div class="next">下一篇</div>
+            <a href="https://protream.github.io/post/z2jlZoNjV/">
+              <h3 class="post-title">
+                设计模式3：  抽象工厂模式
+              </h3>
+            </a>
+          </div>
+        
+
+        
+
+        <div class="site-footer">
+  Powered by <a href="https://github.com/getgridea/gridea" target="_blank">&nbsp;Gridea</a>
+  <a class="rss" href="https://protream.github.io/atom.xml" target="_blank">
+    <i class="ri-rss-line"></i> RSS
+  </a>
+</div>
+
+      </div>
+    </div>
+
+    <script>
+      hljs.initHighlightingOnLoad()
+
+      let mainNavLinks = document.querySelectorAll(".markdownIt-TOC a");
+
+      // This should probably be throttled.
+      // Especially because it triggers during smooth scrolling.
+      // https://lodash.com/docs/4.17.10#throttle
+      // You could do like...
+      // window.addEventListener("scroll", () => {
+      //    _.throttle(doThatStuff, 100);
+      // });
+      // Only not doing it here to keep this Pen dependency-free.
+
+      window.addEventListener("scroll", event => {
+        let fromTop = window.scrollY;
+
+        mainNavLinks.forEach((link, index) => {
+          let section = document.getElementById(decodeURI(link.hash).substring(1));
+          let nextSection = null
+          if (mainNavLinks[index + 1]) {
+            nextSection = document.getElementById(decodeURI(mainNavLinks[index + 1].hash).substring(1));
+          }
+          if (section.offsetTop <= fromTop) {
+            if (nextSection) {
+              if (nextSection.offsetTop > fromTop) {
+                link.classList.add("current");
+              } else {
+                link.classList.remove("current");    
+              }
+            } else {
+              link.classList.add("current");
+            }
+          } else {
+            link.classList.remove("current");
+          }
+        });
+      });
+
+    </script>
+  </body>
+</html>

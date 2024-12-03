@@ -1,0 +1,318 @@
+<html>
+  <head>
+    <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>设计模式3：  抽象工厂模式 | Protream&#39;s Notes</title>
+<link rel="shortcut icon" href="https://protream.github.io/favicon.ico?v=1733235889358">
+<link href="https://cdn.jsdelivr.net/npm/remixicon@2.3.0/fonts/remixicon.css" rel="stylesheet">
+<link rel="stylesheet" href="https://protream.github.io/styles/main.css">
+<link rel="alternate" type="application/atom+xml" title="设计模式3：  抽象工厂模式 | Protream&#39;s Notes - Atom Feed" href="https://protream.github.io/atom.xml">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Droid+Serif:400,700">
+
+
+
+    <meta name="description" content="抽象工厂模式（Abstract Factory Pattern）是围绕一个超级工厂创建其他工厂。该超级工厂又称为其他工厂的工厂。这种类型的设计模式属于创建型模式，它提供了一种创建对象的最佳方式。
+在抽象工厂模式中，接口是负责创建一个相关对象..." />
+    <meta name="keywords" content="design patterns" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.10.0/katex.min.css">
+    <script src="//cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.5.1/build/highlight.min.js"></script>
+  </head>
+  <body>
+    <div class="main">
+      <div class="main-content">
+        <div class="site-header">
+  <a href="https://protream.github.io">
+  <img class="avatar" src="https://protream.github.io/images/avatar.png?v=1733235889358" alt="">
+  </a>
+  <h1 class="site-title">
+    Protream&#39;s Notes
+  </h1>
+  <p class="site-description">
+    
+  </p>
+  <div class="menu-container">
+    
+      
+        <a href="/" class="menu">
+          首页
+        </a>
+      
+    
+      
+        <a href="/archives" class="menu">
+          归档
+        </a>
+      
+    
+      
+        <a href="/tags" class="menu">
+          标签
+        </a>
+      
+    
+      
+        <a href="/post/about" class="menu">
+          关于
+        </a>
+      
+    
+  </div>
+  <div class="social-container">
+    
+      
+    
+      
+    
+      
+    
+      
+    
+      
+    
+  </div>
+</div>
+
+        <div class="post-detail">
+          <article class="post">
+            <h2 class="post-title">
+              设计模式3：  抽象工厂模式
+            </h2>
+            <div class="post-info">
+              <span>
+                2023-11-06
+              </span>
+              <span>
+                5 min read
+              </span>
+              
+                <a href="https://protream.github.io/tag/design-patterns/" class="post-tag">
+                  # design patterns
+                </a>
+              
+            </div>
+            
+            <div class="post-content-wrapper">
+              <div class="post-content" v-pre>
+                <p>抽象工厂模式（Abstract Factory Pattern）是围绕一个超级工厂创建其他工厂。该超级工厂又称为其他工厂的工厂。这种类型的设计模式属于创建型模式，它提供了一种创建对象的最佳方式。</p>
+<p>在抽象工厂模式中，接口是负责创建一个相关对象的工厂，不需要显式指定它们的类。每个生成的工厂都能按照工厂模式提供对象。</p>
+<p>抽象工厂模式提供了一种创建一系列相关或相互依赖对象的接口，而无需指定具体实现类。通过使用抽象工厂模式，可以将客户端与具体产品的创建过程解耦，使得客户端可以通过工厂接口来创建一族产品。</p>
+<!-- more -->
+<p>**意图：**提供一个创建一系列相关或相互依赖对象的接口，而无需指定它们具体的类。</p>
+<p>**主要解决：**主要解决接口选择的问题。</p>
+<p>**何时使用：**系统的产品有多于一个的产品族，而系统只消费其中某一族的产品。</p>
+<h2 id="组成">组成</h2>
+<ul>
+<li>抽象工厂（Abstract Factory）：声明了一组用于创建产品对象的方法，每个方法对应一种产品类型。抽象工厂可以是接口或抽象类。</li>
+<li>具体工厂（Concrete Factory）：实现了抽象工厂接口，负责创建具体产品对象的实例。</li>
+<li>抽象产品（Abstract Product）：定义了一组产品对象的共同接口或抽象类，描述了产品对象的公共方法。</li>
+<li>具体产品（Concrete Product）：实现了抽象产品接口，定义了具体产品的特定行为和属性。</li>
+</ul>
+<h2 id="示例">示例</h2>
+<p>在 Java 中，JDBC（Java Database Connectivity）是一种用于连接数据库的 API。JDBC API 提供了一系列接口和类，用于连接不同的数据库和执行 SQL 查询。其中，Connection 接口用于表示数据库连接，Statement 接口用于表示 SQL 语句，ResultSet 接口用于表示查询结果集。为了连接不同的数据库，JDBC API 提供了不同的实现类，例如，OracleConnection、MySQLConnection、PostgreSQLConnection 等。这些实现类都是通过抽象工厂模式来创建的，即 JDBC API 提供了一个抽象工厂接口，用于创建不同的数据库连接和查询对象。这样，开发人员可以使用 JDBC API 来连接不同的数据库，而无需了解具体实现细节。</p>
+<pre><code class="language-go">// 定义抽象工厂接口
+type JDBCFactory interface {
+    CreateConnection() JDBCConnection
+    CreateStatement() JDBCStatement
+    CreateResultSet() JDBCResultSet
+}
+
+// 定义具体工厂类
+type OracleJDBCFactory struct {}
+
+func (f *OracleJDBCFactory) CreateConnection() JDBCConnection {
+    return &amp;OracleConnection{}
+}
+
+func (f *OracleJDBCFactory) CreateStatement() JDBCStatement {
+    return &amp;OracleStatement{}
+}
+
+func (f *OracleJDBCFactory) CreateResultSet() JDBCResultSet {
+    return &amp;OracleResultSet{}
+}
+
+type MySQLJDBCFactory struct {}
+
+func (f *MySQLJDBCFactory) CreateConnection() JDBCConnection {
+    return &amp;MySQLConnection{}
+}
+
+func (f *MySQLJDBCFactory) CreateStatement() JDBCStatement {
+    return &amp;MySQLStatement{}
+}
+
+func (f *MySQLJDBCFactory) CreateResultSet() JDBCResultSet {
+    return &amp;MySQLResultSet{}
+}
+
+// 定义抽象产品接口
+type JDBCConnection interface {
+    Connect() error
+    Close() error
+}
+
+type JDBCStatement interface {
+    Execute(query string) (JDBCResultSet, error)
+}
+
+type JDBCResultSet interface {
+    Next() bool
+    Get(column string) interface{}
+}
+
+// 定义具体产品类
+type OracleConnection struct {}
+
+func (c *OracleConnection) Connect() error {
+    // 连接 Oracle 数据库
+    return nil
+}
+
+func (c *OracleConnection) Close() error {
+    // 关闭 Oracle 数据库连接
+    return nil
+}
+
+type OracleStatement struct {}
+
+func (s *OracleStatement) Execute(query string) (JDBCResultSet, error) {
+    // 执行 Oracle SQL 查询
+    return &amp;OracleResultSet{}, nil
+}
+
+type OracleResultSet struct {}
+
+func (r *OracleResultSet) Next() bool {
+    // 获取下一条 Oracle 查询结果
+    return true
+}
+
+func (r *OracleResultSet) Get(column string) interface{} {
+    // 获取 Oracle 查询结果中指定列的值
+    return nil
+}
+
+type MySQLConnection struct {}
+
+func (c *MySQLConnection) Connect() error {
+    // 连接 MySQL 数据库
+    return nil
+}
+
+func (c *MySQLConnection) Close() error {
+    // 关闭 MySQL 数据库连接
+    return nil
+}
+
+type MySQLStatement struct {}
+
+func (s *MySQLStatement) Execute(query string) (JDBCResultSet, error) {
+    // 执行 MySQL SQL 查询
+    return &amp;MySQLResultSet{}, nil
+}
+
+type MySQLResultSet struct {}
+
+func (r *MySQLResultSet) Next() bool {
+    // 获取下一条 MySQL 查询结果
+    return true
+}
+
+func (r *MySQLResultSet) Get(column string) interface{} {
+    // 获取 MySQL 查询结果中指定列的值
+    return nil
+}
+</code></pre>
+<p>在这里，我们定义了一个 JDBCFactory 接口，它包含了创建 JDBC 连接、语句和结果集的方法。然后，我们定义了两个具体的工厂类，OracleJDBCFactory 和 MySQLJDBCFactory，它们实现了 JDBCFactory 接口，并实现了对应的方法。</p>
+<p>接下来，我们定义了 JDBCConnection、JDBCStatement 和 JDBCResultSet 接口，它们分别表示 JDBC 连接、语句和结果集。然后，我们定义了具体的产品类，例如 OracleConnection、OracleStatement、OracleResultSet、MySQLConnection、MySQLStatement 和 MySQLResultSet，它们实现了对应的接口，并实现了具体的方法。</p>
+<p>最后，我们可以使用具体的工厂类来创建不同的 JDBC 连接、语句和结果集对象，例如：</p>
+<p>go复制代码</p>
+<pre><code class="language-Plain">factory := &amp;OracleJDBCFactory{}
+connection := factory.CreateConnection()
+statement := factory.CreateStatement()
+resultset, _ := statement.Execute(&quot;SELECT * FROM table&quot;)
+
+</code></pre>
+<p>在这里，我们使用 OracleJDBCFactory 工厂类创建了一个 OracleConnection 对象和一个 OracleStatement 对象，然后使用 Statement 对象执行了一个 SQL 查询，并获取了查询结果集。</p>
+
+              </div>
+              <div class="toc-container">
+                <ul class="markdownIt-TOC">
+<li>
+<ul>
+<li><a href="#%E7%BB%84%E6%88%90">组成</a></li>
+<li><a href="#%E7%A4%BA%E4%BE%8B">示例</a></li>
+</ul>
+</li>
+</ul>
+
+              </div>
+            </div>
+          </article>
+        </div>
+
+        
+          <div class="next-post">
+            <div class="next">下一篇</div>
+            <a href="https://protream.github.io/post/GrivbTQR_/">
+              <h3 class="post-title">
+                设计模式2：单例模式
+              </h3>
+            </a>
+          </div>
+        
+
+        
+
+        <div class="site-footer">
+  Powered by <a href="https://github.com/getgridea/gridea" target="_blank">&nbsp;Gridea</a>
+  <a class="rss" href="https://protream.github.io/atom.xml" target="_blank">
+    <i class="ri-rss-line"></i> RSS
+  </a>
+</div>
+
+      </div>
+    </div>
+
+    <script>
+      hljs.initHighlightingOnLoad()
+
+      let mainNavLinks = document.querySelectorAll(".markdownIt-TOC a");
+
+      // This should probably be throttled.
+      // Especially because it triggers during smooth scrolling.
+      // https://lodash.com/docs/4.17.10#throttle
+      // You could do like...
+      // window.addEventListener("scroll", () => {
+      //    _.throttle(doThatStuff, 100);
+      // });
+      // Only not doing it here to keep this Pen dependency-free.
+
+      window.addEventListener("scroll", event => {
+        let fromTop = window.scrollY;
+
+        mainNavLinks.forEach((link, index) => {
+          let section = document.getElementById(decodeURI(link.hash).substring(1));
+          let nextSection = null
+          if (mainNavLinks[index + 1]) {
+            nextSection = document.getElementById(decodeURI(mainNavLinks[index + 1].hash).substring(1));
+          }
+          if (section.offsetTop <= fromTop) {
+            if (nextSection) {
+              if (nextSection.offsetTop > fromTop) {
+                link.classList.add("current");
+              } else {
+                link.classList.remove("current");    
+              }
+            } else {
+              link.classList.add("current");
+            }
+          } else {
+            link.classList.remove("current");
+          }
+        });
+      });
+
+    </script>
+  </body>
+</html>

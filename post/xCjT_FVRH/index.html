@@ -1,0 +1,242 @@
+<html>
+  <head>
+    <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Shm And Docker | Protream&#39;s Notes</title>
+<link rel="shortcut icon" href="https://protream.github.io/favicon.ico?v=1733235889358">
+<link href="https://cdn.jsdelivr.net/npm/remixicon@2.3.0/fonts/remixicon.css" rel="stylesheet">
+<link rel="stylesheet" href="https://protream.github.io/styles/main.css">
+<link rel="alternate" type="application/atom+xml" title="Shm And Docker | Protream&#39;s Notes - Atom Feed" href="https://protream.github.io/atom.xml">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Droid+Serif:400,700">
+
+
+
+    <meta name="description" content="shm 是什么及其在 docker 中的使用与设定。
+
+shm 是什么
+Shared Memory
+共享内存是系统出于多个进程之间通讯的考虑，而预留的的一块内存区。
+shm 实现方式
+There are two different type..." />
+    <meta name="keywords" content="linux,docker" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.10.0/katex.min.css">
+    <script src="//cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.5.1/build/highlight.min.js"></script>
+  </head>
+  <body>
+    <div class="main">
+      <div class="main-content">
+        <div class="site-header">
+  <a href="https://protream.github.io">
+  <img class="avatar" src="https://protream.github.io/images/avatar.png?v=1733235889358" alt="">
+  </a>
+  <h1 class="site-title">
+    Protream&#39;s Notes
+  </h1>
+  <p class="site-description">
+    
+  </p>
+  <div class="menu-container">
+    
+      
+        <a href="/" class="menu">
+          首页
+        </a>
+      
+    
+      
+        <a href="/archives" class="menu">
+          归档
+        </a>
+      
+    
+      
+        <a href="/tags" class="menu">
+          标签
+        </a>
+      
+    
+      
+        <a href="/post/about" class="menu">
+          关于
+        </a>
+      
+    
+  </div>
+  <div class="social-container">
+    
+      
+    
+      
+    
+      
+    
+      
+    
+      
+    
+  </div>
+</div>
+
+        <div class="post-detail">
+          <article class="post">
+            <h2 class="post-title">
+              Shm And Docker
+            </h2>
+            <div class="post-info">
+              <span>
+                2023-08-11
+              </span>
+              <span>
+                2 min read
+              </span>
+              
+                <a href="https://protream.github.io/tag/linux/" class="post-tag">
+                  # linux
+                </a>
+              
+                <a href="https://protream.github.io/tag/docker/" class="post-tag">
+                  # docker
+                </a>
+              
+            </div>
+            
+            <div class="post-content-wrapper">
+              <div class="post-content" v-pre>
+                <p>shm 是什么及其在 docker 中的使用与设定。</p>
+<!-- more -->
+<h2 id="shm-是什么">shm 是什么</h2>
+<p>Shared Memory</p>
+<p>共享内存是系统出于多个进程之间通讯的考虑，而预留的的一块内存区。</p>
+<h2 id="shm-实现方式">shm 实现方式</h2>
+<p>There are two different types of shared memory implementations:</p>
+<ul>
+<li><a href="https://datacadamia.com/os/linux/system_v_ipc">System V IPC</a>,</li>
+<li>and BSD mmap.</li>
+<li></li>
+</ul>
+<h2 id="shm-文件结构">shm 文件结构</h2>
+<pre><code class="language-json">/dev/shm
+</code></pre>
+<p>shm 也被称为 tmpfs，这个目录不在硬盘上，而是在内存里。</p>
+<h2 id="查看哪些进程在使用-shm">查看哪些进程在使用 shm</h2>
+<pre><code class="language-bash">ipcs -pm
+</code></pre>
+<h2 id="docker-container-shm">Docker Container shm</h2>
+<p>默认 64M，有三种方式修改：</p>
+<ol>
+<li>全局修改，配置 daemon.json</li>
+</ol>
+<pre><code class="language-json">{
+    &quot;default-shm-size&quot;: &quot;1G&quot;
+}
+</code></pre>
+<p>修改后重启 Docker：</p>
+<pre><code class="language-bash">sudo systemctl restart docker
+</code></pre>
+<ol start="2">
+<li>创建容器时修改：</li>
+</ol>
+<pre><code class="language-bash">docker run --shm-size=2G some-container
+
+</code></pre>
+<ol start="3">
+<li>在 docker-compose 指定</li>
+</ol>
+<pre><code class="language-bash">db:
+  image: &quot;postgres:11.3-alpine&quot;
+  shm_size: 1g
+</code></pre>
+<ol start="4">
+<li>remount</li>
+</ol>
+<pre><code class="language-bash">mount -o remount,size=256m -t tmpfs /var/lib/docker/containers/your-container-id/mounts/shm
+</code></pre>
+<h2 id="参考">参考</h2>
+<p><a href="https://stackoverflow.com/questions/56751565/pq-could-not-resize-shared-memory-segment-no-space-left-on-device">pq: could not resize shared memory segment. No space left on device.</a></p>
+<p><a href="https://datawookie.dev/blog/2021/11/shared-memory-docker/">Shared Memory &amp; Docker</a></p>
+
+              </div>
+              <div class="toc-container">
+                <ul class="markdownIt-TOC">
+<li>
+<ul>
+<li><a href="#shm-%E6%98%AF%E4%BB%80%E4%B9%88">shm 是什么</a></li>
+<li><a href="#shm-%E5%AE%9E%E7%8E%B0%E6%96%B9%E5%BC%8F">shm 实现方式</a></li>
+<li><a href="#shm-%E6%96%87%E4%BB%B6%E7%BB%93%E6%9E%84">shm 文件结构</a></li>
+<li><a href="#%E6%9F%A5%E7%9C%8B%E5%93%AA%E4%BA%9B%E8%BF%9B%E7%A8%8B%E5%9C%A8%E4%BD%BF%E7%94%A8-shm">查看哪些进程在使用 shm</a></li>
+<li><a href="#docker-container-shm">Docker Container shm</a></li>
+<li><a href="#%E5%8F%82%E8%80%83">参考</a></li>
+</ul>
+</li>
+</ul>
+
+              </div>
+            </div>
+          </article>
+        </div>
+
+        
+          <div class="next-post">
+            <div class="next">下一篇</div>
+            <a href="https://protream.github.io/post/7nEwgKgdN/">
+              <h3 class="post-title">
+                k8s 入门 1：基础
+              </h3>
+            </a>
+          </div>
+        
+
+        
+
+        <div class="site-footer">
+  Powered by <a href="https://github.com/getgridea/gridea" target="_blank">&nbsp;Gridea</a>
+  <a class="rss" href="https://protream.github.io/atom.xml" target="_blank">
+    <i class="ri-rss-line"></i> RSS
+  </a>
+</div>
+
+      </div>
+    </div>
+
+    <script>
+      hljs.initHighlightingOnLoad()
+
+      let mainNavLinks = document.querySelectorAll(".markdownIt-TOC a");
+
+      // This should probably be throttled.
+      // Especially because it triggers during smooth scrolling.
+      // https://lodash.com/docs/4.17.10#throttle
+      // You could do like...
+      // window.addEventListener("scroll", () => {
+      //    _.throttle(doThatStuff, 100);
+      // });
+      // Only not doing it here to keep this Pen dependency-free.
+
+      window.addEventListener("scroll", event => {
+        let fromTop = window.scrollY;
+
+        mainNavLinks.forEach((link, index) => {
+          let section = document.getElementById(decodeURI(link.hash).substring(1));
+          let nextSection = null
+          if (mainNavLinks[index + 1]) {
+            nextSection = document.getElementById(decodeURI(mainNavLinks[index + 1].hash).substring(1));
+          }
+          if (section.offsetTop <= fromTop) {
+            if (nextSection) {
+              if (nextSection.offsetTop > fromTop) {
+                link.classList.add("current");
+              } else {
+                link.classList.remove("current");    
+              }
+            } else {
+              link.classList.add("current");
+            }
+          } else {
+            link.classList.remove("current");
+          }
+        });
+      });
+
+    </script>
+  </body>
+</html>

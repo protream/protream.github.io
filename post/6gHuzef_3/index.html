@@ -1,0 +1,319 @@
+<html>
+  <head>
+    <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title> QUIC 协议 | Protream&#39;s Notes</title>
+<link rel="shortcut icon" href="https://protream.github.io/favicon.ico?v=1733235889358">
+<link href="https://cdn.jsdelivr.net/npm/remixicon@2.3.0/fonts/remixicon.css" rel="stylesheet">
+<link rel="stylesheet" href="https://protream.github.io/styles/main.css">
+<link rel="alternate" type="application/atom+xml" title=" QUIC 协议 | Protream&#39;s Notes - Atom Feed" href="https://protream.github.io/atom.xml">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Droid+Serif:400,700">
+
+
+
+    <meta name="description" content="QUIC 协议是 Google 出品的传输层网络协议。那么，在已经有了安全可靠的 TCP 协议的情况下，又搞出来一个新的协议呢？简单来说，Google 对 TCP 协议的优化已经到了尽头，已经没有什么好优化的了，但还想更进一步，怎么办呢？搞..." />
+    <meta name="keywords" content="" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.10.0/katex.min.css">
+    <script src="//cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.5.1/build/highlight.min.js"></script>
+  </head>
+  <body>
+    <div class="main">
+      <div class="main-content">
+        <div class="site-header">
+  <a href="https://protream.github.io">
+  <img class="avatar" src="https://protream.github.io/images/avatar.png?v=1733235889358" alt="">
+  </a>
+  <h1 class="site-title">
+    Protream&#39;s Notes
+  </h1>
+  <p class="site-description">
+    
+  </p>
+  <div class="menu-container">
+    
+      
+        <a href="/" class="menu">
+          首页
+        </a>
+      
+    
+      
+        <a href="/archives" class="menu">
+          归档
+        </a>
+      
+    
+      
+        <a href="/tags" class="menu">
+          标签
+        </a>
+      
+    
+      
+        <a href="/post/about" class="menu">
+          关于
+        </a>
+      
+    
+  </div>
+  <div class="social-container">
+    
+      
+    
+      
+    
+      
+    
+      
+    
+      
+    
+  </div>
+</div>
+
+        <div class="post-detail">
+          <article class="post">
+            <h2 class="post-title">
+               QUIC 协议
+            </h2>
+            <div class="post-info">
+              <span>
+                2024-05-17
+              </span>
+              <span>
+                8 min read
+              </span>
+              
+            </div>
+            
+            <div class="post-content-wrapper">
+              <div class="post-content" v-pre>
+                <p>QUIC 协议是 Google 出品的传输层网络协议。那么，在已经有了安全可靠的 TCP 协议的情况下，又搞出来一个新的协议呢？简单来说，Google 对 TCP 协议的优化已经到了尽头，已经没有什么好优化的了，但还想更进一步，怎么办呢？搞个新的。</p>
+<!-- more -->
+<p>设计目标：</p>
+<ul>
+<li>取代TCP协议</li>
+<li>降低连接和传输延迟</li>
+<li>改进拥塞控制</li>
+</ul>
+<p>相比 http2+tcp+tls 的优势：</p>
+<ol>
+<li>减少了 TCP 三次握手及 TLS 握手时间。</li>
+<li>改进的拥塞控制。</li>
+<li>避免队头阻塞的多路复用。</li>
+<li>连接迁移。</li>
+<li>前向冗余纠错。</li>
+</ol>
+<h2 id="特性">特性</h2>
+<p><strong>相互独立的逻辑流</strong></p>
+<p>相互独立的逻辑流是 QUIC 的核心特性之一。它允许在单个连接上并行传输多个数据流，并且每个流可以独立地处理。相比之下，TCP 只支持单数据流，需要按照发送顺序接收和确认每个报文。通过多路复用，应用程序可以更高效地发送和接收数据，并更好地利用网络带宽等资源。</p>
+<p><strong>一致安全性</strong></p>
+<p>QUIC 的另一个重要特性是它提供了端到端的安全保护。所有通过 QUIC 发送的数据都是默认加密的，并且不支持明文通信。这有助于防止数据被窃听和其他形式的攻击。QUIC 使用传输层安全协议（TLS）来建立和维护安全连接和端到端加密。</p>
+<p><strong>低延迟</strong></p>
+<p>QUIC 协议的设计目的是减少建立连接所需的延迟，以便在端点之间快速地发送和接收数据。对于移动网络这种高延迟的网络环境来说，这一点尤为重要。为了实现这个目标，QUIC 最小化了建立连接所需的往返次数，并且采用更小的报文来发送数据。传统的互联网协议通常存在延迟问题，例如美欧之间的往返时间有时可达 300 或 400 毫秒。</p>
+<p><strong>可靠性</strong></p>
+<p>QUIC 基于 UDP 但可提供可靠传输能力。类似于 TCP，它是一种面向连接的传输协议。QUIC 协议在数据传输过程中具有报文丢失恢复和重传功能，这可以确保数据的完整性和准确性。此外，QUIC 可以保证数据包按照发送顺序到达，避免因数据包乱序导致的数据错误。</p>
+<p><strong>消除 HOL 阻塞</strong></p>
+<p>QUIC 通过支持多个数据流来解决 HOL 阻塞问题。这使得来自不同应用的消息可以独立地传递，避免了因为等待其他应用而可能产生的延迟。</p>
+<h2 id="原理">原理</h2>
+<h2 id="场景">场景</h2>
+<p>HTTP/3 中，弃用 TCP 协议，改为使用基于 UDP 协议的 QUIC 协议实现。随着 HTTP/3 和 QUIC 越来越流行并被广泛采用，涌现出多种多样的应用场景。这些应用场景覆盖了直播、视频、点播、下载、Web 加速等领域，其中最具潜力的应用场景有：</p>
+<ol>
+<li>**实时 Web 和移动应用：**这些应用（如集成了语音和视频通信功能的 Web 和移动应用）需要低延迟和可靠的数据传输。QUIC 利用相互独立的数据流和拥塞控制机制，使其成为这些应用的理想选择，因为它可以快速高效地发送和接收数据。在 QUIC 的多路复用模式下，同一连接内不同数据流之间的数据传输互不干扰。</li>
+<li>**与物联网设备通信：**物联网设备通常使用 TCP 和 MQTT 等协议进行通信。然而，这些协议在受限的网络环境中可能存在高延迟和丢包等问题。相比之下，专为高延迟和丢包的网络环境而设计的 QUIC 可以提供更可靠和高效的替代方案。QUIC 可以实现接近零的往返时间（RTT），这对于提高网络性能和用户体验至关重要。</li>
+<li>**车联网和网联汽车：**QUIC 可以极大地促进车联网生态系统的发展。这些系统需要实时的数据交换来提供诸如交通管理、车辆跟踪和安全功能等服务。QUIC 具有低延迟、多路复用的特性，以及对数据包丢失和重排序的处理能力，可以确保车辆和基础设施组件之间可靠而高效的通信。此外，QUIC 使用 TLS 加密保护敏感车辆数据，提供了更强的安全保障。</li>
+<li>**云计算：**云计算是指通过互联网提供计算资源的服务。使用 QUIC 协议可以带来多方面的好处，例如低延迟和端到端加密，这可以提升用户体验、增强系统安全。</li>
+<li>**支付和电子商务应用：**这些应用需要安全可靠的数据传输。QUIC 通过 TLS 加密和可靠的 HTTP3 数据流，使其成为这些应用的理想选择，有助于保证数据安全完整地传输。从终端用户的角度来看，QUIC 协议通过保证更快、更顺畅的交易，优化了用户体验。</li>
+</ol>
+<h2 id="对比">对比</h2>
+<p>与 TCP 相比，QUIC 在高延迟和不稳定的网络环境中，如移动网络，可以显著提升网页加载速度并减少连接中断，使得网络体验更加流畅。</p>
+<table>
+<thead>
+<tr>
+<th>特性</th>
+<th>TCP (Transmission Control Protocol)</th>
+<th>QUIC (Quick UDP Internet Connections)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>协议层</strong></td>
+<td>传输层协议</td>
+<td>应用层协议</td>
+</tr>
+<tr>
+<td><strong>基础传输</strong></td>
+<td>基于 IP 协议之上的 TCP</td>
+<td>基于 IP 协议之上的 UDP</td>
+</tr>
+<tr>
+<td><strong>连接建立</strong></td>
+<td>三次握手</td>
+<td>单次握手</td>
+</tr>
+<tr>
+<td><strong>连接恢复</strong></td>
+<td>断开后需重新建立连接</td>
+<td>支持连接迁移和恢复</td>
+</tr>
+<tr>
+<td><strong>加密</strong></td>
+<td>TLS 1.2/1.3</td>
+<td>内置 TLS 1.3</td>
+</tr>
+<tr>
+<td><strong>启动延迟</strong></td>
+<td>较高，三次握手增加延迟</td>
+<td>较低，减少握手次数和延迟</td>
+</tr>
+<tr>
+<td><strong>多路复用</strong></td>
+<td>支持，但容易受阻塞影响</td>
+<td>原生支持，避免队头阻塞</td>
+</tr>
+<tr>
+<td><strong>传输效率</strong></td>
+<td>较高，但有队头阻塞问题</td>
+<td>更高，避免队头阻塞和优化路径恢复</td>
+</tr>
+<tr>
+<td><strong>数据完整性</strong></td>
+<td>基于序列号和确认号保证</td>
+<td>基于序列号和确认号保证</td>
+</tr>
+<tr>
+<td><strong>拥塞控制</strong></td>
+<td>内置多种拥塞控制算法</td>
+<td>内置拥塞控制，基于 TCP 的算法扩展</td>
+</tr>
+<tr>
+<td><strong>丢包重传</strong></td>
+<td>确认丢包后重传</td>
+<td>确认丢包后重传，优化的快速恢复机制</td>
+</tr>
+<tr>
+<td><strong>安全性</strong></td>
+<td>可选加密（通常通过 TLS 实现）</td>
+<td>默认启用（内置 TLS 1.3）</td>
+</tr>
+<tr>
+<td><strong>安全更新</strong></td>
+<td>更新慢，需要操作系统和应用配合</td>
+<td>更新快，协议可灵活更新</td>
+</tr>
+<tr>
+<td><strong>部署难易度</strong></td>
+<td>广泛部署，基础设施支持全面</td>
+<td>逐渐普及，需要支持 UDP 的网络设施</td>
+</tr>
+<tr>
+<td><strong>防火墙友好</strong></td>
+<td>广泛支持，默认开放</td>
+<td>可能被部分防火墙阻挡</td>
+</tr>
+<tr>
+<td><strong>常用场景</strong></td>
+<td>Web 浏览、文件传输、电子邮件等</td>
+<td>实时通信、视频流、现代 Web 应用等</td>
+</tr>
+<tr>
+<td><strong>协议灵活性</strong></td>
+<td>相对固定，修改需要标准化过程</td>
+<td>更灵活，支持快速迭代和更新</td>
+</tr>
+</tbody>
+</table>
+<h2 id="总结">总结</h2>
+<p>TCP（Transmission Control Protocol）是传输层的经典协议，基于IP协议之上，通过三次握手建立连接，提供可靠的数据传输、拥塞控制和流量控制。虽然TCP在网络通信中广泛应用，但它的传输效率受队头阻塞影响，且连接建立较慢。</p>
+<p>QUIC（Quick UDP Internet Connections）是一个基于UDP协议的新型应用层协议，通过单次握手建立连接，并内置TLS 1.3实现加密通信。QUIC具有较低的启动延迟、更高的传输效率和更好的安全性，特别适用于实时通信和现代Web应用。</p>
+<p>在连接建立、多路复用、传输效率、连接恢复、安全性等方面，QUIC相较于TCP有明显的优势。但是，TCP由于广泛的部署和成熟的基础设施支持，仍然是许多传统应用的首选。随着时间的推移，QUIC的普及度逐渐增加，尤其是在需要低延迟、高效率和安全性的场景下，它将成为更多应用的选择。</p>
+<h2 id="参考">参考</h2>
+<p>[1] <a href="https://zh.wikipedia.org/wiki/QUIC">QUIC</a></p>
+<p>[2] <a href="https://www.infoq.cn/article/lddlsa5f21sty04li3hp">一文读懂 QUIC 协议：更快、更稳、更高效的网络通信</a></p>
+<p>[3] <a href="https://xie.infoq.cn/article/bbe378c6ef55e16efc8880afe?utm_source=related_read&amp;utm_medium=article">QUIC 在京东直播的应用与实践</a></p>
+
+              </div>
+              <div class="toc-container">
+                <ul class="markdownIt-TOC">
+<li>
+<ul>
+<li><a href="#%E7%89%B9%E6%80%A7">特性</a></li>
+<li><a href="#%E5%8E%9F%E7%90%86">原理</a></li>
+<li><a href="#%E5%9C%BA%E6%99%AF">场景</a></li>
+<li><a href="#%E5%AF%B9%E6%AF%94">对比</a></li>
+<li><a href="#%E6%80%BB%E7%BB%93">总结</a></li>
+<li><a href="#%E5%8F%82%E8%80%83">参考</a></li>
+</ul>
+</li>
+</ul>
+
+              </div>
+            </div>
+          </article>
+        </div>
+
+        
+          <div class="next-post">
+            <div class="next">下一篇</div>
+            <a href="https://protream.github.io/post/0Wbj5ilhe/">
+              <h3 class="post-title">
+                Bazel 基本使用
+              </h3>
+            </a>
+          </div>
+        
+
+        
+
+        <div class="site-footer">
+  Powered by <a href="https://github.com/getgridea/gridea" target="_blank">&nbsp;Gridea</a>
+  <a class="rss" href="https://protream.github.io/atom.xml" target="_blank">
+    <i class="ri-rss-line"></i> RSS
+  </a>
+</div>
+
+      </div>
+    </div>
+
+    <script>
+      hljs.initHighlightingOnLoad()
+
+      let mainNavLinks = document.querySelectorAll(".markdownIt-TOC a");
+
+      // This should probably be throttled.
+      // Especially because it triggers during smooth scrolling.
+      // https://lodash.com/docs/4.17.10#throttle
+      // You could do like...
+      // window.addEventListener("scroll", () => {
+      //    _.throttle(doThatStuff, 100);
+      // });
+      // Only not doing it here to keep this Pen dependency-free.
+
+      window.addEventListener("scroll", event => {
+        let fromTop = window.scrollY;
+
+        mainNavLinks.forEach((link, index) => {
+          let section = document.getElementById(decodeURI(link.hash).substring(1));
+          let nextSection = null
+          if (mainNavLinks[index + 1]) {
+            nextSection = document.getElementById(decodeURI(mainNavLinks[index + 1].hash).substring(1));
+          }
+          if (section.offsetTop <= fromTop) {
+            if (nextSection) {
+              if (nextSection.offsetTop > fromTop) {
+                link.classList.add("current");
+              } else {
+                link.classList.remove("current");    
+              }
+            } else {
+              link.classList.add("current");
+            }
+          } else {
+            link.classList.remove("current");
+          }
+        });
+      });
+
+    </script>
+  </body>
+</html>

@@ -1,0 +1,279 @@
+<html>
+  <head>
+    <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>k8s leases 详解 | Protream&#39;s Notes</title>
+<link rel="shortcut icon" href="https://protream.github.io/favicon.ico?v=1733235889358">
+<link href="https://cdn.jsdelivr.net/npm/remixicon@2.3.0/fonts/remixicon.css" rel="stylesheet">
+<link rel="stylesheet" href="https://protream.github.io/styles/main.css">
+<link rel="alternate" type="application/atom+xml" title="k8s leases 详解 | Protream&#39;s Notes - Atom Feed" href="https://protream.github.io/atom.xml">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Droid+Serif:400,700">
+
+
+
+    <meta name="description" content="Leases 是 k8s 内部提供的一种分布式锁机制，用于锁定共享资源、协调活动。
+Lease 翻译成中文是“租约”或“契约”。当某个组件或进程获得了这个 Lease，就相当于它获得了某种特权或责任，可以执行特定的任务。
+
+用途
+领导者选举..." />
+    <meta name="keywords" content="k8s" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.10.0/katex.min.css">
+    <script src="//cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.5.1/build/highlight.min.js"></script>
+  </head>
+  <body>
+    <div class="main">
+      <div class="main-content">
+        <div class="site-header">
+  <a href="https://protream.github.io">
+  <img class="avatar" src="https://protream.github.io/images/avatar.png?v=1733235889358" alt="">
+  </a>
+  <h1 class="site-title">
+    Protream&#39;s Notes
+  </h1>
+  <p class="site-description">
+    
+  </p>
+  <div class="menu-container">
+    
+      
+        <a href="/" class="menu">
+          首页
+        </a>
+      
+    
+      
+        <a href="/archives" class="menu">
+          归档
+        </a>
+      
+    
+      
+        <a href="/tags" class="menu">
+          标签
+        </a>
+      
+    
+      
+        <a href="/post/about" class="menu">
+          关于
+        </a>
+      
+    
+  </div>
+  <div class="social-container">
+    
+      
+    
+      
+    
+      
+    
+      
+    
+      
+    
+  </div>
+</div>
+
+        <div class="post-detail">
+          <article class="post">
+            <h2 class="post-title">
+              k8s leases 详解
+            </h2>
+            <div class="post-info">
+              <span>
+                2024-08-30
+              </span>
+              <span>
+                4 min read
+              </span>
+              
+                <a href="https://protream.github.io/tag/k8s/" class="post-tag">
+                  # k8s
+                </a>
+              
+            </div>
+            
+            <div class="post-content-wrapper">
+              <div class="post-content" v-pre>
+                <p>Leases 是 k8s 内部提供的一种分布式锁机制，用于锁定共享资源、协调活动。</p>
+<p>Lease 翻译成中文是“租约”或“契约”。当某个组件或进程获得了这个 Lease，就相当于它获得了某种特权或责任，可以执行特定的任务。</p>
+<!-- more -->
+<h2 id="用途">用途</h2>
+<h3 id="领导者选举">领导者选举</h3>
+<p>在分布式系统中，我们经常需要选出一个&quot;领导者&quot;来协调工作。使用 Lease，多个候选者可以竞争获得这个&quot;租约&quot;。谁获得了 Lease，谁就成为领导者。<br>
+举个例子：假设有三个工人 A、B、C 要协同工作，但需要一个人来分配任务。他们可以竞争一个 Lease，谁获得了 Lease，谁就成为&quot;领导&quot;，负责分配任务。</p>
+<h3 id="防止重复操作">防止重复操作</h3>
+<p>Lease 可以确保在一段时间内只有一个组件在执行某项操作，避免重复工作或冲突。<br>
+例如：有多个清洁工要打扫一个房间，我们可以用 Lease 来确保同一时间只有一个人在打扫，避免互相干扰。</p>
+<h3 id="心跳机制">心跳机制</h3>
+<p>Lease 可以用作&quot;心跳&quot;信号，证明某个组件还在正常工作。如果一个组件无法续租 Lease，就可能表明它出了问题。<br>
+想象一下：工人们每隔一段时间需要在考勤表上签到。如果某个工人长时间没有签到，可能就是遇到了问题。</p>
+<h2 id="工作方式">工作方式</h2>
+<ul>
+<li>获取：组件可以尝试获取一个 Lease。</li>
+<li>持有：成功获取 Lease 的组件可以在一定时间内持有它。</li>
+<li>续租：为了继续保持 Lease，组件需要定期更新或&quot;续租&quot;。</li>
+<li>释放：当不再需要 Lease 时，组件可以主动释放它。</li>
+</ul>
+<h2 id="在-k8s-中的应用">在 k8s 中的应用</h2>
+<p>在 Kubernetes 中，Lease 对象被广泛用于系统的各个部分：</p>
+<ul>
+<li>节点心跳：kubelet 使用 Lease 来报告节点的健康状态。</li>
+<li>控制平面组件的领导者选举：例如 kube-controller-manager 和 kube-scheduler 使用 Lease 来确保同一时间只有一个实例在工作。</li>
+<li>自定义控制器的协调：开发者可以在自己的控制器中使用 Lease 来实现分布式锁或领导者选举。</li>
+</ul>
+<h2 id="实现细节">实现细节</h2>
+<h3 id="数据结构">数据结构</h3>
+<p>Lease 在 Kubernetes 中是一个自定义资源（Custom Resource），定义在 coordination.k8s.io/v1 API 组中。它的主要字段包括：</p>
+<ul>
+<li>spec.holderIdentity：持有 Lease 的对象的标识符</li>
+<li>spec.leaseDurationSeconds：Lease 的有效期</li>
+<li>spec.acquireTime：获取 Lease 的时间</li>
+<li>spec.renewTime：最后一次更新 Lease 的时间</li>
+</ul>
+<h3 id="api">API</h3>
+<p>Kubernetes 提供了标准的 API 操作来管理 Lease 对象：</p>
+<ul>
+<li>CREATE：创建新的 Lease</li>
+<li>GET：获取 Lease 信息</li>
+<li>UPDATE：更新 Lease（用于续租）</li>
+<li>DELETE：删除 Lease</li>
+</ul>
+<h3 id="存储">存储</h3>
+<p>Lease 对象存储在 etcd 中，与其他 Kubernetes 资源一样。这保证了高可用性和一致性。</p>
+<h3 id="实现细节-2">实现细节</h3>
+<p>a) 获取 Lease： 组件尝试创建一个 Lease 对象。如果创建成功，说明获得了 Lease。如果对象已存在，则尝试更新它。<br>
+b) 续租： 持有 Lease 的组件需要周期性地更新 Lease 对象的 renewTime 字段。通常，更新间隔会小于 leaseDurationSeconds，以确保 Lease 不会过期。<br>
+c) 释放 Lease： 组件可以通过删除 Lease 对象或更新 holderIdentity 为空来释放 Lease。<br>
+d) 处理失败： 如果持有 Lease 的组件崩溃或无法续租，其他组件可以在 leaseDurationSeconds 过后尝试获取 Lease。</p>
+<h2 id="示例">示例</h2>
+<p>以心跳为例：</p>
+<pre><code class="language-go">func (nl *NodeLease) renewLease() error {
+    lease, err := nl.client.CoordinationV1().Leases(nl.namespace).Get(context.TODO(), nl.leaseName, metav1.GetOptions{})
+    if err != nil {
+        if errors.IsNotFound(err) {
+            // Lease doesn't exist, create a new one
+            lease = &amp;coordinationv1.Lease{
+                ObjectMeta: metav1.ObjectMeta{
+                    Name:      nl.leaseName,
+                    Namespace: nl.namespace,
+                },
+                Spec: coordinationv1.LeaseSpec{
+                    HolderIdentity:       &amp;nl.holderIdentity,
+                    LeaseDurationSeconds: &amp;nl.leaseDurationSeconds,
+                },
+            }
+            _, err = nl.client.CoordinationV1().Leases(nl.namespace).Create(context.TODO(), lease, metav1.CreateOptions{})
+            return err
+        }
+        return err
+    }
+
+    // Lease exists, update it
+    lease.Spec.RenewTime = &amp;metav1.MicroTime{Time: time.Now()}
+    _, err = nl.client.CoordinationV1().Leases(nl.namespace).Update(context.TODO(), lease, metav1.UpdateOptions{})
+    return err
+}
+</code></pre>
+<h2 id="参考">参考</h2>
+<p>[1] <a href="https://kubernetes.io/docs/concepts/architecture/leases/">leases</a></p>
+
+              </div>
+              <div class="toc-container">
+                <ul class="markdownIt-TOC">
+<li>
+<ul>
+<li><a href="#%E7%94%A8%E9%80%94">用途</a>
+<ul>
+<li><a href="#%E9%A2%86%E5%AF%BC%E8%80%85%E9%80%89%E4%B8%BE">领导者选举</a></li>
+<li><a href="#%E9%98%B2%E6%AD%A2%E9%87%8D%E5%A4%8D%E6%93%8D%E4%BD%9C">防止重复操作</a></li>
+<li><a href="#%E5%BF%83%E8%B7%B3%E6%9C%BA%E5%88%B6">心跳机制</a></li>
+</ul>
+</li>
+<li><a href="#%E5%B7%A5%E4%BD%9C%E6%96%B9%E5%BC%8F">工作方式</a></li>
+<li><a href="#%E5%9C%A8-k8s-%E4%B8%AD%E7%9A%84%E5%BA%94%E7%94%A8">在 k8s 中的应用</a></li>
+<li><a href="#%E5%AE%9E%E7%8E%B0%E7%BB%86%E8%8A%82">实现细节</a>
+<ul>
+<li><a href="#%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84">数据结构</a></li>
+<li><a href="#api">API</a></li>
+<li><a href="#%E5%AD%98%E5%82%A8">存储</a></li>
+<li><a href="#%E5%AE%9E%E7%8E%B0%E7%BB%86%E8%8A%82-2">实现细节</a></li>
+</ul>
+</li>
+<li><a href="#%E7%A4%BA%E4%BE%8B">示例</a></li>
+<li><a href="#%E5%8F%82%E8%80%83">参考</a></li>
+</ul>
+</li>
+</ul>
+
+              </div>
+            </div>
+          </article>
+        </div>
+
+        
+          <div class="next-post">
+            <div class="next">下一篇</div>
+            <a href="https://protream.github.io/post/PfKhCcx6f/">
+              <h3 class="post-title">
+                go.mod 详解
+              </h3>
+            </a>
+          </div>
+        
+
+        
+
+        <div class="site-footer">
+  Powered by <a href="https://github.com/getgridea/gridea" target="_blank">&nbsp;Gridea</a>
+  <a class="rss" href="https://protream.github.io/atom.xml" target="_blank">
+    <i class="ri-rss-line"></i> RSS
+  </a>
+</div>
+
+      </div>
+    </div>
+
+    <script>
+      hljs.initHighlightingOnLoad()
+
+      let mainNavLinks = document.querySelectorAll(".markdownIt-TOC a");
+
+      // This should probably be throttled.
+      // Especially because it triggers during smooth scrolling.
+      // https://lodash.com/docs/4.17.10#throttle
+      // You could do like...
+      // window.addEventListener("scroll", () => {
+      //    _.throttle(doThatStuff, 100);
+      // });
+      // Only not doing it here to keep this Pen dependency-free.
+
+      window.addEventListener("scroll", event => {
+        let fromTop = window.scrollY;
+
+        mainNavLinks.forEach((link, index) => {
+          let section = document.getElementById(decodeURI(link.hash).substring(1));
+          let nextSection = null
+          if (mainNavLinks[index + 1]) {
+            nextSection = document.getElementById(decodeURI(mainNavLinks[index + 1].hash).substring(1));
+          }
+          if (section.offsetTop <= fromTop) {
+            if (nextSection) {
+              if (nextSection.offsetTop > fromTop) {
+                link.classList.add("current");
+              } else {
+                link.classList.remove("current");    
+              }
+            } else {
+              link.classList.add("current");
+            }
+          } else {
+            link.classList.remove("current");
+          }
+        });
+      });
+
+    </script>
+  </body>
+</html>

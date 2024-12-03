@@ -1,0 +1,355 @@
+<html>
+  <head>
+    <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>k8s 入门 5：工作负载 | Protream&#39;s Notes</title>
+<link rel="shortcut icon" href="https://protream.github.io/favicon.ico?v=1733235889358">
+<link href="https://cdn.jsdelivr.net/npm/remixicon@2.3.0/fonts/remixicon.css" rel="stylesheet">
+<link rel="stylesheet" href="https://protream.github.io/styles/main.css">
+<link rel="alternate" type="application/atom+xml" title="k8s 入门 5：工作负载 | Protream&#39;s Notes - Atom Feed" href="https://protream.github.io/atom.xml">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Droid+Serif:400,700">
+
+
+
+    <meta name="description" content="工作负载是在 Kubernetes 上运行的应用程序。应用运行在 Pod 中，而使用 workload resources 替用户管理一组应用程序。这些负载资源通过配置控制器来确保正确类型、处于运行状态的 Pod 个数是正确的，与用户指定的..." />
+    <meta name="keywords" content="k8s" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.10.0/katex.min.css">
+    <script src="//cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.5.1/build/highlight.min.js"></script>
+  </head>
+  <body>
+    <div class="main">
+      <div class="main-content">
+        <div class="site-header">
+  <a href="https://protream.github.io">
+  <img class="avatar" src="https://protream.github.io/images/avatar.png?v=1733235889358" alt="">
+  </a>
+  <h1 class="site-title">
+    Protream&#39;s Notes
+  </h1>
+  <p class="site-description">
+    
+  </p>
+  <div class="menu-container">
+    
+      
+        <a href="/" class="menu">
+          首页
+        </a>
+      
+    
+      
+        <a href="/archives" class="menu">
+          归档
+        </a>
+      
+    
+      
+        <a href="/tags" class="menu">
+          标签
+        </a>
+      
+    
+      
+        <a href="/post/about" class="menu">
+          关于
+        </a>
+      
+    
+  </div>
+  <div class="social-container">
+    
+      
+    
+      
+    
+      
+    
+      
+    
+      
+    
+  </div>
+</div>
+
+        <div class="post-detail">
+          <article class="post">
+            <h2 class="post-title">
+              k8s 入门 5：工作负载
+            </h2>
+            <div class="post-info">
+              <span>
+                2024-01-23
+              </span>
+              <span>
+                6 min read
+              </span>
+              
+                <a href="https://protream.github.io/tag/k8s/" class="post-tag">
+                  # k8s
+                </a>
+              
+            </div>
+            
+            <div class="post-content-wrapper">
+              <div class="post-content" v-pre>
+                <p>工作负载是在 Kubernetes 上运行的应用程序。应用运行在 Pod 中，而使用 workload resources 替用户管理一组应用程序。这些负载资源通过配置控制器来确保正确类型、处于运行状态的 Pod 个数是正确的，与用户指定的状态一致。</p>
+<!-- more -->
+<p>这些负载资源包括:</p>
+<p>• Deployment 和 ReplicaSet<br>
+• StatefulSet<br>
+• DaemonSet<br>
+• Job 和 CronJob<br>
+• 第三方资源<br>
+• 自定义资源（CRD）</p>
+<h2 id="deployment-和-replicaset">Deployment 和 ReplicaSet</h2>
+<p>管理无状态应用，所有 Pod 相互等价，可以相互替换。<br>
+ReplicaSet 的目的是维护一组在任何时候都处于运行状态的 Pod 副本的稳定集合。 因此，它通常用来保证给定数量的、完全相同的 Pod 的可用性。ReplicaSet 确保任何时间都有指定数量的 Pod 副本在运行。<br>
+Deployment 是一个更高级的概念，它管理 ReplicaSet，并向 Pod 提供声明式的更新以及许多其他有用的功能。Deployment 为 Pod 和 ReplicaSet 提供声明式的更新能力。</p>
+<p>Deployment 的用例：<br>
+• 上线 ReplicaSet。<br>
+• 滚动更新 Pod。<br>
+• 回滚。<br>
+• 扩容。<br>
+• 暂停。<br>
+• 查看状态。</p>
+<p>示例:</p>
+<pre><code>apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-deployment
+  labels:
+    app: nginx
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: nginx
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:1.14.2
+        ports:
+        - containerPort: 80
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 1
+</code></pre>
+<h2 id="statefulset">StatefulSet</h2>
+<p>管理一个或多个运行相同应用代码、但具有不同身份标识的 Pod。<br>
+• 持久存储<br>
+• 持久标识符<br>
+StatefulSet 为它们的每个 Pod 维护了一个有粘性的 ID。这些 Pod 是基于相同的规约来创建的， 但是不能相互替换：无论怎么调度，每个 Pod 都有一个永久不变的 ID。</p>
+<p>标识：<br>
+• 顺序：有N个副本的 STS 会从 0 到 N-1 编号<br>
+• 网络标识：<span class="katex"><span class="katex-mathml"><math><semantics><mrow><mo>(</mo><mi mathvariant="normal">服</mi><mi mathvariant="normal">务</mi><mi mathvariant="normal">名</mi><mi mathvariant="normal">称</mi><mo>)</mo><mi mathvariant="normal">.</mi></mrow><annotation encoding="application/x-tex">(服务名称).</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mopen">(</span><span class="mord cjk_fallback">服</span><span class="mord cjk_fallback">务</span><span class="mord cjk_fallback">名</span><span class="mord cjk_fallback">称</span><span class="mclose">)</span><span class="mord">.</span></span></span></span>(名字空间).svc.cluster.local<br>
+• 存储</p>
+<figure data-type="image" tabindex="1"><img src="https://github.com/protream/protream.github.io/blob/images/20240123-k8s-workload/payload.jpg?raw=true" alt="" loading="lazy"></figure>
+<p>场景：<br>
+• 稳定的、唯一的网络标识符。<br>
+• 稳定的、持久的存储。<br>
+• 有序的、优雅的部署和扩缩。<br>
+• 有序的、自动的滚动更新。</p>
+<p>组成：<br>
+• PVC 提供存储<br>
+• Headless Service 提供网络标识</p>
+<pre><code>apiVersion: v1
+kind: Service
+metadata:
+  name: nginx
+  labels:
+    app: nginx
+spec:
+  ports:
+  - port: 80
+    name: web
+  clusterIP: None
+  selector:
+    app: nginx
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: web
+spec:
+  selector:
+    matchLabels:
+      app: nginx # 必须匹配 .spec.template.metadata.labels
+  serviceName: &quot;nginx&quot;
+  replicas: 3 # 默认值是 1
+  minReadySeconds: 10 # 默认值是 0
+  template:
+    metadata:
+      labels:
+        app: nginx # 必须匹配 .spec.selector.matchLabels
+    spec:
+      terminationGracePeriodSeconds: 10
+      containers:
+      - name: nginx
+        image: registry.k8s.io/nginx-slim:0.8
+        ports:
+        - containerPort: 80
+          name: web
+        volumeMounts:
+        - name: www
+          mountPath: /usr/share/nginx/html
+  volumeClaimTemplates:
+  - metadata:
+      name: www
+    spec:
+      accessModes: [ &quot;ReadWriteOnce&quot; ]
+      storageClassName: &quot;my-storage-class&quot;
+      resources:
+        requests:
+          storage: 1Gi
+</code></pre>
+<h2 id="daemonset">DaemonSet</h2>
+<p>定义提供节点本地支撑设施的 Pod，如用于集群运维目的，最常见的用途是能够建立其 Pod 与其持久化存储之间的关联。DaemonSet 确保全部（或者某些）节点上运行一个 Pod 的副本。 当有节点加入集群时， 也会为他们新增一个 Pod 。 当有节点从集群移除时，这些 Pod 也会被回收。删除 DaemonSet 将会删除它创建的所有 Pod。</p>
+<p>典型用法：<br>
+• 在每个节点上运行集群守护进程<br>
+• 在每个节点上运行日志收集守护进程<br>
+• 在每个节点上运行监控守护进程</p>
+<p><strong>如果新的 Pod 无法放在节点上，则默认的调度程序可能会根据新 Pod 的优先级抢占 （驱逐）某些现存的 Pod。</strong></p>
+<pre><code>apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: fluentd-elasticsearch
+  namespace: kube-system
+  labels:
+    k8s-app: fluentd-logging
+spec:
+  selector:
+    matchLabels:
+      name: fluentd-elasticsearch
+  template:
+    metadata:
+      labels:
+        name: fluentd-elasticsearch
+    spec:
+      tolerations:
+      # 这些容忍度设置是为了让该守护进程集在控制平面节点上运行
+      # 如果你不希望自己的控制平面节点运行 Pod，可以删除它们
+      - key: node-role.kubernetes.io/control-plane
+        operator: Exists
+        effect: NoSchedule
+      - key: node-role.kubernetes.io/master
+        operator: Exists
+        effect: NoSchedule
+      containers:
+      - name: fluentd-elasticsearch
+        image: quay.io/fluentd_elasticsearch/fluentd:v2.5.2
+        resources:
+          limits:
+            memory: 200Mi
+          requests:
+            cpu: 100m
+            memory: 200Mi
+        volumeMounts:
+        - name: varlog
+          mountPath: /var/log
+      # 可能需要设置较高的优先级类以确保 DaemonSet Pod 可以抢占正在运行的 Pod
+      # priorityClassName: important
+      terminationGracePeriodSeconds: 30
+      volumes:
+      - name: varlog
+        hostPath:
+          path: /var/log
+</code></pre>
+<h2 id="job-和-cronjob">Job 和 CronJob</h2>
+<p>定义一些一直运行到结束并停止的任务。 可以使用 Job 来定义只需要执行一次并且执行后即视为完成的任务。你可以使用 CronJob 来根据某个排期表来多次运行同一个 Job。</p>
+<p>Job 会创建一个或者多个 Pod，并将继续重试 Pod 的执行，直到指定数量的 Pod 成功终止。 随着 Pod 成功结束，Job 跟踪记录成功完成的 Pod 个数。 当数量达到指定的成功个数阈值时，任务（即 Job）结束。 删除 Job 的操作会清除所创建的全部 Pod。 挂起 Job 的操作会删除 Job 的所有活跃 Pod，直到 Job 被再次恢复执行。</p>
+<p>自动清理:<br>
+• ttlSecondsAfterFinished<br>
+• CronJob</p>
+<p>CronJob 创建基于时隔重复调度的 Job。ronJob 用于执行排期操作，例如备份、生成报告等。 一个 CronJob 对象就像 Unix 系统上的 crontab（cron table）文件中的一行。 它用 Cron 格式进行编写， 并周期性地在给定的调度时间执行 Job。</p>
+<p>参考<br>
+[1] <a href="https://kubernetes.io/zh-cn/docs/concepts/workloads/">工作负载</a></p>
+
+              </div>
+              <div class="toc-container">
+                <ul class="markdownIt-TOC">
+<li>
+<ul>
+<li><a href="#deployment-%E5%92%8C-replicaset">Deployment 和 ReplicaSet</a></li>
+<li><a href="#statefulset">StatefulSet</a></li>
+<li><a href="#daemonset">DaemonSet</a></li>
+<li><a href="#job-%E5%92%8C-cronjob">Job 和 CronJob</a></li>
+</ul>
+</li>
+</ul>
+
+              </div>
+            </div>
+          </article>
+        </div>
+
+        
+          <div class="next-post">
+            <div class="next">下一篇</div>
+            <a href="https://protream.github.io/post/BikTC0Io5/">
+              <h3 class="post-title">
+                k8s 入门 4：Pod 生命周期与容器探针
+              </h3>
+            </a>
+          </div>
+        
+
+        
+
+        <div class="site-footer">
+  Powered by <a href="https://github.com/getgridea/gridea" target="_blank">&nbsp;Gridea</a>
+  <a class="rss" href="https://protream.github.io/atom.xml" target="_blank">
+    <i class="ri-rss-line"></i> RSS
+  </a>
+</div>
+
+      </div>
+    </div>
+
+    <script>
+      hljs.initHighlightingOnLoad()
+
+      let mainNavLinks = document.querySelectorAll(".markdownIt-TOC a");
+
+      // This should probably be throttled.
+      // Especially because it triggers during smooth scrolling.
+      // https://lodash.com/docs/4.17.10#throttle
+      // You could do like...
+      // window.addEventListener("scroll", () => {
+      //    _.throttle(doThatStuff, 100);
+      // });
+      // Only not doing it here to keep this Pen dependency-free.
+
+      window.addEventListener("scroll", event => {
+        let fromTop = window.scrollY;
+
+        mainNavLinks.forEach((link, index) => {
+          let section = document.getElementById(decodeURI(link.hash).substring(1));
+          let nextSection = null
+          if (mainNavLinks[index + 1]) {
+            nextSection = document.getElementById(decodeURI(mainNavLinks[index + 1].hash).substring(1));
+          }
+          if (section.offsetTop <= fromTop) {
+            if (nextSection) {
+              if (nextSection.offsetTop > fromTop) {
+                link.classList.add("current");
+              } else {
+                link.classList.remove("current");    
+              }
+            } else {
+              link.classList.add("current");
+            }
+          } else {
+            link.classList.remove("current");
+          }
+        });
+      });
+
+    </script>
+  </body>
+</html>

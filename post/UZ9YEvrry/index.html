@@ -1,0 +1,294 @@
+<html>
+  <head>
+    <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>记一次 Docker 容器网络问题排查 | Protream&#39;s Notes</title>
+<link rel="shortcut icon" href="https://protream.github.io/favicon.ico?v=1733235889358">
+<link href="https://cdn.jsdelivr.net/npm/remixicon@2.3.0/fonts/remixicon.css" rel="stylesheet">
+<link rel="stylesheet" href="https://protream.github.io/styles/main.css">
+<link rel="alternate" type="application/atom+xml" title="记一次 Docker 容器网络问题排查 | Protream&#39;s Notes - Atom Feed" href="https://protream.github.io/atom.xml">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Droid+Serif:400,700">
+
+
+
+    <meta name="description" content="本文记录了一个容器网络问题的排查过程及心得。
+
+背景
+实验环境：一个实验环境对应一个容器，有一个 Docker 集群，一个容器在一个集群中的某一个节点上。
+网络：每个集群中有 A 和 B 两个网络，分别用于不同的用户群，通过 iptable..." />
+    <meta name="keywords" content="iptables,docker" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.10.0/katex.min.css">
+    <script src="//cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.5.1/build/highlight.min.js"></script>
+  </head>
+  <body>
+    <div class="main">
+      <div class="main-content">
+        <div class="site-header">
+  <a href="https://protream.github.io">
+  <img class="avatar" src="https://protream.github.io/images/avatar.png?v=1733235889358" alt="">
+  </a>
+  <h1 class="site-title">
+    Protream&#39;s Notes
+  </h1>
+  <p class="site-description">
+    
+  </p>
+  <div class="menu-container">
+    
+      
+        <a href="/" class="menu">
+          首页
+        </a>
+      
+    
+      
+        <a href="/archives" class="menu">
+          归档
+        </a>
+      
+    
+      
+        <a href="/tags" class="menu">
+          标签
+        </a>
+      
+    
+      
+        <a href="/post/about" class="menu">
+          关于
+        </a>
+      
+    
+  </div>
+  <div class="social-container">
+    
+      
+    
+      
+    
+      
+    
+      
+    
+      
+    
+  </div>
+</div>
+
+        <div class="post-detail">
+          <article class="post">
+            <h2 class="post-title">
+              记一次 Docker 容器网络问题排查
+            </h2>
+            <div class="post-info">
+              <span>
+                2023-12-19
+              </span>
+              <span>
+                6 min read
+              </span>
+              
+                <a href="https://protream.github.io/tag/iptables/" class="post-tag">
+                  # iptables
+                </a>
+              
+                <a href="https://protream.github.io/tag/docker/" class="post-tag">
+                  # docker
+                </a>
+              
+            </div>
+            
+            <div class="post-content-wrapper">
+              <div class="post-content" v-pre>
+                <p>本文记录了一个容器网络问题的排查过程及心得。</p>
+<!-- more -->
+<h2 id="背景">背景</h2>
+<p>实验环境：一个实验环境对应一个容器，有一个 Docker 集群，一个容器在一个集群中的某一个节点上。</p>
+<p>网络：每个集群中有 A 和 B 两个网络，分别用于不同的用户群，通过 iptables 做网络控制。</p>
+<p>管理服务：运行在 K8S 中，里面有一个脚本执行功能需要访问实验环境。</p>
+<h2 id="现象">现象</h2>
+<p>脚本执行功能偶发性的会失败，报错如下：</p>
+<pre><code>time=&quot;2023-12-18T14:22:47Z&quot; level=error msg=&quot;execute script timeout&quot;
+time=&quot;2023-12-18T14:31:05Z&quot; level=error msg=&quot;execute script timeout&quot;
+time=&quot;2023-12-18T14:38:18Z&quot; level=error msg=&quot;execute script timeout&quot;
+</code></pre>
+<p>追踪得到详细错误信息：</p>
+<pre><code>&quot;error to create ssh executor: dial tcp 172.16.55.244:34848: i/o timeout: unavailable&quot;
+</code></pre>
+<p>开始觉得是网络连接问题，但随着问题多次出现，发现偶然中有一种必然，于是进一步排查。</p>
+<h2 id="过程">过程</h2>
+<p>追踪一个执行失败的日志，得到容器节点 IP 和端口信息。新起一个测试 pod ，在 pod 内部尝试 telnet 连接节点IP和端口，发现连接建立不了。</p>
+<p>然后又在节点找个另一个容器的端口，发现可以正常连接。</p>
+<figure data-type="image" tabindex="1"><img src="https://github.com/protream/protream.github.io/blob/images/20231219-container-network-problem/10.png?raw=true" alt="" loading="lazy"></figure>
+<p>经过多次比对发现，初步得出结论：连接失败的都是连接 A 网络的。</p>
+<figure data-type="image" tabindex="2"><img src="https://github.com/protream/protream.github.io/blob/images/20231219-container-network-problem/20.png?raw=true" alt="" loading="lazy"></figure>
+<p>那么，为什么连接 A 网络的会连接失败呢？下面进一步分析。</p>
+<p>抓包：</p>
+<figure data-type="image" tabindex="3"><img src="https://github.com/protream/protream.github.io/blob/images/20231219-container-network-problem/40.png?raw=true" alt="" loading="lazy"></figure>
+<p>连接失败的端口收到了 SYN 包，但是没有 ACK 包，怀疑报是被 iptables 过滤掉了。</p>
+<p>问题来了，为什么 A 网路的包被过滤了，而 B 的没有？</p>
+<p>弄懂这个问题前，首先要明白访问容器的网络包到达主机后，在主机内部是怎么流转的。</p>
+<pre><code>    包到达主机
+    |
+    进入防火墙（iptables）
+    |
+    ——进入 PREROUTING 链，因为访问的是容器映射到主机的端口，在这里会进行 NAT，目的地址及端口转换成容器在 A 网络中的地址和端口
+    |
+    ——转换完地址，目的地址不是本机，进入 FORWARD 链
+    |
+    ——匹配 filter 规则，匹配到规则被放行或者被丢弃
+    |
+    ——进入容器，服务接受到 SYN 包，返回 ACK 包
+    |
+    ——从 A 网络的 bridge 网关流出，目的地址为管理服务所在节点地址
+    |
+    ——不是本机，进入 FOWARD 链
+    |
+    ——匹配 filter 规则，匹配到规则被放行或者被丢弃
+</code></pre>
+<p>查看详细的 iptables 规则：</p>
+<pre><code class="language-sh">sudo iptables -nvL --line-number
+</code></pre>
+<p>发现这样一条规则：</p>
+<pre><code class="language-sh">76    368K   23M DROP       all  --  br-9b331161a502 !br-9b331161a502  0.0.0.0/0           !172.16.2.250  
+</code></pre>
+<p>br-9b331161a502 正式 A 网络的网关地址。</p>
+<p>这条规则的意思是，从 br-9b331161a502 网关出来的，流向非 br-9b331161a502 网关的，目的地址不是</p>
+<p>172.16.2.250 的都 DROP 掉。</p>
+<p>于是 ACK 包在这里被 DROP 掉了，导致网络连接失败。</p>
+<p>修复：</p>
+<pre><code class="language-sh"> sudo iptables -I DOCKER-USER 76 -i br-9b331161a502 ! -o br-9b331161a502 -s 0.0.0.0 ! -d 172.16.0.0/16  -j DROP  
+</code></pre>
+<p>允许 k8s 节点网段通过。</p>
+<p>但这样会带来一个问题，在容器内也能访问 k8s 网络。</p>
+<p>解决思路：丢弃从 A 网络容器内发出的到 k8s 网络的握手包。</p>
+<pre><code class="language-sh">sudo iptables -I DOCKER-USER 76 -p tcp -m tcp -i br-9b331161a502 ! -o br-9b331161a502 -d 172.16.0.0/16 --tcp-flags SYN,ACK,FIN,RST,URG,PSH SYN  -j DROP 
+</code></pre>
+<p>至此，问题解决。</p>
+<h2 id="另一个问题">另一个问题</h2>
+<p>在排查上面问题的过程中，发现一个新的问题，本来以为是和上面的问题有关的，后面发现无关。</p>
+<p>现象是在主机上直接连接两个端口，发现都是不通的。</p>
+<pre><code class="language-sh">$ telnet 172.16.55.244 34818
+Trying 172.16.55.244...
+
+$ telnet 172.16.55.244 34848
+Trying 172.16.55.244...
+</code></pre>
+<p>在容器上</p>
+<pre><code>netstat -nat
+</code></pre>
+<p>查看网络状态:</p>
+<pre><code class="language-sh">...
+tcp 0 1 172.16.55.244:37116 172.16.55.244:34848 SYN_SENT
+...
+</code></pre>
+<p>从输出中可以看到，SYN 包已经发出去了。</p>
+<p>在容器内查看：</p>
+<pre><code>tcp 0 0 172.18.0.3:22 172.16.55.244:34848 SYN_RECV
+</code></pre>
+<p>发现容器是收到了包的，那问题就出在包返回的途中。</p>
+<p>包返回会经过哪里呢？</p>
+<p>返回的包经过 iptables，因为目的地址是本地，所以会进入 INPUT 表，而 INPUT 表中有这样一条规则：</p>
+<pre><code class="language-sh">DROP    all     --      br-9b331161a502     *       0.0.0.0/0       172.16.55.244
+</code></pre>
+<p>在这里被 DROP 掉了。</p>
+<p>这个规则本身没有问题，因为容器是对外开放的，此规则可以防止用户访问到容器所在节点。</p>
+<h2 id="总结">总结</h2>
+<p>容器网络问题，应该遵循此过程：</p>
+<ol>
+<li>在主机抓包，看包有没有到达主机，排除服务到容器主机之间的网络问题；</li>
+<li>在容器内抓包，看包有没有容器，如果到达了主机没有到达容器，说明是在 FORWARD 过程被 DROP 掉；<br>
+如果到达了容器，但是没有返回 ACK 包，说明在返回的 FORWARD 过程中被 DROP 掉了；</li>
+<li>排查 iptables；</li>
+</ol>
+<p>docker 的网路控制很多是基于 iptables 的，如果没有搞清楚流量在主机、iptables 和 容器之前是怎么流转的，那么排查起来就会比较费劲。</p>
+<p>iptables 本身较为复杂，要熟练允许还需要多多练习。</p>
+<h2 id="参考">参考</h2>
+<p>[1] <a href="https://thiscute.world/posts/iptables-and-container-networks/">iptables 及 docker 容器网络分析</a><br>
+[2] <a href="https://www.zsythink.net/archives/4409">docker(7): 网络初探</a></p>
+
+              </div>
+              <div class="toc-container">
+                <ul class="markdownIt-TOC">
+<li>
+<ul>
+<li><a href="#%E8%83%8C%E6%99%AF">背景</a></li>
+<li><a href="#%E7%8E%B0%E8%B1%A1">现象</a></li>
+<li><a href="#%E8%BF%87%E7%A8%8B">过程</a></li>
+<li><a href="#%E5%8F%A6%E4%B8%80%E4%B8%AA%E9%97%AE%E9%A2%98">另一个问题</a></li>
+<li><a href="#%E6%80%BB%E7%BB%93">总结</a></li>
+<li><a href="#%E5%8F%82%E8%80%83">参考</a></li>
+</ul>
+</li>
+</ul>
+
+              </div>
+            </div>
+          </article>
+        </div>
+
+        
+          <div class="next-post">
+            <div class="next">下一篇</div>
+            <a href="https://protream.github.io/post/CRFwM-Mte/">
+              <h3 class="post-title">
+                MongoDB 查询优化
+              </h3>
+            </a>
+          </div>
+        
+
+        
+
+        <div class="site-footer">
+  Powered by <a href="https://github.com/getgridea/gridea" target="_blank">&nbsp;Gridea</a>
+  <a class="rss" href="https://protream.github.io/atom.xml" target="_blank">
+    <i class="ri-rss-line"></i> RSS
+  </a>
+</div>
+
+      </div>
+    </div>
+
+    <script>
+      hljs.initHighlightingOnLoad()
+
+      let mainNavLinks = document.querySelectorAll(".markdownIt-TOC a");
+
+      // This should probably be throttled.
+      // Especially because it triggers during smooth scrolling.
+      // https://lodash.com/docs/4.17.10#throttle
+      // You could do like...
+      // window.addEventListener("scroll", () => {
+      //    _.throttle(doThatStuff, 100);
+      // });
+      // Only not doing it here to keep this Pen dependency-free.
+
+      window.addEventListener("scroll", event => {
+        let fromTop = window.scrollY;
+
+        mainNavLinks.forEach((link, index) => {
+          let section = document.getElementById(decodeURI(link.hash).substring(1));
+          let nextSection = null
+          if (mainNavLinks[index + 1]) {
+            nextSection = document.getElementById(decodeURI(mainNavLinks[index + 1].hash).substring(1));
+          }
+          if (section.offsetTop <= fromTop) {
+            if (nextSection) {
+              if (nextSection.offsetTop > fromTop) {
+                link.classList.add("current");
+              } else {
+                link.classList.remove("current");    
+              }
+            } else {
+              link.classList.add("current");
+            }
+          } else {
+            link.classList.remove("current");
+          }
+        });
+      });
+
+    </script>
+  </body>
+</html>

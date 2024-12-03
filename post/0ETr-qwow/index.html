@@ -1,0 +1,323 @@
+<html>
+  <head>
+    <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>设计模式8：策略模式 | Protream&#39;s Notes</title>
+<link rel="shortcut icon" href="https://protream.github.io/favicon.ico?v=1733235889358">
+<link href="https://cdn.jsdelivr.net/npm/remixicon@2.3.0/fonts/remixicon.css" rel="stylesheet">
+<link rel="stylesheet" href="https://protream.github.io/styles/main.css">
+<link rel="alternate" type="application/atom+xml" title="设计模式8：策略模式 | Protream&#39;s Notes - Atom Feed" href="https://protream.github.io/atom.xml">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Droid+Serif:400,700">
+
+
+
+    <meta name="description" content="策略模式是一种行为设计模式，让你能在运行时改变对象的行为，主要用于算法的选择和替换。
+
+意图：定义一系列的算法，把它们一个个封装起来，并且使它们可以相互替换。策略模式可以使算法可独立于使用它的客户而变化。
+解决什么问题：策略模式主要用来解决..." />
+    <meta name="keywords" content="design patterns" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.10.0/katex.min.css">
+    <script src="//cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.5.1/build/highlight.min.js"></script>
+  </head>
+  <body>
+    <div class="main">
+      <div class="main-content">
+        <div class="site-header">
+  <a href="https://protream.github.io">
+  <img class="avatar" src="https://protream.github.io/images/avatar.png?v=1733235889358" alt="">
+  </a>
+  <h1 class="site-title">
+    Protream&#39;s Notes
+  </h1>
+  <p class="site-description">
+    
+  </p>
+  <div class="menu-container">
+    
+      
+        <a href="/" class="menu">
+          首页
+        </a>
+      
+    
+      
+        <a href="/archives" class="menu">
+          归档
+        </a>
+      
+    
+      
+        <a href="/tags" class="menu">
+          标签
+        </a>
+      
+    
+      
+        <a href="/post/about" class="menu">
+          关于
+        </a>
+      
+    
+  </div>
+  <div class="social-container">
+    
+      
+    
+      
+    
+      
+    
+      
+    
+      
+    
+  </div>
+</div>
+
+        <div class="post-detail">
+          <article class="post">
+            <h2 class="post-title">
+              设计模式8：策略模式
+            </h2>
+            <div class="post-info">
+              <span>
+                2023-12-04
+              </span>
+              <span>
+                5 min read
+              </span>
+              
+                <a href="https://protream.github.io/tag/design-patterns/" class="post-tag">
+                  # design patterns
+                </a>
+              
+            </div>
+            
+            <div class="post-content-wrapper">
+              <div class="post-content" v-pre>
+                <p>策略模式是一种行为设计模式，让你能在运行时改变对象的行为，主要用于算法的选择和替换。</p>
+<!-- more -->
+<p>意图：定义一系列的算法，把它们一个个封装起来，并且使它们可以相互替换。策略模式可以使算法可独立于使用它的客户而变化。</p>
+<p>解决什么问题：策略模式主要用来解决在软件开发中经常遇到的一些问题，比如一个对象有很多行为，而且这些行为在不同的情况下需要进行切换，或者这些行为之间存在复杂的规则。</p>
+<p>优点：</p>
+<p>你可以在运行时切换对象的行为。<br>
+你可以将算法的实现和使用分离开来。<br>
+你可以通过独立策略来消除大型条件基础语句。<br>
+开闭原则。你可以在不修改原有代码的情况下引入新的策略。<br>
+缺点：</p>
+<p>如果策略数量过多，复用策略的概率就会变得很小。<br>
+客户必须知道所有的策略类，并自行决定使用哪一个策略类。</p>
+<h2 id="示例">示例</h2>
+<p>classicswarm 的调度器中，调度的策略就是基于策略模式实现的：</p>
+<p>定义策略类：</p>
+<pre><code class="language-go">// PlacementStrategy is the interface for a container placement strategy.
+type PlacementStrategy interface {
+	// Name of the strategy
+	Name() string
+	// Initialize performs any initial configuration required by the strategy and returns
+	// an error if one is encountered.
+	// If no initial configuration is needed, this may be a no-op and return a nil error.
+	Initialize() error
+	// RankAndSort applies the strategy to a list of nodes and ranks them based
+	// on the best fit given the container configuration.  It returns a sorted
+	// list of nodes (based on their ranks) or an error if there is no
+	// available node on which to schedule the container.
+	RankAndSort(config *cluster.ContainerConfig, nodes []*node.Node) ([]*node.Node, error)
+}
+
+var (
+	strategies []PlacementStrategy
+	// ErrNotSupported is the error returned when a strategy name does not match
+	// any supported placement strategy.
+	ErrNotSupported = errors.New(&quot;strategy not supported&quot;)
+	// ErrNoResourcesAvailable is the error returned when there are no resources
+	// available to schedule a container. This can occur if there are no nodes in
+	// the cluster or if no node contains sufficient resources for the container.
+	ErrNoResourcesAvailable = errors.New(&quot;no resources available to schedule container&quot;)
+)
+
+func init() {
+	strategies = []PlacementStrategy{
+		&amp;SpreadPlacementStrategy{},
+		&amp;BinpackPlacementStrategy{},
+		&amp;RandomPlacementStrategy{},
+	}
+}
+
+// New creates a new PlacementStrategy for the given strategy name.
+func New(name string) (PlacementStrategy, error) {
+	if name == &quot;binpacking&quot; { //TODO: remove this compat
+		name = &quot;binpack&quot;
+	}
+
+	for _, strategy := range strategies {
+		if strategy.Name() == name {
+			log.WithField(&quot;name&quot;, name).Debugf(&quot;Initializing strategy&quot;)
+			err := strategy.Initialize()
+			return strategy, err
+		}
+	}
+
+	return nil, ErrNotSupported
+}
+
+// List returns the names of all the available strategies.
+func List() []string {
+	names := []string{}
+
+	for _, strategy := range strategies {
+		names = append(names, strategy.Name())
+	}
+
+	return names
+}
+</code></pre>
+<p>spread 策略实现类：</p>
+<pre><code class="language-go">// SpreadPlacementStrategy places a container on the node with the fewest running containers.
+type SpreadPlacementStrategy struct {
+}
+
+// Initialize a SpreadPlacementStrategy.
+func (p *SpreadPlacementStrategy) Initialize() error {
+	return nil
+}
+
+// Name returns the name of the strategy.
+func (p *SpreadPlacementStrategy) Name() string {
+	return &quot;spread&quot;
+}
+
+// RankAndSort sorts nodes based on the spread strategy applied to the container config.
+func (p *SpreadPlacementStrategy) RankAndSort(config *cluster.ContainerConfig, nodes []*node.Node) ([]*node.Node, error) {
+	// for spread, a healthy node should decrease its weight to increase its chance of being selected
+	// set healthFactor to -10 to make health degree [0, 100] overpower cpu + memory (each in range [0, 100])
+	const healthFactor int64 = -10
+	weightedNodes, err := weighNodes(config, nodes, healthFactor)
+	if err != nil {
+		return nil, err
+	}
+
+	sort.Sort(weightedNodes)
+	output := make([]*node.Node, len(weightedNodes))
+	for i, n := range weightedNodes {
+		output[i] = n.Node
+	}
+	return output, nil
+}
+</code></pre>
+<p>random 策略实现类：</p>
+<pre><code class="language-go">/ RandomPlacementStrategy randomly places the container into the cluster.
+type RandomPlacementStrategy struct {
+	r *rand.Rand
+}
+
+// Initialize a RandomPlacementStrategy.
+func (p *RandomPlacementStrategy) Initialize() error {
+	p.r = rand.New(rand.NewSource(time.Now().UTC().UnixNano()))
+	return nil
+}
+
+// Name returns the name of the strategy.
+func (p *RandomPlacementStrategy) Name() string {
+	return &quot;random&quot;
+}
+
+// RankAndSort randomly sorts the list of nodes.
+func (p *RandomPlacementStrategy) RankAndSort(config *cluster.ContainerConfig, nodes []*node.Node) ([]*node.Node, error) {
+	for i := len(nodes) - 1; i &gt; 0; i-- {
+		j := p.r.Intn(i + 1)
+		nodes[i], nodes[j] = nodes[j], nodes[i]
+	}
+	return nodes, nil
+}
+</code></pre>
+<p>在调度器中包含了一个策略：</p>
+<pre><code class="language-go">
+type Scheduler struct {
+	sync.Mutex
+
+	strategy strategy.PlacementStrategy
+	filters  []filter.Filter
+}
+</code></pre>
+
+              </div>
+              <div class="toc-container">
+                <ul class="markdownIt-TOC">
+<li>
+<ul>
+<li><a href="#%E7%A4%BA%E4%BE%8B">示例</a></li>
+</ul>
+</li>
+</ul>
+
+              </div>
+            </div>
+          </article>
+        </div>
+
+        
+          <div class="next-post">
+            <div class="next">下一篇</div>
+            <a href="https://protream.github.io/post/0iI85Juga/">
+              <h3 class="post-title">
+                网络诊断工具之 traceroute
+              </h3>
+            </a>
+          </div>
+        
+
+        
+
+        <div class="site-footer">
+  Powered by <a href="https://github.com/getgridea/gridea" target="_blank">&nbsp;Gridea</a>
+  <a class="rss" href="https://protream.github.io/atom.xml" target="_blank">
+    <i class="ri-rss-line"></i> RSS
+  </a>
+</div>
+
+      </div>
+    </div>
+
+    <script>
+      hljs.initHighlightingOnLoad()
+
+      let mainNavLinks = document.querySelectorAll(".markdownIt-TOC a");
+
+      // This should probably be throttled.
+      // Especially because it triggers during smooth scrolling.
+      // https://lodash.com/docs/4.17.10#throttle
+      // You could do like...
+      // window.addEventListener("scroll", () => {
+      //    _.throttle(doThatStuff, 100);
+      // });
+      // Only not doing it here to keep this Pen dependency-free.
+
+      window.addEventListener("scroll", event => {
+        let fromTop = window.scrollY;
+
+        mainNavLinks.forEach((link, index) => {
+          let section = document.getElementById(decodeURI(link.hash).substring(1));
+          let nextSection = null
+          if (mainNavLinks[index + 1]) {
+            nextSection = document.getElementById(decodeURI(mainNavLinks[index + 1].hash).substring(1));
+          }
+          if (section.offsetTop <= fromTop) {
+            if (nextSection) {
+              if (nextSection.offsetTop > fromTop) {
+                link.classList.add("current");
+              } else {
+                link.classList.remove("current");    
+              }
+            } else {
+              link.classList.add("current");
+            }
+          } else {
+            link.classList.remove("current");
+          }
+        });
+      });
+
+    </script>
+  </body>
+</html>

@@ -1,0 +1,299 @@
+<html>
+  <head>
+    <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Linux 下常用日志查询工具 | Protream&#39;s Notes</title>
+<link rel="shortcut icon" href="https://protream.github.io/favicon.ico?v=1733235889358">
+<link href="https://cdn.jsdelivr.net/npm/remixicon@2.3.0/fonts/remixicon.css" rel="stylesheet">
+<link rel="stylesheet" href="https://protream.github.io/styles/main.css">
+<link rel="alternate" type="application/atom+xml" title="Linux 下常用日志查询工具 | Protream&#39;s Notes - Atom Feed" href="https://protream.github.io/atom.xml">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Droid+Serif:400,700">
+
+
+
+    <meta name="description" content="journalctl
+journalctl 是 systemd 的日志管理工具，用于查询 systemd 的日志管理系统 (journal) 中的日志。它整合了系统和服务的所有日志信息。
+常用命令：
+
+查看全部日志：
+
+journalctl..." />
+    <meta name="keywords" content="linux" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.10.0/katex.min.css">
+    <script src="//cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.5.1/build/highlight.min.js"></script>
+  </head>
+  <body>
+    <div class="main">
+      <div class="main-content">
+        <div class="site-header">
+  <a href="https://protream.github.io">
+  <img class="avatar" src="https://protream.github.io/images/avatar.png?v=1733235889358" alt="">
+  </a>
+  <h1 class="site-title">
+    Protream&#39;s Notes
+  </h1>
+  <p class="site-description">
+    
+  </p>
+  <div class="menu-container">
+    
+      
+        <a href="/" class="menu">
+          首页
+        </a>
+      
+    
+      
+        <a href="/archives" class="menu">
+          归档
+        </a>
+      
+    
+      
+        <a href="/tags" class="menu">
+          标签
+        </a>
+      
+    
+      
+        <a href="/post/about" class="menu">
+          关于
+        </a>
+      
+    
+  </div>
+  <div class="social-container">
+    
+      
+    
+      
+    
+      
+    
+      
+    
+      
+    
+  </div>
+</div>
+
+        <div class="post-detail">
+          <article class="post">
+            <h2 class="post-title">
+              Linux 下常用日志查询工具
+            </h2>
+            <div class="post-info">
+              <span>
+                2024-12-03
+              </span>
+              <span>
+                2 min read
+              </span>
+              
+                <a href="https://protream.github.io/tag/linux/" class="post-tag">
+                  # linux
+                </a>
+              
+            </div>
+            
+            <div class="post-content-wrapper">
+              <div class="post-content" v-pre>
+                <h2 id="journalctl">journalctl</h2>
+<p>journalctl 是 systemd 的日志管理工具，用于查询 systemd 的日志管理系统 (journal) 中的日志。它整合了系统和服务的所有日志信息。</p>
+<p>常用命令：</p>
+<ol>
+<li>查看全部日志：</li>
+</ol>
+<pre><code class="language-bash">journalctl
+</code></pre>
+<ol start="2">
+<li>查看最新日志并持续监控</li>
+</ol>
+<pre><code class="language-bash">journalctl -f
+</code></pre>
+<ol start="3">
+<li>查看本次启动的日志：</li>
+</ol>
+<pre><code class="language-bash">journalctl -b
+</code></pre>
+<ol start="4">
+<li>查看特定服务的日志：</li>
+</ol>
+<pre><code class="language-bash">journalctl -u ssh    # SSH服务
+journalctl -u nginx  # Nginx服务
+</code></pre>
+<ol start="5">
+<li>按时间过滤：</li>
+</ol>
+<pre><code class="language-bash">journalctl --since &quot;2024-01-01&quot;
+journalctl --since &quot;1 hour ago&quot;
+</code></pre>
+<ol start="6">
+<li>查看特定优先级的日志：</li>
+</ol>
+<pre><code class="language-bash">journalctl -p err    # 错误级别
+journalctl -p info   # 信息级别
+</code></pre>
+<ol start="7">
+<li>查看内核日志</li>
+</ol>
+<pre><code class="language-bash">journalctl -k
+</code></pre>
+<!-- more -->
+<h2 id="dmesg">dmesg</h2>
+<p>dmesg 主要用于查看内核环形缓冲区(kernel ring buffer)的消息，包含以下主要类型的日志：</p>
+<ol>
+<li>硬件相关；
+<ol>
+<li>cpu</li>
+<li>memory</li>
+<li>sda</li>
+<li>usb</li>
+<li>pci</li>
+</ol>
+</li>
+<li>驱动程序信息；
+<ol>
+<li>eth</li>
+<li>wifi</li>
+<li>nvidia</li>
+<li>audio</li>
+</ol>
+</li>
+<li>系统启动信息；</li>
+</ol>
+<p>注意：</p>
+<ul>
+<li>dmesg 只显示内核消息</li>
+<li>重启后环形缓冲区会清空</li>
+<li>需要 root 权限查看完整信息</li>
+</ul>
+<h2 id="varlogsyslog">/var/log/syslog</h2>
+<p><code>/var/log/syslog</code>包含以下类型的系统日志：</p>
+<ol>
+<li>系统组件日志：</li>
+</ol>
+<ul>
+<li>系统启动消息</li>
+<li>守护进程活动</li>
+<li>定时任务执行记录</li>
+<li>系统服务状态变化</li>
+<li>系统进程信息</li>
+</ul>
+<ol start="2">
+<li>硬件相关：</li>
+</ol>
+<ul>
+<li>硬件检测信息</li>
+<li>设备连接/断开事件</li>
+<li>硬件错误报告</li>
+<li>驱动程序消息</li>
+</ul>
+<ol start="3">
+<li>软件应用：</li>
+</ol>
+<ul>
+<li>应用程序启动/关闭</li>
+<li>程序错误消息</li>
+<li>应用crash信息</li>
+<li>软件更新记录</li>
+</ul>
+<ol start="4">
+<li>网络相关：</li>
+</ol>
+<ul>
+<li>网络接口状态</li>
+<li>网络连接事件</li>
+<li>DHCP事务</li>
+<li>网络服务消息</li>
+</ul>
+<p>journalctl 包含了 /var/log/syslog 中的所有信息。</p>
+<h2 id="varlogsyslog-2">/var/log/syslog</h2>
+<p><code>/var/log/messages</code> 是 Red Hat/CentOS 系统中的主要系统日志文件（相当于 Ubuntu/Debian 中的 <code>/var/log/syslog</code>）。</p>
+<h2 id="last">last</h2>
+<p>显示登录历史</p>
+
+              </div>
+              <div class="toc-container">
+                <ul class="markdownIt-TOC">
+<li>
+<ul>
+<li><a href="#journalctl">journalctl</a></li>
+<li><a href="#dmesg">dmesg</a></li>
+<li><a href="#varlogsyslog">/var/log/syslog</a></li>
+<li><a href="#varlogsyslog-2">/var/log/syslog</a></li>
+<li><a href="#last">last</a></li>
+</ul>
+</li>
+</ul>
+
+              </div>
+            </div>
+          </article>
+        </div>
+
+        
+          <div class="next-post">
+            <div class="next">下一篇</div>
+            <a href="https://protream.github.io/post/UVtG8UUaN/">
+              <h3 class="post-title">
+                k8s leases 详解
+              </h3>
+            </a>
+          </div>
+        
+
+        
+
+        <div class="site-footer">
+  Powered by <a href="https://github.com/getgridea/gridea" target="_blank">&nbsp;Gridea</a>
+  <a class="rss" href="https://protream.github.io/atom.xml" target="_blank">
+    <i class="ri-rss-line"></i> RSS
+  </a>
+</div>
+
+      </div>
+    </div>
+
+    <script>
+      hljs.initHighlightingOnLoad()
+
+      let mainNavLinks = document.querySelectorAll(".markdownIt-TOC a");
+
+      // This should probably be throttled.
+      // Especially because it triggers during smooth scrolling.
+      // https://lodash.com/docs/4.17.10#throttle
+      // You could do like...
+      // window.addEventListener("scroll", () => {
+      //    _.throttle(doThatStuff, 100);
+      // });
+      // Only not doing it here to keep this Pen dependency-free.
+
+      window.addEventListener("scroll", event => {
+        let fromTop = window.scrollY;
+
+        mainNavLinks.forEach((link, index) => {
+          let section = document.getElementById(decodeURI(link.hash).substring(1));
+          let nextSection = null
+          if (mainNavLinks[index + 1]) {
+            nextSection = document.getElementById(decodeURI(mainNavLinks[index + 1].hash).substring(1));
+          }
+          if (section.offsetTop <= fromTop) {
+            if (nextSection) {
+              if (nextSection.offsetTop > fromTop) {
+                link.classList.add("current");
+              } else {
+                link.classList.remove("current");    
+              }
+            } else {
+              link.classList.add("current");
+            }
+          } else {
+            link.classList.remove("current");
+          }
+        });
+      });
+
+    </script>
+  </body>
+</html>

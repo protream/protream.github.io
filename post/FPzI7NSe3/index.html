@@ -1,0 +1,546 @@
+<html>
+  <head>
+    <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>SOLID 原则 | Protream&#39;s Notes</title>
+<link rel="shortcut icon" href="https://protream.github.io/favicon.ico?v=1733235889358">
+<link href="https://cdn.jsdelivr.net/npm/remixicon@2.3.0/fonts/remixicon.css" rel="stylesheet">
+<link rel="stylesheet" href="https://protream.github.io/styles/main.css">
+<link rel="alternate" type="application/atom+xml" title="SOLID 原则 | Protream&#39;s Notes - Atom Feed" href="https://protream.github.io/atom.xml">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Droid+Serif:400,700">
+
+
+
+    <meta name="description" content="SOLID 原则是由著名的鲍勃大叔（Robert J. Martin）在其论文里提出的，鲍勃大叔在架构领域建树颇多，《代码整洁之道》、《架构整洁之道》都出资他手。
+SOLID 是五个面向对象编程和设计的基本原则的首字母缩写，它们分别是：
+
+..." />
+    <meta name="keywords" content="code" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.10.0/katex.min.css">
+    <script src="//cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.5.1/build/highlight.min.js"></script>
+  </head>
+  <body>
+    <div class="main">
+      <div class="main-content">
+        <div class="site-header">
+  <a href="https://protream.github.io">
+  <img class="avatar" src="https://protream.github.io/images/avatar.png?v=1733235889358" alt="">
+  </a>
+  <h1 class="site-title">
+    Protream&#39;s Notes
+  </h1>
+  <p class="site-description">
+    
+  </p>
+  <div class="menu-container">
+    
+      
+        <a href="/" class="menu">
+          首页
+        </a>
+      
+    
+      
+        <a href="/archives" class="menu">
+          归档
+        </a>
+      
+    
+      
+        <a href="/tags" class="menu">
+          标签
+        </a>
+      
+    
+      
+        <a href="/post/about" class="menu">
+          关于
+        </a>
+      
+    
+  </div>
+  <div class="social-container">
+    
+      
+    
+      
+    
+      
+    
+      
+    
+      
+    
+  </div>
+</div>
+
+        <div class="post-detail">
+          <article class="post">
+            <h2 class="post-title">
+              SOLID 原则
+            </h2>
+            <div class="post-info">
+              <span>
+                2024-05-29
+              </span>
+              <span>
+                15 min read
+              </span>
+              
+                <a href="https://protream.github.io/tag/code/" class="post-tag">
+                  # code
+                </a>
+              
+            </div>
+            
+            <div class="post-content-wrapper">
+              <div class="post-content" v-pre>
+                <p>SOLID 原则是由著名的鲍勃大叔（Robert J. Martin）在其论文里提出的，鲍勃大叔在架构领域建树颇多，《代码整洁之道》、《架构整洁之道》都出资他手。</p>
+<p>SOLID 是五个面向对象编程和设计的基本原则的首字母缩写，它们分别是：</p>
+<ol>
+<li>单一职责原则（Single Responsibility Principle, SRP）</li>
+<li>开放封闭原则（Open-Closed Principle, OCP）</li>
+<li>里氏替换原则（Liskov Substitution Principle, LSP）</li>
+<li>接口隔离原则（Interface Segregation Principle, ISP）</li>
+<li>依赖倒置原则（Dependency Inversion Principle, DIP）</li>
+</ol>
+<!-- more -->
+<h2 id="单一职责原则">单一职责原则</h2>
+<p>单一职责原则是说，一个类应该只有一个引起它变化的原因。这个原则的主要目的是降低类的复杂性，并提高类的可读性和可维护性。</p>
+<p>比如说，有一个类叫做<code>UserManager</code>，它负责处理用户的添加和删除，同时也负责发送通知。这样的设计就违反了单一职责原则。因为<code>UserManager</code>类有两个改变的理由：用户管理的逻辑变化和通知的逻辑变化。</p>
+<p>如果用户管理的逻辑发生变化，比如说需要添加用户的年龄验证，那么你需要修改<code>UserManager</code>类。如果通知的逻辑发生变化，比如说需要增加短信通知，你也需要修改<code>UserManager</code>类。这样的设计使得<code>UserManager</code>类变得复杂，难以理解和维护。</p>
+<p>如果遵守单一职责原则，应该将用户管理和通知分离到两个类中，比如<code>UserManager</code>类只负责用户的添加和删除，<code>NotificationManager</code>类只负责发送通知。这样，当用户管理的逻辑变化时，你只需要修改<code>UserManager</code>类，当通知的逻辑变化时，你只需要修改<code>NotificationManager</code>类。这样的设计使得每个类都只有一个改变的理由，降低了类的复杂性，提高了类的可读性和可维护性。</p>
+<p>在函数层面，单一职责原则也是适用。</p>
+<p>函数应该做一件事情，做好一件事情。如果一个函数尝试去做多于一件的事情，它将会变得复杂，难以理解和维护。</p>
+<p>举个例子，如果你有一个函数叫做<code>handleUser</code>，它负责验证用户输入，处理用户请求，并且记录日志。这个函数就违反了单一职责原则，因为它有三个改变的理由：验证逻辑的变化，请求处理的变化，和日志记录的变化。</p>
+<pre><code class="language-go">func handleUser(user User) {
+    // 验证用户输入
+    // 处理用户请求
+    // 记录日志
+}
+</code></pre>
+<p>如果遵守单一职责原则，你应该将这三个功能分离到三个函数中，比如<code>validateUser</code>函数只负责验证用户输入，<code>processUser</code>函数只负责处理用户请求，<code>logUser</code>函数只负责记录日志。这样，每个函数都只有一个改变的理由，降低了函数的复杂性，提高了函数的可读性和可维护性。</p>
+<pre><code class="language-go">func validateUser(user User) {
+    // 验证用户输入
+}
+
+func processUser(user User) {
+    // 处理用户请求
+}
+
+func logUser(user User) {
+    // 记录日志
+}
+</code></pre>
+<p><code>handleUser</code>函数可以被重构为只负责调用其他处理具体任务的函数：</p>
+<pre><code class="language-go">func handleUser(user User) {
+    validateUser(user)
+    processUser(user)
+    logUser(user)
+}
+</code></pre>
+<p><code>handleUser</code>函数的职责就变成了协调<code>validateUser</code>，<code>processUser</code>和<code>logUser</code>这三个函数。这样，如果验证用户输入的逻辑需要变更，你只需要修改<code>validateUser</code>函数；如果处理用户请求的逻辑需要变更，你只需要修改<code>processUser</code>函数；如果记录日志的逻辑需要变更，你只需要修改<code>logUser</code>函数。每个函数都只有一个改变的理由，遵守了单一职责原则。</p>
+<p>这样的设计不仅使得代码更加清晰，也提高了代码的可维护性。</p>
+<h3 id="常见陷阱和反模式">常见陷阱和反模式</h3>
+<p>我们将以一个简单的书店发票程序的代码为例。首先定义一个用于发票的书籍类。</p>
+<pre><code class="language-go">class Book {
+	String name;
+	String authorName;
+	int year;
+	int price;
+	String isbn;
+
+	public Book(String name, String authorName, int year, int price, String isbn) {
+		this.name = name;
+		this.authorName = authorName;
+		this.year = year;
+        this.price = price;
+		this.isbn = isbn;
+	}
+}
+</code></pre>
+<p>这是一个带有一些字段的简单书籍类。没什么特别的。我没有将字段设为私有，这样我们就不需要处理 getter 和 setter，而是可以专注于逻辑。</p>
+<p>现在让我们创建发票类，它将包含创建发票和计算总价的逻辑。现在，假设我们的书店只卖书，不卖其他东西。</p>
+<pre><code class="language-go">
+public class Invoice {
+
+	private Book book;
+	private int quantity;
+	private double discountRate;
+	private double taxRate;
+	private double total;
+
+	public Invoice(Book book, int quantity, double discountRate, double taxRate) {
+		this.book = book;
+		this.quantity = quantity;
+		this.discountRate = discountRate;
+		this.taxRate = taxRate;
+		this.total = this.calculateTotal();
+	}
+
+	public double calculateTotal() {
+	        double price = ((book.price - book.price * discountRate) * this.quantity);
+
+		double priceWithTaxes = price * (1 + taxRate);
+
+		return priceWithTaxes;
+	}
+
+	public void printInvoice() {
+            System.out.println(quantity + &quot;x &quot; + book.name + &quot; &quot; +          book.price + &quot;$&quot;);
+            System.out.println(&quot;Discount Rate: &quot; + discountRate);
+            System.out.println(&quot;Tax Rate: &quot; + taxRate);
+            System.out.println(&quot;Total: &quot; + total);
+	}
+
+        public void saveToFile(String filename) {
+	// Creates a file with given name and writes the invoice
+	}
+
+}
+</code></pre>
+<p>这是我们的发票类。它还包含一些有关发票的字段和 3 种方法：</p>
+<ul>
+<li><strong>calculateTotal</strong>方法，计算总价，</li>
+<li><strong>printInvoice</strong>方法，应该将发票打印到控制台，以及</li>
+<li><strong>saveToFile</strong>方法，负责将发票写入文件。</li>
+</ul>
+<p>在阅读下一段之前，你应该花一点时间思考一下这个类设计有什么问题。</p>
+<p>好的，这是怎么回事？我们的类在多个方面违反了单一职责原则。</p>
+<p>第一个违规行为是<strong>printInvoice</strong>方法，该方法包含我们的打印逻辑。SRP 规定我们的类应该只有一个更改原因，并且该原因应该是我们类的发票计算发生变化。</p>
+<p>但在这种架构下，如果我们想改变打印格式，就需要改变类。这就是为什么我们不应该将打印逻辑与业务逻辑混合在同一个类中。</p>
+<p>我们的类中还有另一个违反 SRP 的方法：<strong>saveToFile</strong>方法。将持久性逻辑与业务逻辑混合在一起也是一个极其常见的错误。</p>
+<p>不要只考虑写入文件——它可以保存到数据库、进行 API 调用或进行与持久性相关的其他操作。</p>
+<p>那么您可能会问，我们如何修复此打印功能。</p>
+<p>我们可以为我们的打印和持久逻辑创建新的类，这样我们就不再需要为了这些目的修改发票类。</p>
+<p>我们创建 2 个类，<strong>InvoicePrinter</strong>和**InvoicePersistence，**并移动方法。</p>
+<pre><code class="language-go">public class InvoicePrinter {
+    private Invoice invoice;
+
+    public InvoicePrinter(Invoice invoice) {
+        this.invoice = invoice;
+    }
+
+    public void print() {
+        System.out.println(invoice.quantity + &quot;x &quot; + invoice.book.name + &quot; &quot; + invoice.book.price + &quot; $&quot;);
+        System.out.println(&quot;Discount Rate: &quot; + invoice.discountRate);
+        System.out.println(&quot;Tax Rate: &quot; + invoice.taxRate);
+        System.out.println(&quot;Total: &quot; + invoice.total + &quot; $&quot;);
+    }
+}
+</code></pre>
+<pre><code class="language-go">public class InvoicePersistence {
+    Invoice invoice;
+
+    public InvoicePersistence(Invoice invoice) {
+        this.invoice = invoice;
+    }
+
+    public void saveToFile(String filename) {
+        // Creates a file with given name and writes the invoice
+    }
+}
+</code></pre>
+<p>现在我们的类结构遵循单一职责原则，每个类负责应用程序的一个方面。太棒了！</p>
+<h2 id="开放封闭原则">开放封闭原则</h2>
+<p>开放封闭原则要求<strong>类应该对扩展开放，对修改关闭。</strong></p>
+<p>修改意味着改变现有类的代码，扩展意味着添加新的功能。</p>
+<p>因此，该原则的意思是：我们应该能够在不触碰类的现有代码的情况下添加新功能。这是因为每当我们修改现有代码时，我们都冒着产生潜在错误的风险。因此，如果可能的话，我们应该避免触碰经过测试且可靠的（大多数）生产代码。</p>
+<p>但是你可能会问，我们如何在不触及类的情况下添加新功能。这通常是借助接口和抽象类来完成的。</p>
+<p>现在我们已经介绍了该原理的基础知识，让我们将其应用到我们的发票应用程序中。</p>
+<p>假设我们的老板来找我们，说他们希望将发票保存到数据库中，以便我们轻松搜索。我们认为好的，老板，这很容易，请给我一点时间！</p>
+<p>我们创建数据库，连接到它，并向我们的<strong>InvoicePersistence</strong>类添加一个保存方法：</p>
+<pre><code class="language-go">public class InvoicePersistence {
+    Invoice invoice;
+
+    public InvoicePersistence(Invoice invoice) {
+        this.invoice = invoice;
+    }
+
+    public void saveToFile(String filename) {
+        // Creates a file with given name and writes the invoice
+    }
+
+    public void saveToDatabase() {
+        // Saves the invoice to database
+    }
+}
+</code></pre>
+<p>不幸的是，作为书店的懒惰开发人员，我们没有设计出将来易于扩展的类。因此，为了添加此功能，我们修改了<strong>InvoicePersistence</strong>类。</p>
+<p>如果我们的类设计遵循开放-封闭原则，我们就不需要改变这个类。</p>
+<p>因此，作为书店懒惰但聪明的开发人员，我们看到了设计问题并决定重构代码以遵循该原则。</p>
+<pre><code class="language-go">interface InvoicePersistence {
+
+    public void save(Invoice invoice);
+}
+</code></pre>
+<p>我们将InvoicePersistence**的类型改为Interface，并添加一个save方法，每个持久化类都会实现这个save方法。</p>
+<pre><code class="language-go">public class DatabasePersistence implements InvoicePersistence {
+
+    @Override
+    public void save(Invoice invoice) {
+        // Save to DB
+    }
+}
+</code></pre>
+<pre><code class="language-go">public class FilePersistence implements InvoicePersistence {
+
+    @Override
+    public void save(Invoice invoice) {
+        // Save to file
+    }
+}
+</code></pre>
+<p>所以我们的班级结构现在看起来像这样：</p>
+<figure data-type="image" tabindex="1"><img src="https://www.freecodecamp.org/news/content/images/2023/08/solid-article-image-1.png" alt="solid" loading="lazy"></figure>
+<p>现在我们的持久性逻辑很容易扩展。如果我们的老板要求我们添加另一个数据库，并且拥有 2 种不同类型的数据库，如 MySQL 和 MongoDB，我们可以轻松做到这一点。</p>
+<p>您可能认为我们可以创建多个没有接口的类，并为所有类添加保存方法。</p>
+<p>但是假设我们扩展了我们的应用程序并且有多个持久性类，如<strong>InvoicePersistence</strong>，<strong>BookPersistence</strong>，并且我们创建一个管理所有持久性类的<strong>PersistenceManager类：</strong></p>
+<pre><code class="language-go">public class PersistenceManager {
+    InvoicePersistence invoicePersistence;
+    BookPersistence bookPersistence;
+
+    public PersistenceManager(InvoicePersistence invoicePersistence,
+                              BookPersistence bookPersistence) {
+        this.invoicePersistence = invoicePersistence;
+        this.bookPersistence = bookPersistence;
+    }
+}
+</code></pre>
+<p>现在，我们可以借助多态性将任何实现<strong>InvoicePersistence</strong>接口的类传递给此类。这就是接口提供的灵活性。</p>
+<h2 id="里氏替换原则">里氏替换原则</h2>
+<p>里氏替换原则指出子类应该可以替换其基类。</p>
+<p>这意味着，假设 B 类是 A 类的子类，我们应该能够将 B 类的对象传递给任何需要 A 类对象的方法，并且在这种情况下该方法不应该给出任何奇怪的输出。</p>
+<p>这是预期的行为，因为当我们使用继承时，我们假设子类继承了超类拥有的所有内容。子类扩展了行为，但从未缩小其范围。</p>
+<p>因此，当一个类不遵循这个原则时，就会导致一些难以检测的严重错误。</p>
+<p>里氏原则很容易理解，但在代码中很难发现。让我们看一个例子。</p>
+<pre><code class="language-go">
+class Rectangle {
+	protected int width, height;
+
+	public Rectangle() {
+	}
+
+	public Rectangle(int width, int height) {
+		this.width = width;
+		this.height = height;
+	}
+
+	public int getWidth() {
+		return width;
+	}
+
+	public void setWidth(int width) {
+		this.width = width;
+	}
+
+	public int getHeight() {
+		return height;
+	}
+
+	public void setHeight(int height) {
+		this.height = height;
+	}
+
+	public int getArea() {
+		return width * height;
+	}
+}
+</code></pre>
+<p>我们有一个简单的 Rectangle 类和一个返回矩形面积的<strong>getArea函数。</strong></p>
+<p>现在我们决定为正方形创建另一个类。您可能知道，正方形只是一种特殊类型的矩形，其宽度等于高度。</p>
+<pre><code class="language-go">class Square extends Rectangle {
+	public Square() {}
+
+	public Square(int size) {
+		width = height = size;
+	}
+
+	@Override
+	public void setWidth(int width) {
+		super.setWidth(width);
+		super.setHeight(width);
+	}
+
+	@Override
+	public void setHeight(int height) {
+		super.setHeight(height);
+		super.setWidth(height);
+	}
+}
+</code></pre>
+<p>我们的 Square 类扩展了 Rectangle 类。我们在构造函数中将高度和宽度设置为相同的值，但我们不希望任何客户端（在代码中使用我们类的人）以违反 square 属性的方式更改高度或重量。</p>
+<p>因此，我们重写 setter，以便当其中一个属性发生变化时同时设置两个属性。但这样做却违反了里氏替换原则。</p>
+<p>让我们创建一个主类来对<strong>getArea</strong>函数进行测试。</p>
+<pre><code class="language-go">class Test {
+
+   static void getAreaTest(Rectangle r) {
+      int width = r.getWidth();
+      r.setHeight(10);
+      System.out.println(&quot;Expected area of &quot; + (width * 10) + &quot;, got &quot; + r.getArea());
+   }
+
+   public static void main(String[] args) {
+      Rectangle rc = new Rectangle(2, 3);
+      getAreaTest(rc);
+
+      Rectangle sq = new Square();
+      sq.setWidth(5);
+      getAreaTest(sq);
+   }
+}
+</code></pre>
+<p>你们团队的测试人员刚刚拿出了测试函数<strong>getAreaTest</strong>，并告诉你，你的<strong>getArea</strong>函数未能通过方形物体的测试。</p>
+<p>在第一个测试中，我们创建一个宽度为 2、高度为 3 的矩形，然后调用<strong>getAreaTest。<strong>输出结果与预期一致，为 20，但传入正方形时，结果出错。这是因为测试中对</strong>setHeight</strong>函数的调用也会设置宽度，导致输出结果出乎意料。</p>
+<h2 id="接口隔离原则">接口隔离原则</h2>
+<p>隔离意味着保持事物分离，接口隔离原则就是关于分离接口的。</p>
+<p>该原则指出，多个客户端专用接口比一个通用接口更好。不应强迫客户端实现他们不需要的功能。</p>
+<p>这是一个很容易理解和应用的原则，让我们看一个例子。</p>
+<pre><code class="language-go">public interface ParkingLot {
+
+	void parkCar(); // Decrease empty spot count by 1
+	void unparkCar(); // Increase empty spots by 1
+	void getCapacity(); // Returns car capacity
+	double calculateFee(Car car); // Returns the price based on number of hours
+	void doPayment(Car car);
+}
+
+class Car {
+
+}
+</code></pre>
+<p>我们建立了一个非常简单的停车场模型。这是按小时收费的停车场类型。现在假设我们想要实现一个免费的停车场。</p>
+<pre><code class="language-go">public class FreeParking implements ParkingLot {
+
+	@Override
+	public void parkCar() {
+
+	}
+
+	@Override
+	public void unparkCar() {
+
+	}
+
+	@Override
+	public void getCapacity() {
+
+	}
+
+	@Override
+	public double calculateFee(Car car) {
+		return 0;
+	}
+
+	@Override
+	public void doPayment(Car car) {
+		throw new Exception(&quot;Parking lot is free&quot;);
+	}
+}
+</code></pre>
+<p>我们的停车场界面由两部分组成：停车相关逻辑（停车、取车、获取容量）和支付相关逻辑。</p>
+<p>但是它太具体了。正因为如此，我们的 FreeParking 类被迫实现与支付无关的方法。让我们分离或隔离接口。</p>
+<figure data-type="image" tabindex="2"><img src="https://www.freecodecamp.org/news/content/images/2023/08/solid-article-image-2.png" alt="solid2" loading="lazy"></figure>
+<p>我们现在已经将停车场分开了。有了这个新模型，我们甚至可以更进一步，将<strong>PaidParkingLot</strong>分开，以支持不同类型的付款。</p>
+<p>现在我们的模型更加灵活、可扩展，并且客户端不需要实现任何不相关的逻辑，因为我们只在停车场界面提供与停车相关的功能。</p>
+<h2 id="依赖倒置原则">依赖倒置原则</h2>
+<p>依赖倒置原则指出我们的类应该依赖于接口或抽象类，而不是具体的类和函数。</p>
+<p>鲍勃大叔在他的中对这一原则进行了如下总结：</p>
+<blockquote>
+<p>“如果 OCP 阐明了 OO 架构的目标，那么 DIP 则阐明了主要机制”。</p>
+</blockquote>
+<p>这两个原则确实是相关的，我们之前在讨论开放封闭原则时就应用过这种模式。</p>
+<p>我们希望我们的类可以扩展，所以我们重新组织了依赖关系，使其依赖于接口而不是具体的类。我们的 PersistenceManager 类依赖于 InvoicePersistence，而不是实现该接口的类。</p>
+<h2 id="参考">参考</h2>
+<p>[1] <a href="https://www.freecodecamp.org/news/solid-principles-explained-in-plain-english/">solid-principles-explained-in-plain-english</a></p>
+<p>[2] <a href="https://staff.cs.utu.fi/~jounsmed/doos_06/material/DesignPrinciplesAndPatterns.pdf">Design Principles And Patterns</a></p>
+
+              </div>
+              <div class="toc-container">
+                <ul class="markdownIt-TOC">
+<li>
+<ul>
+<li><a href="#%E5%8D%95%E4%B8%80%E8%81%8C%E8%B4%A3%E5%8E%9F%E5%88%99">单一职责原则</a>
+<ul>
+<li><a href="#%E5%B8%B8%E8%A7%81%E9%99%B7%E9%98%B1%E5%92%8C%E5%8F%8D%E6%A8%A1%E5%BC%8F">常见陷阱和反模式</a></li>
+</ul>
+</li>
+<li><a href="#%E5%BC%80%E6%94%BE%E5%B0%81%E9%97%AD%E5%8E%9F%E5%88%99">开放封闭原则</a></li>
+<li><a href="#%E9%87%8C%E6%B0%8F%E6%9B%BF%E6%8D%A2%E5%8E%9F%E5%88%99">里氏替换原则</a></li>
+<li><a href="#%E6%8E%A5%E5%8F%A3%E9%9A%94%E7%A6%BB%E5%8E%9F%E5%88%99">接口隔离原则</a></li>
+<li><a href="#%E4%BE%9D%E8%B5%96%E5%80%92%E7%BD%AE%E5%8E%9F%E5%88%99">依赖倒置原则</a></li>
+<li><a href="#%E5%8F%82%E8%80%83">参考</a></li>
+</ul>
+</li>
+</ul>
+
+              </div>
+            </div>
+          </article>
+        </div>
+
+        
+          <div class="next-post">
+            <div class="next">下一篇</div>
+            <a href="https://protream.github.io/post/6gHuzef_3/">
+              <h3 class="post-title">
+                 QUIC 协议
+              </h3>
+            </a>
+          </div>
+        
+
+        
+
+        <div class="site-footer">
+  Powered by <a href="https://github.com/getgridea/gridea" target="_blank">&nbsp;Gridea</a>
+  <a class="rss" href="https://protream.github.io/atom.xml" target="_blank">
+    <i class="ri-rss-line"></i> RSS
+  </a>
+</div>
+
+      </div>
+    </div>
+
+    <script>
+      hljs.initHighlightingOnLoad()
+
+      let mainNavLinks = document.querySelectorAll(".markdownIt-TOC a");
+
+      // This should probably be throttled.
+      // Especially because it triggers during smooth scrolling.
+      // https://lodash.com/docs/4.17.10#throttle
+      // You could do like...
+      // window.addEventListener("scroll", () => {
+      //    _.throttle(doThatStuff, 100);
+      // });
+      // Only not doing it here to keep this Pen dependency-free.
+
+      window.addEventListener("scroll", event => {
+        let fromTop = window.scrollY;
+
+        mainNavLinks.forEach((link, index) => {
+          let section = document.getElementById(decodeURI(link.hash).substring(1));
+          let nextSection = null
+          if (mainNavLinks[index + 1]) {
+            nextSection = document.getElementById(decodeURI(mainNavLinks[index + 1].hash).substring(1));
+          }
+          if (section.offsetTop <= fromTop) {
+            if (nextSection) {
+              if (nextSection.offsetTop > fromTop) {
+                link.classList.add("current");
+              } else {
+                link.classList.remove("current");    
+              }
+            } else {
+              link.classList.add("current");
+            }
+          } else {
+            link.classList.remove("current");
+          }
+        });
+      });
+
+    </script>
+  </body>
+</html>

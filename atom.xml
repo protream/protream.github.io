@@ -1,0 +1,2474 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+    <id>https://protream.github.io</id>
+    <title>Protream&apos;s Notes</title>
+    <updated>2024-12-03T14:24:53.850Z</updated>
+    <generator>https://github.com/jpmonette/feed</generator>
+    <link rel="alternate" href="https://protream.github.io"/>
+    <link rel="self" href="https://protream.github.io/atom.xml"/>
+    <logo>https://protream.github.io/images/avatar.png</logo>
+    <icon>https://protream.github.io/favicon.ico</icon>
+    <rights>All rights reserved 2024, Protream&apos;s Notes</rights>
+    <entry>
+        <title type="html"><![CDATA[Linux 下常用日志查询工具]]></title>
+        <id>https://protream.github.io/post/oflgxGKdKr/</id>
+        <link href="https://protream.github.io/post/oflgxGKdKr/">
+        </link>
+        <updated>2024-12-03T14:23:11.000Z</updated>
+        <summary type="html"><![CDATA[<h2 id="journalctl">journalctl</h2>
+<p>journalctl 是 systemd 的日志管理工具，用于查询 systemd 的日志管理系统 (journal) 中的日志。它整合了系统和服务的所有日志信息。</p>
+<p>常用命令：</p>
+<ol>
+<li>查看全部日志：</li>
+</ol>
+<pre><code class="language-bash">journalctl
+</code></pre>
+<ol start="2">
+<li>查看最新日志并持续监控</li>
+</ol>
+<pre><code class="language-bash">journalctl -f
+</code></pre>
+<ol start="3">
+<li>查看本次启动的日志：</li>
+</ol>
+<pre><code class="language-bash">journalctl -b
+</code></pre>
+<ol start="4">
+<li>查看特定服务的日志：</li>
+</ol>
+<pre><code class="language-bash">journalctl -u ssh    # SSH服务
+journalctl -u nginx  # Nginx服务
+</code></pre>
+<ol start="5">
+<li>按时间过滤：</li>
+</ol>
+<pre><code class="language-bash">journalctl --since &quot;2024-01-01&quot;
+journalctl --since &quot;1 hour ago&quot;
+</code></pre>
+<ol start="6">
+<li>查看特定优先级的日志：</li>
+</ol>
+<pre><code class="language-bash">journalctl -p err    # 错误级别
+journalctl -p info   # 信息级别
+</code></pre>
+<ol start="7">
+<li>查看内核日志</li>
+</ol>
+<pre><code class="language-bash">journalctl -k
+</code></pre>
+]]></summary>
+        <content type="html"><![CDATA[<h2 id="journalctl">journalctl</h2>
+<p>journalctl 是 systemd 的日志管理工具，用于查询 systemd 的日志管理系统 (journal) 中的日志。它整合了系统和服务的所有日志信息。</p>
+<p>常用命令：</p>
+<ol>
+<li>查看全部日志：</li>
+</ol>
+<pre><code class="language-bash">journalctl
+</code></pre>
+<ol start="2">
+<li>查看最新日志并持续监控</li>
+</ol>
+<pre><code class="language-bash">journalctl -f
+</code></pre>
+<ol start="3">
+<li>查看本次启动的日志：</li>
+</ol>
+<pre><code class="language-bash">journalctl -b
+</code></pre>
+<ol start="4">
+<li>查看特定服务的日志：</li>
+</ol>
+<pre><code class="language-bash">journalctl -u ssh    # SSH服务
+journalctl -u nginx  # Nginx服务
+</code></pre>
+<ol start="5">
+<li>按时间过滤：</li>
+</ol>
+<pre><code class="language-bash">journalctl --since &quot;2024-01-01&quot;
+journalctl --since &quot;1 hour ago&quot;
+</code></pre>
+<ol start="6">
+<li>查看特定优先级的日志：</li>
+</ol>
+<pre><code class="language-bash">journalctl -p err    # 错误级别
+journalctl -p info   # 信息级别
+</code></pre>
+<ol start="7">
+<li>查看内核日志</li>
+</ol>
+<pre><code class="language-bash">journalctl -k
+</code></pre>
+<!-- more -->
+<h2 id="dmesg">dmesg</h2>
+<p>dmesg 主要用于查看内核环形缓冲区(kernel ring buffer)的消息，包含以下主要类型的日志：</p>
+<ol>
+<li>硬件相关；
+<ol>
+<li>cpu</li>
+<li>memory</li>
+<li>sda</li>
+<li>usb</li>
+<li>pci</li>
+</ol>
+</li>
+<li>驱动程序信息；
+<ol>
+<li>eth</li>
+<li>wifi</li>
+<li>nvidia</li>
+<li>audio</li>
+</ol>
+</li>
+<li>系统启动信息；</li>
+</ol>
+<p>注意：</p>
+<ul>
+<li>dmesg 只显示内核消息</li>
+<li>重启后环形缓冲区会清空</li>
+<li>需要 root 权限查看完整信息</li>
+</ul>
+<h2 id="varlogsyslog">/var/log/syslog</h2>
+<p><code>/var/log/syslog</code>包含以下类型的系统日志：</p>
+<ol>
+<li>系统组件日志：</li>
+</ol>
+<ul>
+<li>系统启动消息</li>
+<li>守护进程活动</li>
+<li>定时任务执行记录</li>
+<li>系统服务状态变化</li>
+<li>系统进程信息</li>
+</ul>
+<ol start="2">
+<li>硬件相关：</li>
+</ol>
+<ul>
+<li>硬件检测信息</li>
+<li>设备连接/断开事件</li>
+<li>硬件错误报告</li>
+<li>驱动程序消息</li>
+</ul>
+<ol start="3">
+<li>软件应用：</li>
+</ol>
+<ul>
+<li>应用程序启动/关闭</li>
+<li>程序错误消息</li>
+<li>应用crash信息</li>
+<li>软件更新记录</li>
+</ul>
+<ol start="4">
+<li>网络相关：</li>
+</ol>
+<ul>
+<li>网络接口状态</li>
+<li>网络连接事件</li>
+<li>DHCP事务</li>
+<li>网络服务消息</li>
+</ul>
+<p>journalctl 包含了 /var/log/syslog 中的所有信息。</p>
+<h2 id="varlogsyslog-2">/var/log/syslog</h2>
+<p><code>/var/log/messages</code> 是 Red Hat/CentOS 系统中的主要系统日志文件（相当于 Ubuntu/Debian 中的 <code>/var/log/syslog</code>）。</p>
+<h2 id="last">last</h2>
+<p>显示登录历史</p>
+]]></content>
+    </entry>
+    <entry>
+        <title type="html"><![CDATA[k8s leases 详解]]></title>
+        <id>https://protream.github.io/post/UVtG8UUaN/</id>
+        <link href="https://protream.github.io/post/UVtG8UUaN/">
+        </link>
+        <updated>2024-08-30T15:33:28.000Z</updated>
+        <summary type="html"><![CDATA[<p>Leases 是 k8s 内部提供的一种分布式锁机制，用于锁定共享资源、协调活动。</p>
+<p>Lease 翻译成中文是“租约”或“契约”。当某个组件或进程获得了这个 Lease，就相当于它获得了某种特权或责任，可以执行特定的任务。</p>
+]]></summary>
+        <content type="html"><![CDATA[<p>Leases 是 k8s 内部提供的一种分布式锁机制，用于锁定共享资源、协调活动。</p>
+<p>Lease 翻译成中文是“租约”或“契约”。当某个组件或进程获得了这个 Lease，就相当于它获得了某种特权或责任，可以执行特定的任务。</p>
+<!-- more -->
+<h2 id="用途">用途</h2>
+<h3 id="领导者选举">领导者选举</h3>
+<p>在分布式系统中，我们经常需要选出一个&quot;领导者&quot;来协调工作。使用 Lease，多个候选者可以竞争获得这个&quot;租约&quot;。谁获得了 Lease，谁就成为领导者。<br>
+举个例子：假设有三个工人 A、B、C 要协同工作，但需要一个人来分配任务。他们可以竞争一个 Lease，谁获得了 Lease，谁就成为&quot;领导&quot;，负责分配任务。</p>
+<h3 id="防止重复操作">防止重复操作</h3>
+<p>Lease 可以确保在一段时间内只有一个组件在执行某项操作，避免重复工作或冲突。<br>
+例如：有多个清洁工要打扫一个房间，我们可以用 Lease 来确保同一时间只有一个人在打扫，避免互相干扰。</p>
+<h3 id="心跳机制">心跳机制</h3>
+<p>Lease 可以用作&quot;心跳&quot;信号，证明某个组件还在正常工作。如果一个组件无法续租 Lease，就可能表明它出了问题。<br>
+想象一下：工人们每隔一段时间需要在考勤表上签到。如果某个工人长时间没有签到，可能就是遇到了问题。</p>
+<h2 id="工作方式">工作方式</h2>
+<ul>
+<li>获取：组件可以尝试获取一个 Lease。</li>
+<li>持有：成功获取 Lease 的组件可以在一定时间内持有它。</li>
+<li>续租：为了继续保持 Lease，组件需要定期更新或&quot;续租&quot;。</li>
+<li>释放：当不再需要 Lease 时，组件可以主动释放它。</li>
+</ul>
+<h2 id="在-k8s-中的应用">在 k8s 中的应用</h2>
+<p>在 Kubernetes 中，Lease 对象被广泛用于系统的各个部分：</p>
+<ul>
+<li>节点心跳：kubelet 使用 Lease 来报告节点的健康状态。</li>
+<li>控制平面组件的领导者选举：例如 kube-controller-manager 和 kube-scheduler 使用 Lease 来确保同一时间只有一个实例在工作。</li>
+<li>自定义控制器的协调：开发者可以在自己的控制器中使用 Lease 来实现分布式锁或领导者选举。</li>
+</ul>
+<h2 id="实现细节">实现细节</h2>
+<h3 id="数据结构">数据结构</h3>
+<p>Lease 在 Kubernetes 中是一个自定义资源（Custom Resource），定义在 coordination.k8s.io/v1 API 组中。它的主要字段包括：</p>
+<ul>
+<li>spec.holderIdentity：持有 Lease 的对象的标识符</li>
+<li>spec.leaseDurationSeconds：Lease 的有效期</li>
+<li>spec.acquireTime：获取 Lease 的时间</li>
+<li>spec.renewTime：最后一次更新 Lease 的时间</li>
+</ul>
+<h3 id="api">API</h3>
+<p>Kubernetes 提供了标准的 API 操作来管理 Lease 对象：</p>
+<ul>
+<li>CREATE：创建新的 Lease</li>
+<li>GET：获取 Lease 信息</li>
+<li>UPDATE：更新 Lease（用于续租）</li>
+<li>DELETE：删除 Lease</li>
+</ul>
+<h3 id="存储">存储</h3>
+<p>Lease 对象存储在 etcd 中，与其他 Kubernetes 资源一样。这保证了高可用性和一致性。</p>
+<h3 id="实现细节-2">实现细节</h3>
+<p>a) 获取 Lease： 组件尝试创建一个 Lease 对象。如果创建成功，说明获得了 Lease。如果对象已存在，则尝试更新它。<br>
+b) 续租： 持有 Lease 的组件需要周期性地更新 Lease 对象的 renewTime 字段。通常，更新间隔会小于 leaseDurationSeconds，以确保 Lease 不会过期。<br>
+c) 释放 Lease： 组件可以通过删除 Lease 对象或更新 holderIdentity 为空来释放 Lease。<br>
+d) 处理失败： 如果持有 Lease 的组件崩溃或无法续租，其他组件可以在 leaseDurationSeconds 过后尝试获取 Lease。</p>
+<h2 id="示例">示例</h2>
+<p>以心跳为例：</p>
+<pre><code class="language-go">func (nl *NodeLease) renewLease() error {
+    lease, err := nl.client.CoordinationV1().Leases(nl.namespace).Get(context.TODO(), nl.leaseName, metav1.GetOptions{})
+    if err != nil {
+        if errors.IsNotFound(err) {
+            // Lease doesn't exist, create a new one
+            lease = &amp;coordinationv1.Lease{
+                ObjectMeta: metav1.ObjectMeta{
+                    Name:      nl.leaseName,
+                    Namespace: nl.namespace,
+                },
+                Spec: coordinationv1.LeaseSpec{
+                    HolderIdentity:       &amp;nl.holderIdentity,
+                    LeaseDurationSeconds: &amp;nl.leaseDurationSeconds,
+                },
+            }
+            _, err = nl.client.CoordinationV1().Leases(nl.namespace).Create(context.TODO(), lease, metav1.CreateOptions{})
+            return err
+        }
+        return err
+    }
+
+    // Lease exists, update it
+    lease.Spec.RenewTime = &amp;metav1.MicroTime{Time: time.Now()}
+    _, err = nl.client.CoordinationV1().Leases(nl.namespace).Update(context.TODO(), lease, metav1.UpdateOptions{})
+    return err
+}
+</code></pre>
+<h2 id="参考">参考</h2>
+<p>[1] <a href="https://kubernetes.io/docs/concepts/architecture/leases/">leases</a></p>
+]]></content>
+    </entry>
+    <entry>
+        <title type="html"><![CDATA[go.mod 详解]]></title>
+        <id>https://protream.github.io/post/PfKhCcx6f/</id>
+        <link href="https://protream.github.io/post/PfKhCcx6f/">
+        </link>
+        <updated>2024-08-29T14:08:40.000Z</updated>
+        <summary type="html"><![CDATA[<p>Go 模块是Go 语言的依赖管理系统,它从 Go 1.11 版本开始引入。本文讲解 go mod 的使用细节。</p>
+]]></summary>
+        <content type="html"><![CDATA[<p>Go 模块是Go 语言的依赖管理系统,它从 Go 1.11 版本开始引入。本文讲解 go mod 的使用细节。</p>
+<!-- more -->
+<h2 id="基本命令">基本命令</h2>
+<h3 id="初始化模块">初始化模块</h3>
+<p>在项目根目录下运行:</p>
+<pre><code class="language-bash">go mod init [module-path]
+
+</code></pre>
+<p>这会创建一个go.mod文件。[module-path]通常是你的代码仓库地址,如&quot;<a href="http://github.com/yourusername/yourproject">github.com/yourusername/yourproject</a>&quot;。</p>
+<h3 id="添加依赖">添加依赖</h3>
+<p>当你在代码中import一个外部包时,只需运行:</p>
+<pre><code class="language-bash">go get [package-name]
+
+</code></pre>
+<p>或者直接运行:</p>
+<pre><code class="language-bash">go mod tidy
+
+</code></pre>
+<p>这会自动下载依赖,并更新go.mod文件。</p>
+<h2 id="升级降级依赖">升级/降级依赖</h2>
+<p>要升级到最新版本:</p>
+<pre><code class="language-go">go get -u [package-name]
+
+</code></pre>
+<p>指定版本</p>
+<pre><code class="language-go">go get [package-name]@[version]
+
+</code></pre>
+<h3 id="复制依赖到本地">复制依赖到本地</h3>
+<pre><code class="language-go">go mod vendor
+
+</code></pre>
+<h3 id="清理模块缓存">清理模块缓存</h3>
+<pre><code class="language-go">go clean -modcache
+
+</code></pre>
+<h2 id="go-mod-tidy">go mod tidy</h2>
+<p><code>go mod tidy</code>是Go模块系统中一个非常有用的命令,它可以自动管理你的项目依赖。这个命令主要做以下几件事:</p>
+<ol>
+<li>添加缺失的依赖:
+<ul>
+<li>它会分析你的源代码,找出所有被引用但尚未在<code>go.mod</code>文件中列出的包。</li>
+<li>然后,它会自动下载这些包,并将它们添加到<code>go.mod</code>文件中。</li>
+</ul>
+</li>
+<li>移除未使用的依赖:
+<ul>
+<li>它会检查<code>go.mod</code>文件中列出的所有依赖,看是否在代码中被实际使用。</li>
+<li>如果发现某个依赖没有被使用,它会从<code>go.mod</code>文件中移除该依赖。</li>
+</ul>
+</li>
+<li>更新<code>go.sum</code>文件:
+<ul>
+<li><code>go.sum</code>文件包含了所有依赖的加密哈希值,用于验证下载的包的完整性。</li>
+<li><code>go mod tidy</code>会更新这个文件,确保它与当前的依赖列表匹配。</li>
+</ul>
+</li>
+</ol>
+<h2 id="gomod">go.mod</h2>
+<p>一个典型的 <code>go.mod</code> 文件可能看起来像这样：</p>
+<pre><code class="language-go">module github.com/username/project
+
+go 1.16
+
+require (
+    github.com/gin-gonic/gin v1.7.4
+    github.com/go-sql-driver/mysql v1.6.0
+)
+
+replace github.com/user/project =&gt; ../project
+
+exclude github.com/user/project v1.10.0
+
+retract v1.0.0
+
+</code></pre>
+<h3 id="组成">组成</h3>
+<h3 id="模块声明">模块声明</h3>
+<ul>
+<li>这通常是文件的第一行。</li>
+<li>格式：<code>module &lt;module-path&gt;</code></li>
+<li>例如：<code>module github.com/username/project</code></li>
+</ul>
+<h3 id="go-版本声明">Go 版本声明</h3>
+<ul>
+<li>指定模块的 Go 语言版本。</li>
+<li>格式：<code>go &lt;version&gt;</code></li>
+<li>例如：<code>go 1.16</code></li>
+</ul>
+<h3 id="依赖项声明">依赖项声明</h3>
+<ul>
+<li>列出模块的直接依赖。</li>
+<li>格式：<code>require &lt;module-path&gt; &lt;version&gt;</code></li>
+<li>例如：<code>require github.com/gin-gonic/gin v1.7.4</code></li>
+</ul>
+<h3 id="替换指令">替换指令</h3>
+<ul>
+<li>用于替换依赖的来源或版本。</li>
+<li>格式：<code>replace &lt;old-module-path&gt; =&gt; &lt;new-module-path&gt;</code></li>
+<li>例如：<code>replace github.com/user/project =&gt; ../project</code></li>
+</ul>
+<h3 id="排除指令">排除指令</h3>
+<ul>
+<li>用于排除某个依赖的特定版本。</li>
+<li>格式：<code>exclude &lt;module-path&gt; &lt;version&gt;</code></li>
+<li>例如：<code>exclude github.com/user/project v1.10.0</code></li>
+</ul>
+<h3 id="retract-指令go-116">retract 指令（Go 1.16+）</h3>
+<ul>
+<li>用于指定获取依赖时的重试策略。</li>
+<li>格式：<code>retract &lt;version&gt; 或 retract [&lt;version&gt;, &lt;version&gt;]</code></li>
+<li>例如：<code>retract v1.0.0</code></li>
+<li>retract指令不会物理删除代码或标签,它只是一个警告机制。</li>
+<li>使用<code>go get</code>或<code>go mod tidy</code>时,Go工具会避免选择被retract的版本。</li>
+</ul>
+<h3 id="替换指令的使用场景">替换指令的使用场景</h3>
+<h3 id="本地开发和测试">本地开发和测试</h3>
+<ul>
+<li>场景: 你正在开发一个依赖库,同时也在开发使用该库的主项目。</li>
+<li>使用: 你可以使用replace将依赖指向本地文件系统的路径。</li>
+<li>示例:</li>
+</ul>
+<pre><code>replace github.com/myuser/mylib =&gt; ../mylib
+
+</code></pre>
+<ul>
+<li>好处: 允许你在本地修改库代码并立即在主项目中测试,而无需推送到远程仓库。</li>
+</ul>
+<h3 id="使用未发布的版本">使用未发布的版本</h3>
+<ul>
+<li>场景: 你需要使用某个依赖的最新开发版本,但该版本还未正式发布。</li>
+<li>使用: 可以将依赖指向特定的git commit。</li>
+<li>示例:</li>
+</ul>
+<pre><code class="language-go">replace github.com/user/project =&gt; github.com/user/project@commit-hash
+
+</code></pre>
+<ul>
+<li>好处: 能够使用和测试最新的功能或修复。</li>
+</ul>
+<h3 id="依赖分叉fork">依赖分叉(Fork)</h3>
+<ul>
+<li>场景: 你fork了一个项目并做了修改,想在你的项目中使用这个修改后的版本。</li>
+<li>使用: 将原依赖替换为你fork的版本。</li>
+<li>示例:</li>
+</ul>
+<pre><code class="language-go">replace github.com/original/repo =&gt; github.com/youruser/repo v1.0.0
+
+</code></pre>
+<ul>
+<li>好处: 可以使用自定义的或修复bug的fork版本。</li>
+</ul>
+<h3 id="版本兼容性问题">版本兼容性问题</h3>
+<ul>
+<li>场景: 项目的某个依赖与另一个依赖不兼容。</li>
+<li>使用: 可以replace到一个兼容的版本。</li>
+<li>示例:</li>
+</ul>
+<pre><code class="language-go">replace golang.org/x/crypto v1.4.5 =&gt; golang.org/x/crypto v1.4.0
+
+</code></pre>
+<ul>
+<li>好处: 解决依赖冲突,确保项目可以正常构建。</li>
+</ul>
+<h3 id="私有模块">私有模块</h3>
+<ul>
+<li>场景: 你需要使用一个私有仓库中的模块。</li>
+<li>使用: 可以replace到一个可访问的地址。</li>
+<li>示例:</li>
+</ul>
+<pre><code class="language-go">replace github.com/company/privatemodule =&gt; gitlab.com/company/privatemodule v1.0.0
+
+</code></pre>
+<ul>
+<li>好处: 允许使用私有模块,同时保持go.mod文件的通用性。</li>
+</ul>
+<h3 id="临时修复">临时修复</h3>
+<ul>
+<li>场景: 依赖库中有一个bug,但维护者还没有修复。</li>
+<li>使用: 可以replace到一个包含修复的临时分支。</li>
+<li>示例:</li>
+</ul>
+<p>复制</p>
+<pre><code class="language-go">replace github.com/user/project =&gt; github.com/youruser/project@bugfix-branch
+
+</code></pre>
+<ul>
+<li>好处: 快速应用修复,而不必等待官方更新。</li>
+</ul>
+]]></content>
+    </entry>
+    <entry>
+        <title type="html"><![CDATA[k8s operator 入门]]></title>
+        <id>https://protream.github.io/post/es-82zsB0/</id>
+        <link href="https://protream.github.io/post/es-82zsB0/">
+        </link>
+        <updated>2024-08-28T15:59:11.000Z</updated>
+        <summary type="html"><![CDATA[<blockquote>
+<p>The operator design pattern defines how to manage application and infrastructure resources using domain-specific knowledge and declarative state. The goal of the pattern is to reduce the amount of manual imperative work (how to backup, scale, upgrade...) which is required to keep an application in a healthy and well-maintained state, by capturing that domain specific knowledge in code and exposing it using a declarative API.</p>
+</blockquote>
+<p>Kubernetes Operator 是一种用于打包、部署和管理 Kubernetes 应用的方法。它是一个应用特定的控制器,扩展了 Kubernetes 的功能,使复杂的、有状态的应用能够像简单的无状态应用一样易于部署和管理。</p>
+<p>Operator 模式由 CoreOS 公司在 2016 年首次提出。这个概念源于以下需求:</p>
+<ul>
+<li>需要一种方法来扩展 Kubernetes 的能力,以管理复杂的有状态应用。</li>
+<li>希望将人类操作员的知识自动化,减少人为错误和提高效率。</li>
+<li>寻求一种标准化的方式来部署和管理复杂的分布式系统。</li>
+</ul>
+<p>CoreOS 最初创建 Operator 是为了管理 etcd 集群,后来这个概念被广泛采用,应用于各种复杂系统的管理。</p>
+]]></summary>
+        <content type="html"><![CDATA[<blockquote>
+<p>The operator design pattern defines how to manage application and infrastructure resources using domain-specific knowledge and declarative state. The goal of the pattern is to reduce the amount of manual imperative work (how to backup, scale, upgrade...) which is required to keep an application in a healthy and well-maintained state, by capturing that domain specific knowledge in code and exposing it using a declarative API.</p>
+</blockquote>
+<p>Kubernetes Operator 是一种用于打包、部署和管理 Kubernetes 应用的方法。它是一个应用特定的控制器,扩展了 Kubernetes 的功能,使复杂的、有状态的应用能够像简单的无状态应用一样易于部署和管理。</p>
+<p>Operator 模式由 CoreOS 公司在 2016 年首次提出。这个概念源于以下需求:</p>
+<ul>
+<li>需要一种方法来扩展 Kubernetes 的能力,以管理复杂的有状态应用。</li>
+<li>希望将人类操作员的知识自动化,减少人为错误和提高效率。</li>
+<li>寻求一种标准化的方式来部署和管理复杂的分布式系统。</li>
+</ul>
+<p>CoreOS 最初创建 Operator 是为了管理 etcd 集群,后来这个概念被广泛采用,应用于各种复杂系统的管理。</p>
+<!-- more -->
+<p>Operator 的主要应用包括:</p>
+<p>1、Install an Application / Take Ownership of an Application。</p>
+<p>2、Upgrade an Application。</p>
+<p>3、Backup</p>
+<p>4、Revovery from backup</p>
+<p>5、Auto-Remediation</p>
+<p>6、Monitoring/Metrics - Observability</p>
+<p>7、Scaling</p>
+<p>8、Auto-Scaling</p>
+<p>9、Auto-Configuation tuning</p>
+<p>10、Uninstalling / Disconnect</p>
+<h2 id="核心概念">核心概念</h2>
+<h3 id="controller">Controller</h3>
+<p>负责调整和维护资源状态，使得和期望的状态一直。</p>
+<blockquote>
+<p>Technically, there is no difference between a typical controller and an operator. Often the difference referred to is the operational knowledge that is included in the operator. Therefore, a controller is the implementation, and the operator is the pattern of using custom controllers with CRDs and automation is what is looking to be achieved with this.</p>
+</blockquote>
+<p>Operator 是一种模式，controller 是实现，差异是知识，也就是 CRD。</p>
+<blockquote>
+<p>It’s a controller’s job to ensure that, for any given object, the actual state of the world (both the cluster state, and potentially external state like running containers for Kubelet or loadbalancers for a cloud provider) matches the desired state in the object. Each controller focuses on one <em>root</em> Kind, but may interact with other Kinds.</p>
+</blockquote>
+<p>控制器的工作是确保，对于任何给定对象，世界的实际状态（集群状态，以及潜在的外部状态，如 Kubelet 的运行容器或云提供商的负载均衡器）与对象中的所需状态匹配。每个控制器都专注于一个根种类，但可以与其他种类交互。</p>
+<h3 id="groups-and-versions">Groups and Versions</h3>
+<blockquote>
+<p>An <em>API Group</em> in Kubernetes is simply a collection of related functionality. Each group has one or more <em>versions</em>, which, as the name suggests, allow us to change how an API works over time.</p>
+</blockquote>
+<p>API 组是是相关功能的江南，每个组有一个或者多个版本。</p>
+<h3 id="kind">Kind</h3>
+<p>每个 API 组版本都包含一个或多个 API 类型，称之为 Kind。</p>
+<h3 id="resources">Resources</h3>
+<blockquote>
+<p>A resource is simply a use of a Kind in the API. Often, there’s a one-to-one mapping between Kinds and resources. For instance, the <code>pods</code> resource corresponds to the <code>Pod</code> Kind. However, sometimes, the same Kind may be returned by multiple resources. For instance, the <code>Scale</code> Kind is returned by all scale subresources, like <code>deployments/scale</code> or <code>replicasets/scale</code>. This is what allows the Kubernetes HorizontalPodAutoscaler to interact with different resources. With CRDs, however, each Kind will correspond to a single resource.</p>
+</blockquote>
+<p>资源只是在 Kind 的使用。资源和 Kind 通常是一对一的。例如，<code>pods</code> 资源对应 <code>Pod</code> Kind。有时，一个 Kind 对应多个资源，如 <code>Scale</code> Kind 对应的资源有 <code>deployments/scale</code> 或 <code>replicasets/scale</code> 。对于 CRD ，每个 Kind 对应一个资源。</p>
+<h3 id="gvk-and-gvr">GVK and GVR</h3>
+<blockquote>
+<p>When we refer to a kind in a particular group-version, we’ll call it a <em>GroupVersionKind</em>, or GVK for short. Same with resources and GVR. As we’ll see shortly, each GVK corresponds to a given root Go type in a package.</p>
+</blockquote>
+<p>特定组版本中的一个类型或资源，每个 GVK 对应一个 Go type。</p>
+<h2 id="工作原理">工作原理</h2>
+<p>Operator 的工作原理基于 Kubernetes 的核心概念和扩展机制。主要包括以下几个关键组件和过程:</p>
+<h3 id="自定义资源-custom-resources-crs">自定义资源 (Custom Resources, CRs)</h3>
+<ul>
+<li>定义: 自定义资源是 Kubernetes API 的扩展,允许用户定义特定于应用的对象。</li>
+<li>作用: CRs 代表了应用的期望状态,包含了配置、规格等信息。</li>
+<li>示例: 对于一个数据库 Operator,CR 可能包含数据库的版本、副本数、存储配置等。</li>
+</ul>
+<h3 id="自定义资源定义-custom-resource-definitions-crds">自定义资源定义 (Custom Resource Definitions, CRDs)</h3>
+<ul>
+<li>定义: CRD 是自定义资源的模式定义,描述了 CR 的结构和验证规则。</li>
+<li>作用: 告诉 Kubernetes 如何解释和处理自定义资源。</li>
+<li>示例: 数据库 CRD 可能定义字段如 <code>spec.version</code>, <code>spec.replicas</code>, <code>spec.storage</code> 等。</li>
+</ul>
+<h3 id="控制器-controller">控制器 (Controller)</h3>
+<ul>
+<li>定义: 控制器是 Operator 的核心,是一个持续运行的循环程序。</li>
+<li>作用: 观察集群的当前状态,将其与 CR 中定义的期望状态进行比较,并采取行动使实际状态与期望状态一致。</li>
+<li>工作流程:
+<ol>
+<li>观察 (Watch): 监听与其负责的 CR 相关的事件。</li>
+<li>分析 (Analyze): 比较当前状态与期望状态的差异。</li>
+<li>调谐 (Reconcile): 执行必要的操作以达成期望状态。</li>
+</ol>
+</li>
+</ul>
+<h3 id="调谐循环-reconciliation-loop">调谐循环 (Reconciliation Loop)</h3>
+<ul>
+<li>定义: 调谐循环是控制器的核心逻辑,持续执行以确保系统状态与期望状态一致。</li>
+<li>过程:
+<ol>
+<li>获取 CR 实例的最新状态。</li>
+<li>观察相关资源的实际状态。</li>
+<li>比较实际状态与期望状态。</li>
+<li>执行必要的操作以消除差异。</li>
+<li>更新 CR 的状态。</li>
+</ol>
+</li>
+</ul>
+<h3 id="operator-sdk-和-kubebuilder">Operator SDK 和 Kubebuilder</h3>
+<ul>
+<li>作用: 这些工具简化了 Operator 的开发过程,提供了脚手架和常用功能。</li>
+<li>功能: 生成代码框架、处理常见的 Kubernetes 交互、提供测试工具等。</li>
+</ul>
+<h3 id="工作流程示例">工作流程示例</h3>
+<p>以数据库 Operator 为例:</p>
+<ol>
+<li>用户创建一个描述所需数据库配置的 CR。</li>
+<li>Operator 的控制器检测到新的 CR 被创建。</li>
+<li>控制器分析 CR 并开始调谐过程:
+<ul>
+<li>创建必要的 Kubernetes 资源(如 Pods, Services, ConfigMaps)。</li>
+<li>配置数据库软件。</li>
+<li>设置监控和备份。4. 控制器持续监控数据库状态,执行自动化操作(如扩缩容、备份、升级)。</li>
+</ul>
+</li>
+<li>当 CR 被更新时,控制器检测变化并进行相应调整。</li>
+</ol>
+<h3 id="状态报告">状态报告</h3>
+<ul>
+<li>Operator 通过更新 CR 的 status 字段来报告应用的当前状态。</li>
+<li>这允许用户和其他系统组件了解应用的运行情况。</li>
+</ul>
+<h3 id="错误处理和重试机制">错误处理和重试机制</h3>
+<ul>
+<li>Operator 实现了错误处理和重试逻辑,以处理临时故障和异常情况。</li>
+<li>复杂的 Operator 还可能实现自我修复和故障转移机制。</li>
+</ul>
+<h3 id="扩展-kubernetes-api">扩展 Kubernetes API</h3>
+<ul>
+<li>Operator 通过 CRD 和自定义控制器扩展了 Kubernetes API。</li>
+<li>这使得复杂应用可以像内置资源一样使用 kubectl 和其他 Kubernetes 工具进行管理。</li>
+</ul>
+<p>通过这些机制,Operator 能够自动化复杂应用的管理,将人类操作员的知识编码到软件中。这不仅提高了效率和可靠性,还标准化了复杂应用的部署和管理流程。</p>
+<h2 id="reconsile-机制">Reconsile 机制</h2>
+<p>调谐循环的具体实现过程:</p>
+<h3 id="触发机制">触发机制</h3>
+<p>调谐循环可以通过以下方式触发:</p>
+<ul>
+<li>资源变更: 当相关的自定义资源(CR)被创建、更新或删除时。</li>
+<li>周期性调度: 控制器定期触发调谐,即使没有明显的变化。</li>
+<li>外部事件: 如集群状态变化、定时任务等。</li>
+</ul>
+<h3 id="获取资源状态">获取资源状态</h3>
+<pre><code class="language-go">func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+    // 获取 CR 实例
+    var cr myapp.MyCustomResource
+    if err := r.Get(ctx, req.NamespacedName, &amp;cr); err != nil {
+        // 处理错误,如资源不存在
+        return ctrl.Result{}, client.IgnoreNotFound(err)
+    }
+
+    // ... 后续步骤
+}
+
+</code></pre>
+<h3 id="状态比对">状态比对</h3>
+<p>比较 CR 中定义的期望状态与实际观察到的集群状态:</p>
+<pre><code class="language-go">// 检查所需的 Deployment 是否存在
+deployment := &amp;appsv1.Deployment{}
+err := r.Get(ctx, types.NamespacedName{Name: cr.Name, Namespace: cr.Namespace}, deployment)
+if err != nil &amp;&amp; errors.IsNotFound(err) {
+    // Deployment 不存在,需要创建
+    return r.createDeployment(ctx, cr)
+} else if err != nil {
+    // 其他错误
+    return ctrl.Result{}, err
+}
+
+// 比较 Deployment 规格
+if !reflect.DeepEqual(deployment.Spec, desiredDeploymentSpec(cr)) {
+    // 需要更新 Deployment
+    return r.updateDeployment(ctx, cr, deployment)
+}
+</code></pre>
+<h3 id="执行调谐操作">执行调谐操作</h3>
+<p>根据状态比对结果,执行必要的操作:</p>
+<pre><code class="language-go">func (r *Reconciler) createDeployment(ctx context.Context, cr *myapp.MyCustomResource) (ctrl.Result, error) {
+    deployment := &amp;appsv1.Deployment{
+        ObjectMeta: metav1.ObjectMeta{
+            Name:      cr.Name,
+            Namespace: cr.Namespace,
+        },
+        Spec: desiredDeploymentSpec(cr),
+    }
+    if err := r.Create(ctx, deployment); err != nil {
+        return ctrl.Result{}, err
+    }
+    return ctrl.Result{Requeue: true}, nil
+}
+
+func (r *Reconciler) updateDeployment(ctx context.Context, cr *myapp.MyCustomResource, deployment *appsv1.Deployment) (ctrl.Result, error) {
+    deployment.Spec = desiredDeploymentSpec(cr)
+    if err := r.Update(ctx, deployment); err != nil {
+        return ctrl.Result{}, err
+    }
+    return ctrl.Result{Requeue: true}, nil
+}
+</code></pre>
+<h3 id="更新状态">更新状态</h3>
+<p>操作完成后,更新 CR 的状态:</p>
+<pre><code class="language-go">func (r *Reconciler) updateStatus(ctx context.Context, cr *myapp.MyCustomResource) error {
+    cr.Status.Phase = &quot;Reconciled&quot;
+    cr.Status.ObservedGeneration = cr.Generation
+    return r.Status().Update(ctx, cr)
+}
+</code></pre>
+<h3 id="错误处理和重试">错误处理和重试</h3>
+<p>实现错误处理和重试逻辑:</p>
+<pre><code class="language-go">if err != nil {
+    // 记录错误
+    r.Log.Error(err, &quot;Reconciliation failed&quot;)
+    // 重新入队以便稍后重试
+    return ctrl.Result{Requeue: true, RequeueAfter: time.Second * 30}, err
+}
+</code></pre>
+<h3 id="返回结果">返回结果</h3>
+<p>调谐函数返回一个 Result 和一个错误:</p>
+<ul>
+<li><code>Result.Requeue</code>: 是否需要重新入队。</li>
+<li><code>Result.RequeueAfter</code>: 多长时间后重新调谐。</li>
+<li>返回的错误: 如果非nil,控制器会自动重新入队。</li>
+</ul>
+<pre><code class="language-go">return ctrl.Result{}, nil // 成功,无需立即重新调谐
+// 或
+return ctrl.Result{Requeue: true}, nil // 需要立即重新调谐
+// 或
+return ctrl.Result{RequeueAfter: time.Minute * 5}, nil // 5分钟后重新调谐
+</code></pre>
+<h3 id="并发和线程安全">并发和线程安全</h3>
+<p>确保调谐逻辑是幂等的和线程安全的,因为可能会并发执行多个调谐循环。</p>
+<h3 id="性能考虑">性能考虑</h3>
+<ul>
+<li>使用索引和缓存来提高查询效率。</li>
+<li>实现合理的重试策略,避免不必要的调谐。</li>
+</ul>
+<h3 id="监控和日志">监控和日志</h3>
+<p>在调谐过程中添加适当的日志和监控指标:</p>
+<pre><code class="language-go">r.Log.Info(&quot;Reconciling MyCustomResource&quot;, &quot;name&quot;, cr.Name, &quot;namespace&quot;, cr.Namespace)
+// ... 调谐逻辑 ...
+r.Metrics.ReconcileCount.Inc() // 增加调谐计数指标
+</code></pre>
+<h2 id="并发处理">并发处理</h2>
+<h3 id="使用乐观锁optimistic-locking">使用乐观锁（Optimistic Locking）</h3>
+<p>Kubernetes 使用 ResourceVersion 来实现乐观锁。每次更新资源时，都应该包含资源的当前版本：</p>
+<pre><code class="language-go">func (r *Reconciler) updateResource(ctx context.Context, resource *myapp.MyResource) error {
+    // 获取当前资源版本
+    currentResource := &amp;myapp.MyResource{}
+    if err := r.Get(ctx, types.NamespacedName{Name: resource.Name, Namespace: resource.Namespace}, currentResource); err != nil {
+        return err
+    }
+
+    // 更新资源
+    resource.ResourceVersion = currentResource.ResourceVersion
+    if err := r.Update(ctx, resource); err != nil {
+        if errors.IsConflict(err) {
+            // 处理冲突，可能需要重试
+            return &amp;RetryError{Err: err}
+        }
+        return err
+    }
+    return nil
+}
+</code></pre>
+<h3 id="实现幂等操作">实现幂等操作</h3>
+<p>确保调谐操作是幂等的，即多次执行相同的操作不会产生不同的结果：</p>
+<pre><code class="language-go">func (r *Reconciler) ensureDeployment(ctx context.Context, cr *myapp.MyCustomResource) error {
+    deployment := &amp;appsv1.Deployment{}
+    err := r.Get(ctx, types.NamespacedName{Name: cr.Name, Namespace: cr.Namespace}, deployment)
+    if err != nil &amp;&amp; errors.IsNotFound(err) {
+        // 创建 Deployment
+        newDeployment := r.newDeploymentForCR(cr)
+        return r.Create(ctx, newDeployment)
+    } else if err != nil {
+        return err
+    }
+
+    // 检查是否需要更新
+    if !reflect.DeepEqual(deployment.Spec, r.desiredDeploymentSpec(cr)) {
+        deployment.Spec = r.desiredDeploymentSpec(cr)
+        return r.Update(ctx, deployment)
+    }
+
+    return nil // 不需要任何操作
+</code></pre>
+<h3 id="使用状态机">使用状态机</h3>
+<p>实现清晰的状态机来管理资源的生命周期，这有助于处理并发操作：</p>
+<pre><code class="language-go">
+复制
+func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+    cr := &amp;myapp.MyCustomResource{}
+    if err := r.Get(ctx, req.NamespacedName, cr); err != nil {
+        return ctrl.Result{}, client.IgnoreNotFound(err)
+    }
+
+    switch cr.Status.Phase {
+    case &quot;&quot;:
+        return r.handleInitialPhase(ctx, cr)
+    case &quot;Pending&quot;:
+        return r.handlePendingPhase(ctx, cr)
+    case &quot;Running&quot;:
+        return r.handleRunningPhase(ctx, cr)
+    // ... 其他阶段
+    }
+
+    return ctrl.Result{}, nil
+}
+</code></pre>
+<h3 id="使用-finalizers">使用 Finalizers</h3>
+<p>Finalizers 可以确保在资源被删除之前执行必要的清理操作：</p>
+<pre><code class="language-go">const myFinalizerName = &quot;myapp.example.com/finalizer&quot;
+
+func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+    cr := &amp;myapp.MyCustomResource{}
+    if err := r.Get(ctx, req.NamespacedName, cr); err != nil {
+        return ctrl.Result{}, client.IgnoreNotFound(err)
+    }
+
+    if cr.ObjectMeta.DeletionTimestamp.IsZero() {
+        // 对象未被标记为删除，确保 finalizer 存在
+        if !containsString(cr.ObjectMeta.Finalizers, myFinalizerName) {
+            cr.ObjectMeta.Finalizers = append(cr.ObjectMeta.Finalizers, myFinalizerName)
+            if err := r.Update(ctx, cr); err != nil {
+                return ctrl.Result{}, err
+            }
+        }
+    } else {
+        // 对象被标记为删除
+        if containsString(cr.ObjectMeta.Finalizers, myFinalizerName) {
+            if err := r.finalizeResource(ctx, cr); err != nil {
+                return ctrl.Result{}, err
+            }
+            cr.ObjectMeta.Finalizers = removeString(cr.ObjectMeta.Finalizers, myFinalizerName)
+            if err := r.Update(ctx, cr); err != nil {
+                return ctrl.Result{}, err
+            }
+        }
+        return ctrl.Result{}, nil
+    }
+
+    // ... 正常的调谐逻辑
+}
+</code></pre>
+<h3 id="使用-owner-references">使用 Owner References</h3>
+<p>Owner References 可以帮助管理资源之间的依赖关系，并确保子资源随父资源的删除而删除：</p>
+<pre><code class="language-go">func (r *Reconciler) createChildResource(ctx context.Context, cr *myapp.MyCustomResource) error {
+    child := &amp;someapi.ChildResource{
+        ObjectMeta: metav1.ObjectMeta{
+            Name:      cr.Name + &quot;-child&quot;,
+            Namespace: cr.Namespace,
+            OwnerReferences: []metav1.OwnerReference{
+                *metav1.NewControllerRef(cr, myapp.GroupVersion.WithKind(&quot;MyCustomResource&quot;)),
+            },
+        },
+        Spec: someapi.ChildResourceSpec{
+            // ... 设置规格
+        },
+    }
+    return r.Create(ctx, child)
+}
+</code></pre>
+<h3 id="实现合适的重试逻辑">实现合适的重试逻辑</h3>
+<p>对于可能因并发问题而失败的操作，实现适当的重试逻辑：</p>
+<pre><code class="language-go">func (r *Reconciler) retryOperation(ctx context.Context, operation func() error) error {
+    return retry.RetryOnConflict(retry.DefaultRetry, func() error {
+        err := operation()
+        if errors.IsConflict(err) {
+            // 冲突时重试
+            return err
+        }
+        return nil
+    })
+}
+</code></pre>
+<h3 id="使用分布式锁">使用分布式锁</h3>
+<p>对于某些关键操作，可能需要使用分布式锁来确保在集群范围内的互斥：</p>
+<pre><code class="language-go">import &quot;github.com/kubernetes-sigs/controller-runtime/pkg/client/apiutil&quot;
+
+func (r *Reconciler) performCriticalOperation(ctx context.Context, cr *myapp.MyCustomResource) error {
+    // 创建一个锁对象
+    lock := &amp;coordinationv1.Lease{
+        ObjectMeta: metav1.ObjectMeta{
+            Name:      &quot;my-critical-operation-lock&quot;,
+            Namespace: cr.Namespace,
+        },
+    }
+
+    // 尝试获取锁
+    err := r.Create(ctx, lock)
+    if err != nil &amp;&amp; !errors.IsAlreadyExists(err) {
+        return err
+    }
+
+    if err == nil {
+        // 成功获取锁，执行操作
+        defer r.Delete(ctx, lock) // 确保操作完成后释放锁
+        return r.doCriticalOperation(ctx, cr)
+    }
+
+    // 锁已被其他实例持有，可以选择等待或跳过
+    return nil
+}
+</code></pre>
+<h2 id="informer-机制">Informer 机制</h2>
+<pre><code class="language-go">+----------------+     List/Watch     +-------------+
+|                | &lt;----------------&gt; |             |
+|   API Server   |                    |  Reflector  |
+|                | &lt;----------------&gt; |             |
++----------------+     Watch Events   +------+------+
+                                             |
+                                             | Add Deltas
+                                             |
+                                             v
+                       +--------------------+
+                       |                    |
+                       |     DeltaFIFO      |
+                       |                    |
+                       +--------------------+
+                                 ^
+                                 |
+                                 | Pop Deltas
+                                 |
+              +------------------+-----------------+
+              |                                    |
+              |         Shared Informer            |
+              |                                    |
+              +------------------+-----------------+
+                                 |
+                   Update Cache  |  Trigger Handlers
+                                 |
+    +--------------------+     +-v-------------+
+    |                    |     |               |
+    |      Indexer       |     | Event Handlers|
+    |     (Cache)        |     |               |
+    |                    |     |               |
+    +--------------------+     +---------------+
+              ^                        ^
+              |                        |
+              |                        |
+    +---------+------------------------+----------------+
+    |                                                   |
+    |               Custom Controller                   |
+    |                                                   |
+    |  +-------------------+  +----------------------+  |
+    |  |   Reconcile Loop  |  |  Resource Event      |  |
+    |  |                   |  |  Handlers            |  |
+    |  | +---------------+ |  |                      |  |
+    |  | | Get from Cache| |  | +------------------+ |  |
+    |  | +---------------+ |  | | OnAdd Handler    | |  |
+    |  |                   |  | +------------------+ |  |
+    |  | +---------------+ |  | +------------------+ |  |
+    |  | | Update Status | |  | | OnUpdate Handler | |  |
+    |  | +---------------+ |  | +------------------+ |  |
+    |  |                   |  | +------------------+ |  |
+    |  | +---------------+ |  | | OnDelete Handler | |  |
+    |  | | Create/Update | |  | +------------------+ |  |
+    |  | +---------------+ |  |                      |  |
+    |  |                   |  |                      |  |
+    |  +-------------------+  +----------------------+  |
+    |                                                   |
+    +---------------------------------------------------+
+</code></pre>
+<p>Informer 机制是 Kubernetes 客户端中用于高效监视和缓存资源对象的核心组件。它允许客户端(如控制器或 Operator)以一种高效、可扩展的方式跟踪 Kubernetes 资源的变化。</p>
+<p>Shared Informer：</p>
+<ul>
+<li>这是 client-go 库提供的标准 Informer 实现。</li>
+<li>它管理 Reflector、DeltaFIFO、和 Indexer。</li>
+<li>多个 controller 可以共享同一个 Informer，以减少资源消耗。</li>
+</ul>
+<p>Custom Controller：</p>
+<ul>
+<li>这是自定义 controller。</li>
+<li>它包含两个主要部分：Reconcile Loop 和 Resource Event Handlers。</li>
+</ul>
+<p>Reconcile Loop：</p>
+<ul>
+<li>这是 controller 的核心逻辑，负责协调资源的实际状态和期望状态。</li>
+<li>从 Indexer（缓存）中获取资源信息，而不是直接查询 API Server。</li>
+<li>执行必要的创建、更新或删除操作。</li>
+<li>更新资源的状态。</li>
+</ul>
+<p>Resource Event Handlers：</p>
+<ul>
+<li>这些是回调函数，用于响应资源的添加、更新和删除事件。</li>
+<li>通常，这些处理器会将资源的 key 加入到工作队列中，以便 Reconcile Loop 处理。</li>
+</ul>
+<p>工作流程：</p>
+<ul>
+<li>Shared Informer 监听 API Server 的变化。</li>
+<li>当资源发生变化时，Shared Informer 更新本地缓存（Indexer）。</li>
+<li>同时，Shared Informer 触发相应的 Event Handler。</li>
+<li>Event Handler 将资源的 key 加入工作队列。</li>
+<li>Reconcile Loop 从工作队列中获取 key，然后从缓存中读取资源信息。</li>
+<li>Reconcile Loop 执行必要的操作，如创建、更新或删除资源。</li>
+<li>操作完成后，Reconcile Loop 更新资源状态。</li>
+</ul>
+<p>优势：</p>
+<ul>
+<li>减少对 API Server 的直接访问，提高性能。</li>
+<li>提供一致的资源视图。</li>
+<li>允许多个 controller 共享同一个 Informer，节省资源。</li>
+<li>支持事件驱动的编程模型。</li>
+</ul>
+<h2 id="错误处理和重试-2">错误处理和重试</h2>
+<p>在 Reconcile Loop 中正确处理错误和实现有效的重试机制是确保 controller 稳定性和可靠性的关键。以下是一些处理错误和实现重试机制的策略和最佳实践：</p>
+<h3 id="错误分类">错误分类</h3>
+<p>首先，将错误分为不同的类别：</p>
+<p>a) 临时错误：可能会自行解决的错误，如网络抖动。<br>
+b) 永久错误：需要人工干预的错误，如配置错误。<br>
+c) 不可恢复错误：无法解决的错误，如资源不存在。</p>
+<h3 id="实现重试逻辑">实现重试逻辑</h3>
+<p>对于临时错误，实现指数退避重试：</p>
+<pre><code class="language-go">import (
+    &quot;time&quot;
+    &quot;k8s.io/apimachinery/pkg/util/wait&quot;
+    ctrl &quot;sigs.k8s.io/controller-runtime&quot;
+)
+
+func (r *MyReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+    // ... 其他逻辑 ...
+
+    err := wait.ExponentialBackoff(wait.Backoff{
+        Duration: time.Second,
+        Factor:   2,
+        Jitter:   0.1,
+        Steps:    5,
+    }, func() (bool, error) {
+        err := r.doSomething(ctx)
+        if err != nil {
+            // 检查是否是临时错误
+            if isTemporaryError(err) {
+                return false, nil // 继续重试
+            }
+            return false, err // 永久错误，停止重试
+        }
+        return true, nil // 成功，停止重试
+    })
+
+    if err != nil {
+        // 处理最终错误
+        return ctrl.Result{}, err
+    }
+
+    return ctrl.Result{}, nil
+}
+
+func isTemporaryError(err error) bool {
+    // 实现逻辑来判断是否为临时错误
+    // 例如，检查错误类型或错误消息
+}
+</code></pre>
+<h3 id="使用-resultrequeueafter">使用 Result.RequeueAfter</h3>
+<p>对于需要延迟重试的情况，使用 <code>Result.RequeueAfter</code>：</p>
+<pre><code class="language-go">func (r *MyReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+    // ... 其他逻辑 ...
+
+    if someCondition {
+        // 5分钟后重新入队
+        return ctrl.Result{RequeueAfter: time.Minute * 5}, nil
+    }
+
+    return ctrl.Result{}, nil
+}
+</code></pre>
+<h3 id="错误记录和度量">错误记录和度量</h3>
+<p>记录错误并收集度量信息，以便于监控和调试：</p>
+<pre><code class="language-go">import (
+    &quot;github.com/go-logr/logr&quot;
+    &quot;sigs.k8s.io/controller-runtime/pkg/metrics&quot;
+    &quot;github.com/prometheus/client_golang/prometheus&quot;
+)
+
+var (
+    reconcileErrors = prometheus.NewCounterVec(
+        prometheus.CounterOpts{
+            Name: &quot;reconcile_errors_total&quot;,
+            Help: &quot;Total number of reconciliation errors&quot;,
+        },
+        []string{&quot;error_type&quot;},
+    )
+)
+
+func init() {
+    metrics.Registry.MustRegister(reconcileErrors)
+}
+
+func (r *MyReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+    log := logr.FromContext(ctx)
+
+    // ... 其他逻辑 ...
+
+    if err != nil {
+        log.Error(err, &quot;Reconciliation error&quot;, &quot;name&quot;, req.Name, &quot;namespace&quot;, req.Namespace)
+        reconcileErrors.WithLabelValues(categorizeError(err)).Inc()
+        return ctrl.Result{}, err
+    }
+
+    return ctrl.Result{}, nil
+}
+
+func categorizeError(err error) string {
+    // 实现错误分类逻辑
+    // 返回 &quot;temporary&quot;, &quot;permanent&quot;, 或其他分类
+}
+</code></pre>
+<h3 id="状态更新和错误处理">状态更新和错误处理</h3>
+<p>在更新资源状态时处理错误：</p>
+<pre><code class="language-go">func (r *MyReconciler) updateStatus(ctx context.Context, instance *myapiv1.MyResource, status string) error {
+    instance.Status.State = status
+    if err := r.Status().Update(ctx, instance); err != nil {
+        return fmt.Errorf(&quot;failed to update status: %w&quot;, err)
+    }
+    return nil
+}
+
+func (r *MyReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+    instance := &amp;myapiv1.MyResource{}
+    if err := r.Get(ctx, req.NamespacedName, instance); err != nil {
+        return ctrl.Result{}, client.IgnoreNotFound(err)
+    }
+
+    // ... 主要逻辑 ...
+
+    if err := r.updateStatus(ctx, instance, &quot;Reconciled&quot;); err != nil {
+        return ctrl.Result{}, err
+    }
+
+    return ctrl.Result{}, nil
+}
+</code></pre>
+<h3 id="使用-finalizer-处理删除操作">使用 finalizer 处理删除操作</h3>
+<p>确保在资源被删除前执行必要的清理操作：</p>
+<pre><code class="language-go">const myFinalizerName = &quot;myresource.finalizers.myapp.com&quot;
+
+func (r *MyReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+    instance := &amp;myapiv1.MyResource{}
+    if err := r.Get(ctx, req.NamespacedName, instance); err != nil {
+        return ctrl.Result{}, client.IgnoreNotFound(err)
+    }
+
+    if instance.ObjectMeta.DeletionTimestamp.IsZero() {
+        // 资源没有被标记为删除
+        if !containsString(instance.ObjectMeta.Finalizers, myFinalizerName) {
+            instance.ObjectMeta.Finalizers = append(instance.ObjectMeta.Finalizers, myFinalizerName)
+            if err := r.Update(ctx, instance); err != nil {
+                return ctrl.Result{}, err
+            }
+        }
+    } else {
+        // 资源被标记为删除
+        if containsString(instance.ObjectMeta.Finalizers, myFinalizerName) {
+            if err := r.deleteExternalResources(ctx, instance); err != nil {
+                return ctrl.Result{}, err
+            }
+
+            instance.ObjectMeta.Finalizers = removeString(instance.ObjectMeta.Finalizers, myFinalizerName)
+            if err := r.Update(ctx, instance); err != nil {
+                return ctrl.Result{}, err
+            }
+        }
+        return ctrl.Result{}, nil
+    }
+
+    // ... 主要逻辑 ...
+
+    return ctrl.Result{}, nil
+}
+
+func (r *MyReconciler) deleteExternalResources(ctx context.Context, instance *myapiv1.MyResource) error {
+    // 实现删除外部资源的逻辑
+    return nil
+}
+</code></pre>
+<h3 id="处理并发更新">处理并发更新</h3>
+<p>使用 <code>Update</code> 或 <code>Patch</code> 操作时，处理可能的并发更新冲突：</p>
+<pre><code class="language-go">import &quot;k8s.io/client-go/util/retry&quot;
+
+func (r *MyReconciler) updateResource(ctx context.Context, instance *myapiv1.MyResource) error {
+    return retry.RetryOnConflict(retry.DefaultRetry, func() error {
+        // 获取最新版本的资源
+        if err := r.Get(ctx, client.ObjectKeyFromObject(instance), instance); err != nil {
+            return err
+        }
+
+        // 进行必要的更新
+        instance.Spec.SomeField = &quot;new value&quot;
+
+        // 尝试更新
+        if err := r.Update(ctx, instance); err != nil {
+            return err
+        }
+        return nil
+    })
+}
+</code></pre>
+<h2 id="状态更新最佳实践">状态更新最佳实践</h2>
+<h3 id="使用子资源状态更新">使用子资源状态更新</h3>
+<p>Kubernetes 提供了 <code>/status</code> 子资源，允许你独立于主资源更新状态。这样可以分离状态更新和规格更新的权限，并减少更新冲突。</p>
+<pre><code class="language-go">func (r *MyReconciler) updateStatus(ctx context.Context, instance *myapiv1.MyResource) error {
+    return r.Status().Update(ctx, instance)
+}
+</code></pre>
+<h3 id="实现乐观并发控制">实现乐观并发控制</h3>
+<p>使用 <code>retry.RetryOnConflict</code> 来处理可能的并发更新冲突：</p>
+<pre><code class="language-go">import (
+    &quot;k8s.io/client-go/util/retry&quot;
+    &quot;sigs.k8s.io/controller-runtime/pkg/client&quot;
+)
+
+func (r *MyReconciler) updateStatus(ctx context.Context, instance *myapiv1.MyResource) error {
+    return retry.RetryOnConflict(retry.DefaultRetry, func() error {
+        // 获取最新版本的资源
+        if err := r.Get(ctx, client.ObjectKeyFromObject(instance), instance); err != nil {
+            return err
+        }
+        
+        // 更新状态字段
+        instance.Status.Phase = &quot;Running&quot;
+        instance.Status.LastUpdateTime = metav1.Now()
+        
+        // 尝试更新状态
+        return r.Status().Update(ctx, instance)
+    })
+}
+</code></pre>
+<h3 id="使用部分更新patch">使用部分更新（Patch）</h3>
+<p>对于大型资源或频繁更新的情况，考虑使用 Patch 操作而不是完整的 Update：</p>
+<pre><code class="language-go">import &quot;sigs.k8s.io/controller-runtime/pkg/client&quot;
+
+func (r *MyReconciler) patchStatus(ctx context.Context, instance *myapiv1.MyResource) error {
+    patch := client.MergeFrom(instance.DeepCopy())
+    instance.Status.Phase = &quot;Running&quot;
+    instance.Status.LastUpdateTime = metav1.Now()
+    return r.Status().Patch(ctx, instance, patch)
+}
+</code></pre>
+<h3 id="实现状态条件">实现状态条件</h3>
+<p>使用条件（Conditions）来表示资源的详细状态，而不是简单的字符串状态：</p>
+<pre><code class="language-go">import (
+    metav1 &quot;k8s.io/apimachinery/pkg/apis/meta/v1&quot;
+)
+
+type MyResourceStatus struct {
+    Conditions []metav1.Condition `json:&quot;conditions,omitempty&quot;`
+}
+
+func (r *MyReconciler) updateCondition(instance *myapiv1.MyResource, conditionType string, status metav1.ConditionStatus, reason, message string) {
+    newCondition := metav1.Condition{
+        Type:               conditionType,
+        Status:             status,
+        Reason:             reason,
+        Message:            message,
+        LastTransitionTime: metav1.Now(),
+    }
+
+    // 更新或添加条件
+    for i, condition := range instance.Status.Conditions {
+        if condition.Type == conditionType {
+            if condition.Status != status {
+                instance.Status.Conditions[i] = newCondition
+            }
+            return
+        }
+    }
+    instance.Status.Conditions = append(instance.Status.Conditions, newCondition)
+}
+</code></pre>
+<h3 id="最小化状态更新">最小化状态更新</h3>
+<p>只在状态实际发生变化时才进行更新，以减少不必要的 API 调用：</p>
+<pre><code class="language-go">func (r *MyReconciler) updateStatusIfChanged(ctx context.Context, instance *myapiv1.MyResource, newStatus myapiv1.MyResourceStatus) error {
+    if !reflect.DeepEqual(instance.Status, newStatus) {
+        instance.Status = newStatus
+        return r.updateStatus(ctx, instance)
+    }
+    return nil
+}
+</code></pre>
+<h3 id="使用结构化日志记录状态变化">使用结构化日志记录状态变化</h3>
+<p>记录状态变化，以便于调试和监控：</p>
+<pre><code class="language-go">import &quot;github.com/go-logr/logr&quot;
+
+func (r *MyReconciler) logStatusChange(log logr.Logger, instance *myapiv1.MyResource, oldStatus, newStatus myapiv1.MyResourceStatus) {
+    log.Info(&quot;Status changed&quot;,
+        &quot;name&quot;, instance.Name,
+        &quot;namespace&quot;, instance.Namespace,
+        &quot;oldPhase&quot;, oldStatus.Phase,
+        &quot;newPhase&quot;, newStatus.Phase,
+    )
+}
+</code></pre>
+<h3 id="实现状态聚合">实现状态聚合</h3>
+<p>如果你的资源有子资源，考虑实现状态聚合：</p>
+<pre><code class="language-go">
+复制
+func (r *MyReconciler) aggregateStatus(ctx context.Context, instance *myapiv1.MyResource) error {
+    // 获取子资源
+    childList := &amp;myapiv1.ChildResourceList{}
+    if err := r.List(ctx, childList, client.InNamespace(instance.Namespace), client.MatchingFields{&quot;parentName&quot;: instance.Name}); err != nil {
+        return err
+    }
+
+    // 聚合子资源状态
+    readyCount := 0
+    for _, child := range childList.Items {
+        if child.Status.Phase == &quot;Ready&quot; {
+            readyCount++
+        }
+    }
+
+    // 更新父资源状态
+    instance.Status.ReadyChildren = readyCount
+    instance.Status.TotalChildren = len(childList.Items)
+
+    if readyCount == len(childList.Items) {
+        instance.Status.Phase = &quot;Ready&quot;
+    } else {
+        instance.Status.Phase = &quot;Progressing&quot;
+    }
+
+    return r.updateStatus(ctx, instance)
+}
+</code></pre>
+<h3 id="实现状态校验">实现状态校验</h3>
+<p>在更新状态之前，实现校验逻辑以确保状态的一致性：</p>
+<pre><code class="language-go">func (r *MyReconciler) validateStatus(status *myapiv1.MyResourceStatus) error {
+    if status.ReadyChildren &gt; status.TotalChildren {
+        return fmt.Errorf(&quot;ready children count cannot be greater than total children&quot;)
+    }
+    // 其他校验逻辑...
+    return nil
+}
+</code></pre>
+<h3 id="使用-finalizer-确保状态更新">使用 finalizer 确保状态更新</h3>
+<p>在资源被删除之前，使用 finalizer 确保最终状态被正确更新：</p>
+<pre><code class="language-go">const myFinalizerName = &quot;myresource.finalizers.example.com&quot;
+
+func (r *MyReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+    instance := &amp;myapiv1.MyResource{}
+    if err := r.Get(ctx, req.NamespacedName, instance); err != nil {
+        return ctrl.Result{}, client.IgnoreNotFound(err)
+    }
+
+    if instance.ObjectMeta.DeletionTimestamp.IsZero() {
+        // 资源未被标记为删除
+        if !containsString(instance.ObjectMeta.Finalizers, myFinalizerName) {
+            instance.ObjectMeta.Finalizers = append(instance.ObjectMeta.Finalizers, myFinalizerName)
+            if err := r.Update(ctx, instance); err != nil {
+                return ctrl.Result{}, err
+            }
+        }
+    } else {
+        // 资源已被标记为删除
+        if containsString(instance.ObjectMeta.Finalizers, myFinalizerName) {
+            // 执行清理操作
+            if err := r.finalizeResource(ctx, instance); err != nil {
+                return ctrl.Result{}, err
+            }
+
+            // 更新最终状态
+            instance.Status.Phase = &quot;Terminating&quot;
+            if err := r.updateStatus(ctx, instance); err != nil {
+                return ctrl.Result{}, err
+            }
+
+            // 移除 finalizer
+            instance.ObjectMeta.Finalizers = removeString(instance.ObjectMeta.Finalizers, myFinalizerName)
+            if err := r.Update(ctx, instance); err != nil {
+                return ctrl.Result{}, err
+            }
+        }
+        return ctrl.Result{}, nil
+    }
+
+    // ... 主要的 reconcile 逻辑 ...
+
+    return ctrl.Result{}, nil
+}
+</code></pre>
+<h3 id="实现状态恢复机制">实现状态恢复机制</h3>
+<p>在 controller 重启或出现异常情况时，实现状态恢复机制：</p>
+<pre><code class="language-go">
+func (r *MyReconciler) recoverStatus(ctx context.Context, instance *myapiv1.MyResource) error {
+    // 检查实际状态并更新资源状态
+    actualStatus, err := r.checkActualStatus(ctx, instance)
+    if err != nil {
+        return err
+    }
+
+    if !reflect.DeepEqual(instance.Status, actualStatus) {
+        instance.Status = actualStatus
+        return r.updateStatus(ctx, instance)
+    }
+    return nil
+}
+</code></pre>
+<h2 id="status-conditions">Status Conditions</h2>
+<p>状态条件（Status Conditions）是 Kubernetes 中表示资源详细状态的一种标准方式。它们提供了比简单的状态字符串更丰富的信息，使得资源的状态更易于理解和处理。以下是如何实现状态条件的详细说明：</p>
+<h3 id="定义状态条件">定义状态条件</h3>
+<p>首先，在你的自定义资源（CRD）定义中添加条件字段：</p>
+<pre><code class="language-go">import metav1 &quot;k8s.io/apimachinery/pkg/apis/meta/v1&quot;
+
+type MyResourceStatus struct {
+    // 其他状态字段...
+    Conditions []metav1.Condition `json:&quot;conditions,omitempty&quot;`
+}
+</code></pre>
+<h3 id="定义条件类型">定义条件类型</h3>
+<p>为你的资源定义一组标准的条件类型：</p>
+<pre><code class="language-go">const (
+    TypeAvailable   = &quot;Available&quot;
+    TypeProgressing = &quot;Progressing&quot;
+    TypeDegraded    = &quot;Degraded&quot;
+    // 其他条件类型...
+)
+</code></pre>
+<h3 id="实现更新条件的函数">实现更新条件的函数</h3>
+<p>创建一个辅助函数来更新或添加条件：</p>
+<pre><code class="language-go">func setCondition(conditions *[]metav1.Condition, conditionType string, status metav1.ConditionStatus, reason, message string) {
+    now := metav1.Now()
+    for i := range *conditions {
+        if (*conditions)[i].Type == conditionType {
+            if (*conditions)[i].Status != status {
+                (*conditions)[i].Status = status
+                (*conditions)[i].LastTransitionTime = now
+            }
+            (*conditions)[i].Reason = reason
+            (*conditions)[i].Message = message
+            return
+        }
+    }
+
+    // 如果条件不存在，添加新条件
+    *conditions = append(*conditions, metav1.Condition{
+        Type:               conditionType,
+        Status:             status,
+        LastTransitionTime: now,
+        Reason:             reason,
+        Message:            message,
+    })
+}
+</code></pre>
+<h3 id="在-reconcile-loop-中使用条件">在 Reconcile Loop 中使用条件</h3>
+<p>在你的 Reconcile 函数中，根据资源的实际状态更新条件：</p>
+<pre><code class="language-go">func (r *MyReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+    instance := &amp;myapiv1.MyResource{}
+    if err := r.Get(ctx, req.NamespacedName, instance); err != nil {
+        return ctrl.Result{}, client.IgnoreNotFound(err)
+    }
+
+    // 检查资源是否可用
+    isAvailable, err := r.checkAvailability(ctx, instance)
+    if err != nil {
+        return ctrl.Result{}, err
+    }
+
+    if isAvailable {
+        setCondition(&amp;instance.Status.Conditions, TypeAvailable, metav1.ConditionTrue, &quot;ResourceAvailable&quot;, &quot;The resource is available&quot;)
+    } else {
+        setCondition(&amp;instance.Status.Conditions, TypeAvailable, metav1.ConditionFalse, &quot;ResourceUnavailable&quot;, &quot;The resource is not available&quot;)
+    }
+
+    // 检查资源是否正在进行中
+    isProgressing, err := r.checkProgress(ctx, instance)
+    if err != nil {
+        return ctrl.Result{}, err
+    }
+
+    if isProgressing {
+        setCondition(&amp;instance.Status.Conditions, TypeProgressing, metav1.ConditionTrue, &quot;InProgress&quot;, &quot;The resource is being processed&quot;)
+    } else {
+        setCondition(&amp;instance.Status.Conditions, TypeProgressing, metav1.ConditionFalse, &quot;Completed&quot;, &quot;The resource processing is complete&quot;)
+    }
+
+    // 更新状态
+    if err := r.Status().Update(ctx, instance); err != nil {
+        return ctrl.Result{}, err
+    }
+
+    return ctrl.Result{}, nil
+}
+</code></pre>
+<h3 id="实现获取条件的辅助函数">实现获取条件的辅助函数</h3>
+<p>为了方便检查特定条件的状态，可以实现一个辅助函数：</p>
+<pre><code class="language-go">func getCondition(conditions []metav1.Condition, conditionType string) *metav1.Condition {
+    for i := range conditions {
+        if conditions[i].Type == conditionType {
+            return &amp;conditions[i]
+        }
+    }
+    return nil
+}
+</code></pre>
+<h3 id="使用条件来决定资源的整体状态">使用条件来决定资源的整体状态</h3>
+<p>可以基于多个条件来决定资源的整体状态：</p>
+<pre><code class="language-go">func (r *MyReconciler) determineOverallStatus(instance *myapiv1.MyResource) {
+    availableCondition := getCondition(instance.Status.Conditions, TypeAvailable)
+    progressingCondition := getCondition(instance.Status.Conditions, TypeProgressing)
+    degradedCondition := getCondition(instance.Status.Conditions, TypeDegraded)
+
+    if availableCondition != nil &amp;&amp; availableCondition.Status == metav1.ConditionTrue {
+        instance.Status.Phase = &quot;Available&quot;
+    } else if degradedCondition != nil &amp;&amp; degradedCondition.Status == metav1.ConditionTrue {
+        instance.Status.Phase = &quot;Degraded&quot;
+    } else if progressingCondition != nil &amp;&amp; progressingCondition.Status == metav1.ConditionTrue {
+        instance.Status.Phase = &quot;Progressing&quot;
+    } else {
+        instance.Status.Phase = &quot;Unknown&quot;
+    }
+}
+</code></pre>
+<h3 id="实现条件的观察者模式">实现条件的观察者模式</h3>
+<p>如果你的资源有子资源或依赖其他资源，可以实现一个观察者模式来传播条件：</p>
+<pre><code class="language-go">func (r *MyReconciler) propagateConditions(ctx context.Context, instance *myapiv1.MyResource) error {
+    // 获取依赖资源
+    dep := &amp;appsv1.Deployment{}
+    err := r.Get(ctx, types.NamespacedName{Name: instance.Spec.DeploymentName, Namespace: instance.Namespace}, dep)
+    if err != nil {
+        return err
+    }
+
+    // 检查 Deployment 的条件并传播到自定义资源
+    for _, cond := range dep.Status.Conditions {
+        switch cond.Type {
+        case appsv1.DeploymentAvailable:
+            setCondition(&amp;instance.Status.Conditions, TypeAvailable, cond.Status, cond.Reason, cond.Message)
+        case appsv1.DeploymentProgressing:
+            setCondition(&amp;instance.Status.Conditions, TypeProgressing, cond.Status, cond.Reason, cond.Message)
+        }
+    }
+
+    return nil
+}
+</code></pre>
+<h3 id="实现条件的-ttltime-to-live">实现条件的 TTL（Time to Live）</h3>
+<p>对于某些条件，可能需要实现 TTL 机制，以确保旧的条件不会永久存在：</p>
+<pre><code class="language-go">func (r *MyReconciler) cleanupOldConditions(instance *myapiv1.MyResource) {
+    now := time.Now()
+    for i := len(instance.Status.Conditions) - 1; i &gt;= 0; i-- {
+        cond := instance.Status.Conditions[i]
+        if now.Sub(cond.LastTransitionTime.Time) &gt; 24*time.Hour {
+            // 移除超过24小时的条件
+            instance.Status.Conditions = append(instance.Status.Conditions[:i], instance.Status.Conditions[i+1:]...)
+        }
+    }
+}
+</code></pre>
+<h2 id="参考">参考</h2>
+<p>[1] <a href="%5Bhttps://github.com/cncf/tag-app-delivery/blob/163962c4b1cd70d085107fc579e3e04c2e14d59c/operator-whitepaper/v1/Operator-WhitePaper_v1-0.md%5D(https://github.com/cncf/tag-app-delivery/blob/163962c4b1cd70d085107fc579e3e04c2e14d59c/operator-whitepaper/v1/Operator-WhitePaper_v1-0.md)">Operator 白皮书</a></p>
+<p>[2] <a href="%5Bhttps://chinalhr.github.io/post/kubernetes-crd-operator-1/%5D(https://chinalhr.github.io/post/kubernetes-crd-operator-1/)">Kubernetes-Operator：扩展Kubernetes API Resource与Custom Controller (上)</a></p>
+<p>[3] <a href="%5Bhttps://developer.aliyun.com/article/798703%5D(https://developer.aliyun.com/article/798703)">Kubernetes Operator 开发教程</a></p>
+<p>[4] <a href="%5Bhttps://www.zhaohuabing.com/post/2023-03-09-how-to-create-a-k8s-controller/%5D(https://www.zhaohuabing.com/post/2023-03-09-how-to-create-a-k8s-controller/)">Kubernetes Controller 机制详解（一）</a></p>
+<p>[5] <a href="%5Bhttps://kubernetes.io/docs/concepts/extend-kubernetes/operator/%5D(https://kubernetes.io/docs/concepts/extend-kubernetes/operator/)">Kubernetes Operator</a></p>
+]]></content>
+    </entry>
+    <entry>
+        <title type="html"><![CDATA[显卡直通技术原理]]></title>
+        <id>https://protream.github.io/post/vzZzy3P9V/</id>
+        <link href="https://protream.github.io/post/vzZzy3P9V/">
+        </link>
+        <updated>2024-06-02T10:32:36.000Z</updated>
+        <summary type="html"><![CDATA[<p>显卡直通（GPU Passthrough）的原理是通过硬件虚拟化技术，使得虚拟机能直接访问物理硬件资源，从而大大提高虚拟机的性能。</p>
+<p>在没有直通技术的情况下，虚拟机需要通过宿主机的操作系统来访问硬件资源，这会造成一定的性能损失。而显卡直通技术则可以使虚拟机绕过宿主机操作系统，直接访问显卡硬件。</p>
+]]></summary>
+        <content type="html"><![CDATA[<p>显卡直通（GPU Passthrough）的原理是通过硬件虚拟化技术，使得虚拟机能直接访问物理硬件资源，从而大大提高虚拟机的性能。</p>
+<p>在没有直通技术的情况下，虚拟机需要通过宿主机的操作系统来访问硬件资源，这会造成一定的性能损失。而显卡直通技术则可以使虚拟机绕过宿主机操作系统，直接访问显卡硬件。</p>
+<!-- more -->
+<h2 id="技术原理">技术原理</h2>
+<p>这种技术的实现需要硬件和软件的支持。在硬件方面，需要支持IOMMU（Input/Output Memory Management Unit）的CPU和主板，以及支持SR-IOV（Single Root I/O Virtualization）的显卡。在软件方面，需要支持硬件虚拟化和显卡直通的虚拟机管理程序，如KVM、Xen等。</p>
+<h3 id="iommu">IOMMU</h3>
+<p>IOMMU，全称是Input/Output Memory Management Unit，即输入/输出内存管理单元。它是一种硬件技术，主要用于控制设备对物理内存的访问。</p>
+<p>在没有IOMMU的情况下，设备（如网卡、显卡等）直接使用物理地址访问内存，这样可能会导致设备对任意内存的访问，从而带来安全问题。而有了IOMMU后，操作系统可以控制设备对哪些内存的访问，从而提高系统的安全性。</p>
+<p>此外，IOMMU还可以实现设备的虚拟化。在虚拟化环境中，虚拟机通常不能直接访问物理硬件，而是通过宿主机操作系统的模拟。但是，这种模拟方式会带来性能损失。而有了IOMMU后，虚拟机可以直接访问硬件，从而提高性能。</p>
+<p>IOMMU的具体实现方式因硬件厂商而异。在Intel平台上，它被称为VT-d（Virtualization Technology for Directed I/O）。在AMD平台上，它被称为AMD-Vi（AMD Virtualization technology for I/O devices）。</p>
+<h3 id="sr-io">SR-IO</h3>
+<p>SR-IOV，全称是Single Root Input/Output Virtualization，即单根输入/输出虚拟化。这是一种硬件辅助的I/O虚拟化技术，可以让一个物理设备在虚拟环境中表现为多个虚拟设备，每个虚拟设备可以被不同的虚拟机独立使用。</p>
+<p>SR-IOV技术的核心是引入了两种新的设备类型：Physical Function (PF) 和 Virtual Function (VF)。</p>
+<p>PF是物理设备的完整功能表示，包括设备的所有配置和管理功能，以及一些I/O功能。每个支持SR-IOV的物理设备都至少有一个PF。</p>
+<p>VF则是物理设备的一个轻量级表示，只包含一部分I/O功能，不包含配置和管理功能。每个PF可以有多个VF，每个VF可以被分配给一个虚拟机使用。</p>
+<p>通过SR-IOV技术，虚拟机可以直接访问硬件设备的部分功能，从而避免了通过宿主机操作系统进行I/O操作的开销，提高了I/O性能。同时，因为每个虚拟机都有自己的VF，所以虚拟机之间的I/O操作不会相互干扰，提高了I/O的稳定性和可靠性。</p>
+<p>SR-IOV技术广泛应用于网络设备和显卡等I/O密集型设备的虚拟化。</p>
+<h3 id="vfio-pci">VFIO-PCI</h3>
+<p>VFIO-PCI是VFIO的一个子模块，专门用于PCI设备的直通。</p>
+<p>VFIO提供了一种机制，使得用户空间的程序（如虚拟机）可以直接访问硬件设备，而无需通过内核。这种机制不仅可以提高性能，还可以提供更好的设备隔离，增强系统的安全性。</p>
+<p>VFIO-PCI模块通过VFIO框架提供的接口，实现了对PCI设备的直通。当你把一个PCI设备分配给虚拟机时，VFIO-PCI模块会负责把设备的所有操作（如读写设备寄存器、DMA操作等）转发给硬件设备。</p>
+<p>总的来说，VFIO-PCI是一种在Linux系统中实现PCI设备直通的技术，广泛应用于虚拟化和容器等领域。</p>
+<h2 id="参考">参考</h2>
+<p>[1] <a href="https://kubevirt.io/user-guide/compute/host-devices/">Host Devices Assignment</a></p>
+]]></content>
+    </entry>
+    <entry>
+        <title type="html"><![CDATA[SOLID 原则]]></title>
+        <id>https://protream.github.io/post/FPzI7NSe3/</id>
+        <link href="https://protream.github.io/post/FPzI7NSe3/">
+        </link>
+        <updated>2024-05-29T12:14:19.000Z</updated>
+        <summary type="html"><![CDATA[<p>SOLID 原则是由著名的鲍勃大叔（Robert J. Martin）在其论文里提出的，鲍勃大叔在架构领域建树颇多，《代码整洁之道》、《架构整洁之道》都出资他手。</p>
+<p>SOLID 是五个面向对象编程和设计的基本原则的首字母缩写，它们分别是：</p>
+<ol>
+<li>单一职责原则（Single Responsibility Principle, SRP）</li>
+<li>开放封闭原则（Open-Closed Principle, OCP）</li>
+<li>里氏替换原则（Liskov Substitution Principle, LSP）</li>
+<li>接口隔离原则（Interface Segregation Principle, ISP）</li>
+<li>依赖倒置原则（Dependency Inversion Principle, DIP）</li>
+</ol>
+]]></summary>
+        <content type="html"><![CDATA[<p>SOLID 原则是由著名的鲍勃大叔（Robert J. Martin）在其论文里提出的，鲍勃大叔在架构领域建树颇多，《代码整洁之道》、《架构整洁之道》都出资他手。</p>
+<p>SOLID 是五个面向对象编程和设计的基本原则的首字母缩写，它们分别是：</p>
+<ol>
+<li>单一职责原则（Single Responsibility Principle, SRP）</li>
+<li>开放封闭原则（Open-Closed Principle, OCP）</li>
+<li>里氏替换原则（Liskov Substitution Principle, LSP）</li>
+<li>接口隔离原则（Interface Segregation Principle, ISP）</li>
+<li>依赖倒置原则（Dependency Inversion Principle, DIP）</li>
+</ol>
+<!-- more -->
+<h2 id="单一职责原则">单一职责原则</h2>
+<p>单一职责原则是说，一个类应该只有一个引起它变化的原因。这个原则的主要目的是降低类的复杂性，并提高类的可读性和可维护性。</p>
+<p>比如说，有一个类叫做<code>UserManager</code>，它负责处理用户的添加和删除，同时也负责发送通知。这样的设计就违反了单一职责原则。因为<code>UserManager</code>类有两个改变的理由：用户管理的逻辑变化和通知的逻辑变化。</p>
+<p>如果用户管理的逻辑发生变化，比如说需要添加用户的年龄验证，那么你需要修改<code>UserManager</code>类。如果通知的逻辑发生变化，比如说需要增加短信通知，你也需要修改<code>UserManager</code>类。这样的设计使得<code>UserManager</code>类变得复杂，难以理解和维护。</p>
+<p>如果遵守单一职责原则，应该将用户管理和通知分离到两个类中，比如<code>UserManager</code>类只负责用户的添加和删除，<code>NotificationManager</code>类只负责发送通知。这样，当用户管理的逻辑变化时，你只需要修改<code>UserManager</code>类，当通知的逻辑变化时，你只需要修改<code>NotificationManager</code>类。这样的设计使得每个类都只有一个改变的理由，降低了类的复杂性，提高了类的可读性和可维护性。</p>
+<p>在函数层面，单一职责原则也是适用。</p>
+<p>函数应该做一件事情，做好一件事情。如果一个函数尝试去做多于一件的事情，它将会变得复杂，难以理解和维护。</p>
+<p>举个例子，如果你有一个函数叫做<code>handleUser</code>，它负责验证用户输入，处理用户请求，并且记录日志。这个函数就违反了单一职责原则，因为它有三个改变的理由：验证逻辑的变化，请求处理的变化，和日志记录的变化。</p>
+<pre><code class="language-go">func handleUser(user User) {
+    // 验证用户输入
+    // 处理用户请求
+    // 记录日志
+}
+</code></pre>
+<p>如果遵守单一职责原则，你应该将这三个功能分离到三个函数中，比如<code>validateUser</code>函数只负责验证用户输入，<code>processUser</code>函数只负责处理用户请求，<code>logUser</code>函数只负责记录日志。这样，每个函数都只有一个改变的理由，降低了函数的复杂性，提高了函数的可读性和可维护性。</p>
+<pre><code class="language-go">func validateUser(user User) {
+    // 验证用户输入
+}
+
+func processUser(user User) {
+    // 处理用户请求
+}
+
+func logUser(user User) {
+    // 记录日志
+}
+</code></pre>
+<p><code>handleUser</code>函数可以被重构为只负责调用其他处理具体任务的函数：</p>
+<pre><code class="language-go">func handleUser(user User) {
+    validateUser(user)
+    processUser(user)
+    logUser(user)
+}
+</code></pre>
+<p><code>handleUser</code>函数的职责就变成了协调<code>validateUser</code>，<code>processUser</code>和<code>logUser</code>这三个函数。这样，如果验证用户输入的逻辑需要变更，你只需要修改<code>validateUser</code>函数；如果处理用户请求的逻辑需要变更，你只需要修改<code>processUser</code>函数；如果记录日志的逻辑需要变更，你只需要修改<code>logUser</code>函数。每个函数都只有一个改变的理由，遵守了单一职责原则。</p>
+<p>这样的设计不仅使得代码更加清晰，也提高了代码的可维护性。</p>
+<h3 id="常见陷阱和反模式">常见陷阱和反模式</h3>
+<p>我们将以一个简单的书店发票程序的代码为例。首先定义一个用于发票的书籍类。</p>
+<pre><code class="language-go">class Book {
+	String name;
+	String authorName;
+	int year;
+	int price;
+	String isbn;
+
+	public Book(String name, String authorName, int year, int price, String isbn) {
+		this.name = name;
+		this.authorName = authorName;
+		this.year = year;
+        this.price = price;
+		this.isbn = isbn;
+	}
+}
+</code></pre>
+<p>这是一个带有一些字段的简单书籍类。没什么特别的。我没有将字段设为私有，这样我们就不需要处理 getter 和 setter，而是可以专注于逻辑。</p>
+<p>现在让我们创建发票类，它将包含创建发票和计算总价的逻辑。现在，假设我们的书店只卖书，不卖其他东西。</p>
+<pre><code class="language-go">
+public class Invoice {
+
+	private Book book;
+	private int quantity;
+	private double discountRate;
+	private double taxRate;
+	private double total;
+
+	public Invoice(Book book, int quantity, double discountRate, double taxRate) {
+		this.book = book;
+		this.quantity = quantity;
+		this.discountRate = discountRate;
+		this.taxRate = taxRate;
+		this.total = this.calculateTotal();
+	}
+
+	public double calculateTotal() {
+	        double price = ((book.price - book.price * discountRate) * this.quantity);
+
+		double priceWithTaxes = price * (1 + taxRate);
+
+		return priceWithTaxes;
+	}
+
+	public void printInvoice() {
+            System.out.println(quantity + &quot;x &quot; + book.name + &quot; &quot; +          book.price + &quot;$&quot;);
+            System.out.println(&quot;Discount Rate: &quot; + discountRate);
+            System.out.println(&quot;Tax Rate: &quot; + taxRate);
+            System.out.println(&quot;Total: &quot; + total);
+	}
+
+        public void saveToFile(String filename) {
+	// Creates a file with given name and writes the invoice
+	}
+
+}
+</code></pre>
+<p>这是我们的发票类。它还包含一些有关发票的字段和 3 种方法：</p>
+<ul>
+<li><strong>calculateTotal</strong>方法，计算总价，</li>
+<li><strong>printInvoice</strong>方法，应该将发票打印到控制台，以及</li>
+<li><strong>saveToFile</strong>方法，负责将发票写入文件。</li>
+</ul>
+<p>在阅读下一段之前，你应该花一点时间思考一下这个类设计有什么问题。</p>
+<p>好的，这是怎么回事？我们的类在多个方面违反了单一职责原则。</p>
+<p>第一个违规行为是<strong>printInvoice</strong>方法，该方法包含我们的打印逻辑。SRP 规定我们的类应该只有一个更改原因，并且该原因应该是我们类的发票计算发生变化。</p>
+<p>但在这种架构下，如果我们想改变打印格式，就需要改变类。这就是为什么我们不应该将打印逻辑与业务逻辑混合在同一个类中。</p>
+<p>我们的类中还有另一个违反 SRP 的方法：<strong>saveToFile</strong>方法。将持久性逻辑与业务逻辑混合在一起也是一个极其常见的错误。</p>
+<p>不要只考虑写入文件——它可以保存到数据库、进行 API 调用或进行与持久性相关的其他操作。</p>
+<p>那么您可能会问，我们如何修复此打印功能。</p>
+<p>我们可以为我们的打印和持久逻辑创建新的类，这样我们就不再需要为了这些目的修改发票类。</p>
+<p>我们创建 2 个类，<strong>InvoicePrinter</strong>和**InvoicePersistence，**并移动方法。</p>
+<pre><code class="language-go">public class InvoicePrinter {
+    private Invoice invoice;
+
+    public InvoicePrinter(Invoice invoice) {
+        this.invoice = invoice;
+    }
+
+    public void print() {
+        System.out.println(invoice.quantity + &quot;x &quot; + invoice.book.name + &quot; &quot; + invoice.book.price + &quot; $&quot;);
+        System.out.println(&quot;Discount Rate: &quot; + invoice.discountRate);
+        System.out.println(&quot;Tax Rate: &quot; + invoice.taxRate);
+        System.out.println(&quot;Total: &quot; + invoice.total + &quot; $&quot;);
+    }
+}
+</code></pre>
+<pre><code class="language-go">public class InvoicePersistence {
+    Invoice invoice;
+
+    public InvoicePersistence(Invoice invoice) {
+        this.invoice = invoice;
+    }
+
+    public void saveToFile(String filename) {
+        // Creates a file with given name and writes the invoice
+    }
+}
+</code></pre>
+<p>现在我们的类结构遵循单一职责原则，每个类负责应用程序的一个方面。太棒了！</p>
+<h2 id="开放封闭原则">开放封闭原则</h2>
+<p>开放封闭原则要求<strong>类应该对扩展开放，对修改关闭。</strong></p>
+<p>修改意味着改变现有类的代码，扩展意味着添加新的功能。</p>
+<p>因此，该原则的意思是：我们应该能够在不触碰类的现有代码的情况下添加新功能。这是因为每当我们修改现有代码时，我们都冒着产生潜在错误的风险。因此，如果可能的话，我们应该避免触碰经过测试且可靠的（大多数）生产代码。</p>
+<p>但是你可能会问，我们如何在不触及类的情况下添加新功能。这通常是借助接口和抽象类来完成的。</p>
+<p>现在我们已经介绍了该原理的基础知识，让我们将其应用到我们的发票应用程序中。</p>
+<p>假设我们的老板来找我们，说他们希望将发票保存到数据库中，以便我们轻松搜索。我们认为好的，老板，这很容易，请给我一点时间！</p>
+<p>我们创建数据库，连接到它，并向我们的<strong>InvoicePersistence</strong>类添加一个保存方法：</p>
+<pre><code class="language-go">public class InvoicePersistence {
+    Invoice invoice;
+
+    public InvoicePersistence(Invoice invoice) {
+        this.invoice = invoice;
+    }
+
+    public void saveToFile(String filename) {
+        // Creates a file with given name and writes the invoice
+    }
+
+    public void saveToDatabase() {
+        // Saves the invoice to database
+    }
+}
+</code></pre>
+<p>不幸的是，作为书店的懒惰开发人员，我们没有设计出将来易于扩展的类。因此，为了添加此功能，我们修改了<strong>InvoicePersistence</strong>类。</p>
+<p>如果我们的类设计遵循开放-封闭原则，我们就不需要改变这个类。</p>
+<p>因此，作为书店懒惰但聪明的开发人员，我们看到了设计问题并决定重构代码以遵循该原则。</p>
+<pre><code class="language-go">interface InvoicePersistence {
+
+    public void save(Invoice invoice);
+}
+</code></pre>
+<p>我们将InvoicePersistence**的类型改为Interface，并添加一个save方法，每个持久化类都会实现这个save方法。</p>
+<pre><code class="language-go">public class DatabasePersistence implements InvoicePersistence {
+
+    @Override
+    public void save(Invoice invoice) {
+        // Save to DB
+    }
+}
+</code></pre>
+<pre><code class="language-go">public class FilePersistence implements InvoicePersistence {
+
+    @Override
+    public void save(Invoice invoice) {
+        // Save to file
+    }
+}
+</code></pre>
+<p>所以我们的班级结构现在看起来像这样：</p>
+<figure data-type="image" tabindex="1"><img src="https://www.freecodecamp.org/news/content/images/2023/08/solid-article-image-1.png" alt="solid" loading="lazy"></figure>
+<p>现在我们的持久性逻辑很容易扩展。如果我们的老板要求我们添加另一个数据库，并且拥有 2 种不同类型的数据库，如 MySQL 和 MongoDB，我们可以轻松做到这一点。</p>
+<p>您可能认为我们可以创建多个没有接口的类，并为所有类添加保存方法。</p>
+<p>但是假设我们扩展了我们的应用程序并且有多个持久性类，如<strong>InvoicePersistence</strong>，<strong>BookPersistence</strong>，并且我们创建一个管理所有持久性类的<strong>PersistenceManager类：</strong></p>
+<pre><code class="language-go">public class PersistenceManager {
+    InvoicePersistence invoicePersistence;
+    BookPersistence bookPersistence;
+
+    public PersistenceManager(InvoicePersistence invoicePersistence,
+                              BookPersistence bookPersistence) {
+        this.invoicePersistence = invoicePersistence;
+        this.bookPersistence = bookPersistence;
+    }
+}
+</code></pre>
+<p>现在，我们可以借助多态性将任何实现<strong>InvoicePersistence</strong>接口的类传递给此类。这就是接口提供的灵活性。</p>
+<h2 id="里氏替换原则">里氏替换原则</h2>
+<p>里氏替换原则指出子类应该可以替换其基类。</p>
+<p>这意味着，假设 B 类是 A 类的子类，我们应该能够将 B 类的对象传递给任何需要 A 类对象的方法，并且在这种情况下该方法不应该给出任何奇怪的输出。</p>
+<p>这是预期的行为，因为当我们使用继承时，我们假设子类继承了超类拥有的所有内容。子类扩展了行为，但从未缩小其范围。</p>
+<p>因此，当一个类不遵循这个原则时，就会导致一些难以检测的严重错误。</p>
+<p>里氏原则很容易理解，但在代码中很难发现。让我们看一个例子。</p>
+<pre><code class="language-go">
+class Rectangle {
+	protected int width, height;
+
+	public Rectangle() {
+	}
+
+	public Rectangle(int width, int height) {
+		this.width = width;
+		this.height = height;
+	}
+
+	public int getWidth() {
+		return width;
+	}
+
+	public void setWidth(int width) {
+		this.width = width;
+	}
+
+	public int getHeight() {
+		return height;
+	}
+
+	public void setHeight(int height) {
+		this.height = height;
+	}
+
+	public int getArea() {
+		return width * height;
+	}
+}
+</code></pre>
+<p>我们有一个简单的 Rectangle 类和一个返回矩形面积的<strong>getArea函数。</strong></p>
+<p>现在我们决定为正方形创建另一个类。您可能知道，正方形只是一种特殊类型的矩形，其宽度等于高度。</p>
+<pre><code class="language-go">class Square extends Rectangle {
+	public Square() {}
+
+	public Square(int size) {
+		width = height = size;
+	}
+
+	@Override
+	public void setWidth(int width) {
+		super.setWidth(width);
+		super.setHeight(width);
+	}
+
+	@Override
+	public void setHeight(int height) {
+		super.setHeight(height);
+		super.setWidth(height);
+	}
+}
+</code></pre>
+<p>我们的 Square 类扩展了 Rectangle 类。我们在构造函数中将高度和宽度设置为相同的值，但我们不希望任何客户端（在代码中使用我们类的人）以违反 square 属性的方式更改高度或重量。</p>
+<p>因此，我们重写 setter，以便当其中一个属性发生变化时同时设置两个属性。但这样做却违反了里氏替换原则。</p>
+<p>让我们创建一个主类来对<strong>getArea</strong>函数进行测试。</p>
+<pre><code class="language-go">class Test {
+
+   static void getAreaTest(Rectangle r) {
+      int width = r.getWidth();
+      r.setHeight(10);
+      System.out.println(&quot;Expected area of &quot; + (width * 10) + &quot;, got &quot; + r.getArea());
+   }
+
+   public static void main(String[] args) {
+      Rectangle rc = new Rectangle(2, 3);
+      getAreaTest(rc);
+
+      Rectangle sq = new Square();
+      sq.setWidth(5);
+      getAreaTest(sq);
+   }
+}
+</code></pre>
+<p>你们团队的测试人员刚刚拿出了测试函数<strong>getAreaTest</strong>，并告诉你，你的<strong>getArea</strong>函数未能通过方形物体的测试。</p>
+<p>在第一个测试中，我们创建一个宽度为 2、高度为 3 的矩形，然后调用<strong>getAreaTest。<strong>输出结果与预期一致，为 20，但传入正方形时，结果出错。这是因为测试中对</strong>setHeight</strong>函数的调用也会设置宽度，导致输出结果出乎意料。</p>
+<h2 id="接口隔离原则">接口隔离原则</h2>
+<p>隔离意味着保持事物分离，接口隔离原则就是关于分离接口的。</p>
+<p>该原则指出，多个客户端专用接口比一个通用接口更好。不应强迫客户端实现他们不需要的功能。</p>
+<p>这是一个很容易理解和应用的原则，让我们看一个例子。</p>
+<pre><code class="language-go">public interface ParkingLot {
+
+	void parkCar(); // Decrease empty spot count by 1
+	void unparkCar(); // Increase empty spots by 1
+	void getCapacity(); // Returns car capacity
+	double calculateFee(Car car); // Returns the price based on number of hours
+	void doPayment(Car car);
+}
+
+class Car {
+
+}
+</code></pre>
+<p>我们建立了一个非常简单的停车场模型。这是按小时收费的停车场类型。现在假设我们想要实现一个免费的停车场。</p>
+<pre><code class="language-go">public class FreeParking implements ParkingLot {
+
+	@Override
+	public void parkCar() {
+
+	}
+
+	@Override
+	public void unparkCar() {
+
+	}
+
+	@Override
+	public void getCapacity() {
+
+	}
+
+	@Override
+	public double calculateFee(Car car) {
+		return 0;
+	}
+
+	@Override
+	public void doPayment(Car car) {
+		throw new Exception(&quot;Parking lot is free&quot;);
+	}
+}
+</code></pre>
+<p>我们的停车场界面由两部分组成：停车相关逻辑（停车、取车、获取容量）和支付相关逻辑。</p>
+<p>但是它太具体了。正因为如此，我们的 FreeParking 类被迫实现与支付无关的方法。让我们分离或隔离接口。</p>
+<figure data-type="image" tabindex="2"><img src="https://www.freecodecamp.org/news/content/images/2023/08/solid-article-image-2.png" alt="solid2" loading="lazy"></figure>
+<p>我们现在已经将停车场分开了。有了这个新模型，我们甚至可以更进一步，将<strong>PaidParkingLot</strong>分开，以支持不同类型的付款。</p>
+<p>现在我们的模型更加灵活、可扩展，并且客户端不需要实现任何不相关的逻辑，因为我们只在停车场界面提供与停车相关的功能。</p>
+<h2 id="依赖倒置原则">依赖倒置原则</h2>
+<p>依赖倒置原则指出我们的类应该依赖于接口或抽象类，而不是具体的类和函数。</p>
+<p>鲍勃大叔在他的中对这一原则进行了如下总结：</p>
+<blockquote>
+<p>“如果 OCP 阐明了 OO 架构的目标，那么 DIP 则阐明了主要机制”。</p>
+</blockquote>
+<p>这两个原则确实是相关的，我们之前在讨论开放封闭原则时就应用过这种模式。</p>
+<p>我们希望我们的类可以扩展，所以我们重新组织了依赖关系，使其依赖于接口而不是具体的类。我们的 PersistenceManager 类依赖于 InvoicePersistence，而不是实现该接口的类。</p>
+<h2 id="参考">参考</h2>
+<p>[1] <a href="https://www.freecodecamp.org/news/solid-principles-explained-in-plain-english/">solid-principles-explained-in-plain-english</a></p>
+<p>[2] <a href="https://staff.cs.utu.fi/~jounsmed/doos_06/material/DesignPrinciplesAndPatterns.pdf">Design Principles And Patterns</a></p>
+]]></content>
+    </entry>
+    <entry>
+        <title type="html"><![CDATA[ QUIC 协议]]></title>
+        <id>https://protream.github.io/post/6gHuzef_3/</id>
+        <link href="https://protream.github.io/post/6gHuzef_3/">
+        </link>
+        <updated>2024-05-17T13:44:53.000Z</updated>
+        <summary type="html"><![CDATA[<p>QUIC 协议是 Google 出品的传输层网络协议。那么，在已经有了安全可靠的 TCP 协议的情况下，又搞出来一个新的协议呢？简单来说，Google 对 TCP 协议的优化已经到了尽头，已经没有什么好优化的了，但还想更进一步，怎么办呢？搞个新的。</p>
+]]></summary>
+        <content type="html"><![CDATA[<p>QUIC 协议是 Google 出品的传输层网络协议。那么，在已经有了安全可靠的 TCP 协议的情况下，又搞出来一个新的协议呢？简单来说，Google 对 TCP 协议的优化已经到了尽头，已经没有什么好优化的了，但还想更进一步，怎么办呢？搞个新的。</p>
+<!-- more -->
+<p>设计目标：</p>
+<ul>
+<li>取代TCP协议</li>
+<li>降低连接和传输延迟</li>
+<li>改进拥塞控制</li>
+</ul>
+<p>相比 http2+tcp+tls 的优势：</p>
+<ol>
+<li>减少了 TCP 三次握手及 TLS 握手时间。</li>
+<li>改进的拥塞控制。</li>
+<li>避免队头阻塞的多路复用。</li>
+<li>连接迁移。</li>
+<li>前向冗余纠错。</li>
+</ol>
+<h2 id="特性">特性</h2>
+<p><strong>相互独立的逻辑流</strong></p>
+<p>相互独立的逻辑流是 QUIC 的核心特性之一。它允许在单个连接上并行传输多个数据流，并且每个流可以独立地处理。相比之下，TCP 只支持单数据流，需要按照发送顺序接收和确认每个报文。通过多路复用，应用程序可以更高效地发送和接收数据，并更好地利用网络带宽等资源。</p>
+<p><strong>一致安全性</strong></p>
+<p>QUIC 的另一个重要特性是它提供了端到端的安全保护。所有通过 QUIC 发送的数据都是默认加密的，并且不支持明文通信。这有助于防止数据被窃听和其他形式的攻击。QUIC 使用传输层安全协议（TLS）来建立和维护安全连接和端到端加密。</p>
+<p><strong>低延迟</strong></p>
+<p>QUIC 协议的设计目的是减少建立连接所需的延迟，以便在端点之间快速地发送和接收数据。对于移动网络这种高延迟的网络环境来说，这一点尤为重要。为了实现这个目标，QUIC 最小化了建立连接所需的往返次数，并且采用更小的报文来发送数据。传统的互联网协议通常存在延迟问题，例如美欧之间的往返时间有时可达 300 或 400 毫秒。</p>
+<p><strong>可靠性</strong></p>
+<p>QUIC 基于 UDP 但可提供可靠传输能力。类似于 TCP，它是一种面向连接的传输协议。QUIC 协议在数据传输过程中具有报文丢失恢复和重传功能，这可以确保数据的完整性和准确性。此外，QUIC 可以保证数据包按照发送顺序到达，避免因数据包乱序导致的数据错误。</p>
+<p><strong>消除 HOL 阻塞</strong></p>
+<p>QUIC 通过支持多个数据流来解决 HOL 阻塞问题。这使得来自不同应用的消息可以独立地传递，避免了因为等待其他应用而可能产生的延迟。</p>
+<h2 id="原理">原理</h2>
+<h2 id="场景">场景</h2>
+<p>HTTP/3 中，弃用 TCP 协议，改为使用基于 UDP 协议的 QUIC 协议实现。随着 HTTP/3 和 QUIC 越来越流行并被广泛采用，涌现出多种多样的应用场景。这些应用场景覆盖了直播、视频、点播、下载、Web 加速等领域，其中最具潜力的应用场景有：</p>
+<ol>
+<li>**实时 Web 和移动应用：**这些应用（如集成了语音和视频通信功能的 Web 和移动应用）需要低延迟和可靠的数据传输。QUIC 利用相互独立的数据流和拥塞控制机制，使其成为这些应用的理想选择，因为它可以快速高效地发送和接收数据。在 QUIC 的多路复用模式下，同一连接内不同数据流之间的数据传输互不干扰。</li>
+<li>**与物联网设备通信：**物联网设备通常使用 TCP 和 MQTT 等协议进行通信。然而，这些协议在受限的网络环境中可能存在高延迟和丢包等问题。相比之下，专为高延迟和丢包的网络环境而设计的 QUIC 可以提供更可靠和高效的替代方案。QUIC 可以实现接近零的往返时间（RTT），这对于提高网络性能和用户体验至关重要。</li>
+<li>**车联网和网联汽车：**QUIC 可以极大地促进车联网生态系统的发展。这些系统需要实时的数据交换来提供诸如交通管理、车辆跟踪和安全功能等服务。QUIC 具有低延迟、多路复用的特性，以及对数据包丢失和重排序的处理能力，可以确保车辆和基础设施组件之间可靠而高效的通信。此外，QUIC 使用 TLS 加密保护敏感车辆数据，提供了更强的安全保障。</li>
+<li>**云计算：**云计算是指通过互联网提供计算资源的服务。使用 QUIC 协议可以带来多方面的好处，例如低延迟和端到端加密，这可以提升用户体验、增强系统安全。</li>
+<li>**支付和电子商务应用：**这些应用需要安全可靠的数据传输。QUIC 通过 TLS 加密和可靠的 HTTP3 数据流，使其成为这些应用的理想选择，有助于保证数据安全完整地传输。从终端用户的角度来看，QUIC 协议通过保证更快、更顺畅的交易，优化了用户体验。</li>
+</ol>
+<h2 id="对比">对比</h2>
+<p>与 TCP 相比，QUIC 在高延迟和不稳定的网络环境中，如移动网络，可以显著提升网页加载速度并减少连接中断，使得网络体验更加流畅。</p>
+<table>
+<thead>
+<tr>
+<th>特性</th>
+<th>TCP (Transmission Control Protocol)</th>
+<th>QUIC (Quick UDP Internet Connections)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>协议层</strong></td>
+<td>传输层协议</td>
+<td>应用层协议</td>
+</tr>
+<tr>
+<td><strong>基础传输</strong></td>
+<td>基于 IP 协议之上的 TCP</td>
+<td>基于 IP 协议之上的 UDP</td>
+</tr>
+<tr>
+<td><strong>连接建立</strong></td>
+<td>三次握手</td>
+<td>单次握手</td>
+</tr>
+<tr>
+<td><strong>连接恢复</strong></td>
+<td>断开后需重新建立连接</td>
+<td>支持连接迁移和恢复</td>
+</tr>
+<tr>
+<td><strong>加密</strong></td>
+<td>TLS 1.2/1.3</td>
+<td>内置 TLS 1.3</td>
+</tr>
+<tr>
+<td><strong>启动延迟</strong></td>
+<td>较高，三次握手增加延迟</td>
+<td>较低，减少握手次数和延迟</td>
+</tr>
+<tr>
+<td><strong>多路复用</strong></td>
+<td>支持，但容易受阻塞影响</td>
+<td>原生支持，避免队头阻塞</td>
+</tr>
+<tr>
+<td><strong>传输效率</strong></td>
+<td>较高，但有队头阻塞问题</td>
+<td>更高，避免队头阻塞和优化路径恢复</td>
+</tr>
+<tr>
+<td><strong>数据完整性</strong></td>
+<td>基于序列号和确认号保证</td>
+<td>基于序列号和确认号保证</td>
+</tr>
+<tr>
+<td><strong>拥塞控制</strong></td>
+<td>内置多种拥塞控制算法</td>
+<td>内置拥塞控制，基于 TCP 的算法扩展</td>
+</tr>
+<tr>
+<td><strong>丢包重传</strong></td>
+<td>确认丢包后重传</td>
+<td>确认丢包后重传，优化的快速恢复机制</td>
+</tr>
+<tr>
+<td><strong>安全性</strong></td>
+<td>可选加密（通常通过 TLS 实现）</td>
+<td>默认启用（内置 TLS 1.3）</td>
+</tr>
+<tr>
+<td><strong>安全更新</strong></td>
+<td>更新慢，需要操作系统和应用配合</td>
+<td>更新快，协议可灵活更新</td>
+</tr>
+<tr>
+<td><strong>部署难易度</strong></td>
+<td>广泛部署，基础设施支持全面</td>
+<td>逐渐普及，需要支持 UDP 的网络设施</td>
+</tr>
+<tr>
+<td><strong>防火墙友好</strong></td>
+<td>广泛支持，默认开放</td>
+<td>可能被部分防火墙阻挡</td>
+</tr>
+<tr>
+<td><strong>常用场景</strong></td>
+<td>Web 浏览、文件传输、电子邮件等</td>
+<td>实时通信、视频流、现代 Web 应用等</td>
+</tr>
+<tr>
+<td><strong>协议灵活性</strong></td>
+<td>相对固定，修改需要标准化过程</td>
+<td>更灵活，支持快速迭代和更新</td>
+</tr>
+</tbody>
+</table>
+<h2 id="总结">总结</h2>
+<p>TCP（Transmission Control Protocol）是传输层的经典协议，基于IP协议之上，通过三次握手建立连接，提供可靠的数据传输、拥塞控制和流量控制。虽然TCP在网络通信中广泛应用，但它的传输效率受队头阻塞影响，且连接建立较慢。</p>
+<p>QUIC（Quick UDP Internet Connections）是一个基于UDP协议的新型应用层协议，通过单次握手建立连接，并内置TLS 1.3实现加密通信。QUIC具有较低的启动延迟、更高的传输效率和更好的安全性，特别适用于实时通信和现代Web应用。</p>
+<p>在连接建立、多路复用、传输效率、连接恢复、安全性等方面，QUIC相较于TCP有明显的优势。但是，TCP由于广泛的部署和成熟的基础设施支持，仍然是许多传统应用的首选。随着时间的推移，QUIC的普及度逐渐增加，尤其是在需要低延迟、高效率和安全性的场景下，它将成为更多应用的选择。</p>
+<h2 id="参考">参考</h2>
+<p>[1] <a href="https://zh.wikipedia.org/wiki/QUIC">QUIC</a></p>
+<p>[2] <a href="https://www.infoq.cn/article/lddlsa5f21sty04li3hp">一文读懂 QUIC 协议：更快、更稳、更高效的网络通信</a></p>
+<p>[3] <a href="https://xie.infoq.cn/article/bbe378c6ef55e16efc8880afe?utm_source=related_read&amp;utm_medium=article">QUIC 在京东直播的应用与实践</a></p>
+]]></content>
+    </entry>
+    <entry>
+        <title type="html"><![CDATA[Bazel 基本使用]]></title>
+        <id>https://protream.github.io/post/0Wbj5ilhe/</id>
+        <link href="https://protream.github.io/post/0Wbj5ilhe/">
+        </link>
+        <updated>2024-03-29T01:42:39.000Z</updated>
+        <summary type="html"><![CDATA[<p>本文是 Bazel 学习笔记，记录了 Bazel 的一些核心概念和基本使用方法，构建目标为 Go 语言项目。</p>
+]]></summary>
+        <content type="html"><![CDATA[<p>本文是 Bazel 学习笔记，记录了 Bazel 的一些核心概念和基本使用方法，构建目标为 Go 语言项目。</p>
+<!-- more -->
+<h2 id="概念">概念</h2>
+<h3 id="target目标">Target（目标）</h3>
+<p>目标是Bazel构建系统中的基本单元，它代表构建过程中的一个输出文件或一个可运行的程序。每个目标都有一个名称和一组属性，例如源文件、依赖项和构建规则。</p>
+<h3 id="rule规则">Rule（规则）</h3>
+<p>规则定义了如何构建一个目标。规则包括目标类型、名称、属性和构建命令。Bazel提供了许多内置规则，例如cc_library 和 cc_binary，以支持不同类型的目标。</p>
+<h3 id="workspace工作区">Workspace（工作区）</h3>
+<p>工作区是Bazel构建系统的最高级别的概念，它包含一个或多个项目。工作区由一个或多个目录组成，每个目录包含一个BUILD文件和其他相关文件。</p>
+<h3 id="package包">Package（包）</h3>
+<p>包是Bazel构建系统中的一个逻辑单元，它包含一个或多个相关的目标和规则。每个包都有一个名称和一个相对路径，例如//myproject/mypackage。</p>
+<h3 id="label标签">Label（标签）</h3>
+<p>标签是Bazel中唯一标识一个目标或规则的方式，它由包名和目标名组成，例如//myproject/mypackage:mytarget。</p>
+<h3 id="dependency依赖">Dependency（依赖）</h3>
+<p>依赖是指一个目标需要另一个目标才能构建的情况。Bazel使用依赖关系来自动构建和管理项目中的依赖项。</p>
+<h3 id="configuration配置">Configuration（配置）</h3>
+<p>配置是指构建过程中的一组参数，例如编译器选项、库路径和环境变量。Bazel支持多个配置，例如debug和release，以便在不同的环境中构建项目。</p>
+<h2 id="文件">文件</h2>
+<h3 id="workspace">WORKSPACE</h3>
+<p>用于将目录及其内容标识为 Bazel 工作区，并位于项目目录结构的根目录中。Bazel 构建项目时，所有输入都必须位于同一工作区中。除非链接，否则位于不同工作区中的文件彼此独立。</p>
+<h3 id="buildbazel">BUILD.bazel</h3>
+<p>用于告知 Bazel 如何构建项目的不同部分。工作区中包含 <code>BUILD</code> 文件的目录就是一个软件包。每个 <code>BUILD</code> 文件至少需要一条规则（即一组指令），用于告知 Bazel 如何构建所需的输出，例如可执行二进制文件或库。<code>BUILD</code> 文件中构建规则的每个实例都称为目标，指向一组特定的源文件和依赖项。目标还可以指向其他目标。</p>
+<p>示例：</p>
+<pre><code class="language-yaml">cc_binary(
+    name = &quot;hello-world&quot;,
+    srcs = [&quot;hello-world.cc&quot;],
+)
+</code></pre>
+<h3 id="bazelrc">.bazelrc</h3>
+<p>bazel 是 Java 开发的，可以在该文件中设置 JVM，此外，可以配置 go 代理，可以配置目标系统等。</p>
+<pre><code class="language-yaml"># 设置JVM
+startup --host_jvm_args=-XX:+UseParallelGC --host_jvm_args=-Xmx6g --host_jvm_args=-Xms1g
+# 设置CoreDump
+startup --unlimit_coredumps
+
+# 设置GOPROXY
+test --action_env=GOPROXY=https://goproxy.cn
+build --action_env=GOPROXY=https://goproxy.cn
+run --action_env=GOPROXY=https://goproxy.cn
+
+# 设置GOSUMDB
+test --action_env=GOSUMDB=goproxy.cn/sumdb/sum.golang.org
+build --action_env=GOSUMDB=goproxy.cn/sumdb/sum.golang.org
+run --action_env=GOSUMDB=goproxy.cn/sumdb/sum.golang.org
+
+# 设置编译目标平台
+build --platforms=@io_bazel_rules_go//go/toolchain:linux_amd64
+run --platforms=@io_bazel_rules_go//go/toolchain:linux_amd64
+</code></pre>
+<h3 id="自定义-rule-bzl">自定义 rule (*.bzl)</h3>
+<p>如果你的项目有一些复杂构造逻辑、或者一些需要复用的构造逻辑，那么可以将这些逻辑以函数形式保存在 <code>.bzl</code> 文件，供 <code>WORKSPACE</code> 或者 <code>BUILD</code> 文件调用。其语法跟 Python 类似：</p>
+<pre><code class="language-yaml">def download_package():
+    # 下载 Bazel Go语言 规则集
+    if not native.existing_rule(&quot;io_bazel_rules_go&quot;):
+        http_archive(
+            name = &quot;io_bazel_rules_go&quot;,
+            sha256 = &quot;56d8c5a5c91e1af73eca71a6fab2ced959b67c86d12ba37feedb0a2dfea441a6&quot;,
+            urls = [
+                &quot;https://mirror.bazel.build/github.com/bazelbuild/rules_go/releases/download/v0.37.0/rules_go-v0.37.0.zip&quot;,
+                &quot;https://github.com/bazelbuild/rules_go/releases/download/v0.37.0/rules_go-v0.37.0.zip&quot;,
+            ],
+        )
+
+    # 下载 Bazel Gazelle 规则集
+    if not native.existing_rule(&quot;bazel_gazelle&quot;):
+        http_archive(
+            name = &quot;bazel_gazelle&quot;,
+            sha256 = &quot;ecba0f04f96b4960a5b250c8e8eeec42281035970aa8852dda73098274d14a1d&quot;,
+            urls = [
+                &quot;https://mirror.bazel.build/github.com/bazelbuild/bazel-gazelle/releases/download/v0.29.0/bazel-gazelle-v0.29.0.tar.gz&quot;,
+                &quot;https://github.com/bazelbuild/bazel-gazelle/releases/download/v0.29.0/bazel-gazelle-v0.29.0.tar.gz&quot;,
+            ],
+        )
+</code></pre>
+<h3 id="bazelversion">.bazelversion</h3>
+<p>配置 bazel 版本。</p>
+<h2 id="步骤">步骤</h2>
+<h3 id="设置-workspace">设置 WORKSPACE</h3>
+<pre><code class="language-yaml">workspace(name = &quot;go-bazel&quot;)
+
+load(&quot;@bazel_tools//tools/build_defs/repo:http.bzl&quot;, &quot;http_archive&quot;)
+
+http_archive(
+    name = &quot;io_bazel_rules_go&quot;,
+    sha256 = &quot;c8035e8ae248b56040a65ad3f0b7434712e2037e5dfdcebfe97576e620422709&quot;,
+    urls = [
+        &quot;https://github.com/bazelbuild/rules_go/releases/download/v0.44.0/rules_go-v0.44.0.zip&quot;,
+        &quot;https://mirror.bazel.build/github.com/bazelbuild/rules_go/releases/download/v0.44.0/rules_go-v0.44.0.zip&quot;,
+    ],
+)
+
+http_archive(
+    name = &quot;bazel_gazelle&quot;,
+    sha256 = &quot;32938bda16e6700063035479063d9d24c60eda8d79fd4739563f50d331cb3209&quot;,
+    urls = [
+        &quot;https://github.com/bazelbuild/bazel-gazelle/releases/download/v0.35.0/bazel-gazelle-v0.35.0.tar.gz&quot;,
+        &quot;https://mirror.bazel.build/github.com/bazelbuild/bazel-gazelle/releases/download/v0.35.0/bazel-gazelle-v0.35.0.tar.gz&quot;,
+    ],
+)
+
+load(&quot;@bazel_gazelle//:deps.bzl&quot;, &quot;gazelle_dependencies&quot;)
+load(&quot;@com_google_protobuf//:protobuf_deps.bzl&quot;, &quot;protobuf_deps&quot;)
+load(&quot;@io_bazel_rules_go//go:deps.bzl&quot;, &quot;go_register_toolchains&quot;, &quot;go_rules_dependencies&quot;)
+
+############################################################
+# Define your own dependencies here using go_repository.
+# Else, dependencies declared by rules_go/gazelle will be used.
+# The first declaration of an external repository &quot;wins&quot;.
+############################################################
+
+# gazelle:repository go_repository name=org_golang_x_xerrors importpath=golang.org/x/xerrors
+
+load(&quot;//:deps.bzl&quot;, &quot;go_dependencies&quot;)
+
+# gazelle:repository_macro deps.bzl%go_dependencies
+go_dependencies()
+
+go_rules_dependencies()
+
+go_register_toolchains(version = &quot;1.21.5&quot;)
+
+gazelle_dependencies()
+</code></pre>
+<p>其中，Gazelle 是一个自动生成 Bazel 编译文件的工具，包括给 <code>WORKSPACE</code> 添加外部依赖、扫描源文件依赖自动生成<code>BUILD.bazel</code>文件等。Gazelle 原生支持Go和 protobuf。</p>
+<h3 id="protobuf">Protobuf</h3>
+<p>需要在 WORKSPACE 中添加：</p>
+<pre><code class="language-yaml">http_archive(
+    name = &quot;com_google_protobuf&quot;,
+    sha256 = &quot;d0f5f605d0d656007ce6c8b5a82df3037e1d8fe8b121ed42e536f569dec16113&quot;,
+    strip_prefix = &quot;protobuf-3.14.0&quot;,
+    urls = [
+        &quot;https://github.com/protocolbuffers/protobuf/archive/v3.14.0.tar.gz&quot;,
+        &quot;https://mirror.bazel.build/github.com/protocolbuffers/protobuf/archive/v3.14.0.tar.gz&quot;,
+    ],
+)
+
+protobuf_deps()
+</code></pre>
+<h2 id="命令">命令</h2>
+<p>使用 Gazelle 构建 <code>BUILD.bazel</code>：</p>
+<pre><code class="language-yaml">bazel run //:gazelle
+</code></pre>
+<p>更新 golang 依赖：</p>
+<pre><code class="language-yaml">bazel run //:gazelle-update-repos
+</code></pre>
+<p>跑测试：</p>
+<pre><code class="language-yaml">bazel test //...
+</code></pre>
+<p>构建项目：</p>
+<pre><code class="language-yaml">bazel build //...
+</code></pre>
+<h2 id="docker-镜像">Docker 镜像</h2>
+<p>在 WORKSPACE 中添加：</p>
+<pre><code class="language-yaml">http_archive(
+    name = &quot;io_bazel_rules_docker&quot;,
+    sha256 = &quot;b1e80761a8a8243d03ebca8845e9cc1ba6c82ce7c5179ce2b295cd36f7e394bf&quot;,
+    urls = [&quot;https://github.com/bazelbuild/rules_docker/releases/download/v0.25.0/rules_docker-v0.25.0.tar.gz&quot;],
+)
+
+load(
+    &quot;@io_bazel_rules_docker//repositories:repositories.bzl&quot;,
+    container_repositories = &quot;repositories&quot;,
+)
+
+container_repositories()
+
+load(&quot;@io_bazel_rules_docker//repositories:deps.bzl&quot;, container_deps = &quot;deps&quot;)
+
+container_deps()
+
+</code></pre>
+<h3 id="基础镜像">基础镜像</h3>
+<p>在 WOKRSPACE 中拉取：</p>
+<pre><code class="language-yaml">
+load(&quot;@io_bazel_rules_docker//container:pull.bzl&quot;, &quot;container_pull&quot;)
+
+container_pull(
+    name = &quot;alpine_linux_amd64&quot;,
+    registry = &quot;index.docker.io&quot;,
+    repository = &quot;library/alpine&quot;,
+    tag = &quot;latest&quot;,
+)
+</code></pre>
+<h3 id="构建镜像">构建镜像</h3>
+<p>在 BUILD 中：</p>
+<pre><code class="language-yaml">container_image(
+    name = &quot;image&quot;,
+    base = &quot;@alpine_linux_amd64//image&quot;,
+    entrypoint = [&quot;/servicea&quot;],
+    files = [
+        &quot;:servicea&quot;,
+    ],
+)
+</code></pre>
+<h3 id="推送镜像">推送镜像</h3>
+<p>在 BUILD 中：</p>
+<pre><code class="language-yaml">container_push(
+    name = &quot;image-push&quot;,
+    format = &quot;Docker&quot;,
+    image = &quot;:image&quot;,
+    registry = &quot;registry.cn-hangzhou.aliyuncs.com&quot;,
+    repository = &quot;bazel/greeter&quot;,
+    tag = &quot;latest&quot;,
+)
+
+</code></pre>
+<h2 id="参考">参考</h2>
+<p>[1] <a href="%5Bhttps://bazel.build/start/cpp?hl=zh-cn%5D(https://bazel.build/start/cpp?hl=zh-cn)">Bazel 教程：构建 C++ 项目</a></p>
+<p>[2] <a href="%5Bhttps://developer.aliyun.com/article/1150284%5D(https://developer.aliyun.com/article/1150284)">Kratos微服务工程Bazel构建指南</a></p>
+<p>[3] <a href="%5Bhttps://github.com/jankremlacek/go-bazel/tree/main%5D(https://github.com/jankremlacek/go-bazel/tree/main)">go-bazel</a></p>
+<p>[4] <a href="%5Bhttps://github.com/bazelbuild/bazel-gazelle%5D(https://github.com/bazelbuild/bazel-gazelle)">bazel-gazelle</a></p>
+]]></content>
+    </entry>
+    <entry>
+        <title type="html"><![CDATA[Tmux 基本用法]]></title>
+        <id>https://protream.github.io/post/Zq6cxvh7A/</id>
+        <link href="https://protream.github.io/post/Zq6cxvh7A/">
+        </link>
+        <updated>2024-02-18T06:10:58.000Z</updated>
+        <summary type="html"><![CDATA[<p>当用户与远程计算机进行会话时，创建的窗口是其中的进程是绑定的，当用户长时间不操作或者因为网络异常导致远程连接中断，窗口及其里面的进行也随之中断，里面如果有些还未完成的任务也会被关闭。tmux 解决的问题是将会话与窗口解绑。窗口关闭会话并不会关闭，重新连接上终端可以恢复会话。</p>
+]]></summary>
+        <content type="html"><![CDATA[<p>当用户与远程计算机进行会话时，创建的窗口是其中的进程是绑定的，当用户长时间不操作或者因为网络异常导致远程连接中断，窗口及其里面的进行也随之中断，里面如果有些还未完成的任务也会被关闭。tmux 解决的问题是将会话与窗口解绑。窗口关闭会话并不会关闭，重新连接上终端可以恢复会话。</p>
+<!-- more -->
+<h2 id="命令">命令</h2>
+<p>• 创建会话：tmux new -s <session-name><br>
+• 列出会话：tmux ls<br>
+• 退出会话：C-b d<br>
+• 进入会话：tmux a -t <session-name><br>
+• 删除会话：tmux kill-session -t <session-name></p>
+<h2 id="快捷键">快捷键</h2>
+<h3 id="全局">全局</h3>
+<p>• 显示帮助：C-b ?<br>
+• 重新加载配置：C-b :source-file ~/.tmux.conf<br>
+会话操作<br>
+• 列出所有会话：C-b s<br>
+• 重命名当前会话：C-n $</p>
+<h3 id="窗口操作">窗口操作</h3>
+<p>• 创建新窗口：C-b c<br>
+• 下一个窗口：C-b n<br>
+• 上一个窗口：C-b p<br>
+• 重命名窗口：C-b ,<br>
+• 从列表选择窗口：C-b w<br>
+• 按编号选择窗口：C-b <number><br>
+• 查看历史数据：<br>
+• 进入查看模式：C-B [<br>
+• 翻页：Option 方向键</p>
+<h3 id="窗格操作">窗格操作</h3>
+<p>• 垂直分割：C-b %<br>
+• 水平分割：C-b &quot;<br>
+• 全屏/退出全屏：C-b z<br>
+• 上一个窗格：C-b ;<br>
+• 下一个窗格：C-b o<br>
+• 与上一个窗格交换位置：C-b {<br>
+• 与下一个窗格交换位置：C-b }<br>
+• 改变窗格排列方式：C-b space</p>
+<h2 id="参考">参考</h2>
+<p>[1] <a href="https://www.ruanyifeng.com/blog/2019/10/tmux.html">阮一峰 tmux 教程</a><br>
+[2] <a href="https://gist.github.com/ryerh/14b7c24dfd623ef8edc7">Tmux 配置</a></p>
+]]></content>
+    </entry>
+    <entry>
+        <title type="html"><![CDATA[pve 虚拟机配置]]></title>
+        <id>https://protream.github.io/post/0y-19LIoR/</id>
+        <link href="https://protream.github.io/post/0y-19LIoR/">
+        </link>
+        <updated>2024-02-11T13:23:49.000Z</updated>
+        <content type="html"><![CDATA[<h2 id="配置虚拟机">配置虚拟机</h2>
+<h3 id="系统">系统</h3>
+<p>i440fx：i440fx 是一个旧的主板模拟类型，它模拟的是 Intel 440FX 主板，该主板用于早期的 x86 架构计算机。i440fx 是一种较为传统和兼容性较高的选择，适用于需要与老旧操作系统或特定硬件环境兼容的情况。然而，i440fx 在一些高级特性方面可能有一些限制，并且不支持某些现代技术。<br>
+q35：q35 是一种更现代的主板模拟类型，它模拟的是 Intel Q35 Express 芯片组，该芯片组用于较新的 x86 架构计算机。q35 提供了更多的功能和先进的虚拟化特性，如 PCI Express 设备的直通、高级电源管理等。它在性能和功能方面相对较好，适用于大多数现代虚拟化场景。</p>
+<h3 id="磁盘">磁盘</h3>
+<ul>
+<li>IDE（Integrated Drive Electronics）是一种较旧的接口标准，用于将存储设备（例如硬盘和光驱）连接到计算机。它已经被较新的标准如SATA所取代。</li>
+<li>SATA（Serial Advanced Technology Attachment）是一种现代的接口标准，用于将存储设备连接到计算机。相比IDE，它提供更快的数据传输速度和更好的性能。</li>
+<li>VirtIO block是一种虚拟化接口，可以使虚拟机有效地访问存储设备。它为运行在虚拟机中的客户操作系统与超级监视程序或主机系统的存储子系统之间提供了标准化的通信方式。</li>
+<li>SCSI（Small Computer System Interface）是一组标准，定义了计算机和外部设备（包括存储设备）之间的通信方式。SCSI最初设计用于将多个设备连接到单个总线，但随着时间的推移，它不断发展，并包括支持不同传输速度和技术的各种版本和协议。</li>
+</ul>
+<h3 id="网络">网络</h3>
+<ul>
+<li>
+<p>Intel E1000：这是一种基于软件仿真的虚拟网络适配器，模拟了Intel 82545EM Gigabit Ethernet控制器。E1000广泛用于许多虚拟化平台，性能稳定且兼容性良好。</p>
+</li>
+<li>
+<p>VirtIO半虚拟化：VirtIO是一种半虚拟化技术，通过在虚拟机和宿主机之间共享驱动程序和设备模型来提供高性能和低延迟的网络通信。VirtIO网络适配器需要使用相应的VirtIO驱动程序来实现。</p>
+</li>
+<li>
+<p>Realtek RTL8139：这是一种基于软件仿真的虚拟网络适配器，模拟了Realtek RTL8139 Fast Ethernet控制器。RTL8139适用于一些虚拟化平台，但性能可能相对较低。</p>
+</li>
+<li>
+<p>VMware VMXNET3：这是VMware开发的高性能虚拟网络适配器，专门为VMware虚拟化环境优化。VMXNET3提供了高速数据传输、低CPU利用率和更好的网络性能，适用于在VMware虚拟机上运行的场景</p>
+</li>
+</ul>
+<h3 id="配置硬件">配置硬件</h3>
+<p>• 配置 虚拟机/硬件/硬盘 开启 SSD 仿真<br>
+• 配置 虚拟机/硬件/磁盘 ，通过磁盘操作-调整磁盘大小操作设置设置的磁盘大小；<br>
+• 删除 CD/ROM</p>
+<h3 id="配置选项">配置选项</h3>
+<p>• 修改引导顺序，将虚拟机磁盘调到第一位<br>
+配置 CloudInit<br>
+在 虚拟机/Cloud-Init 中配置<br>
+• 用户名<br>
+• 密码<br>
+• DNS<br>
+• SSH 公钥<br>
+• IP</p>
+<h3 id="配置镜像">配置镜像</h3>
+<p>下载镜像<br>
+https://down.idc.wiki/Image/realServer-Template/current/qcow2/</p>
+<p>导入镜像</p>
+<pre><code>qm disk import ${vmId} ${image} local-lvm
+</code></pre>
+<h2 id="网络配置">网络配置</h2>
+<p>编辑 <code>/etc/netplan/50-cloud-init.yaml</code></p>
+<pre><code class="language-yaml">network:
+    version: 2
+    ethernets:
+        eth0:
+            dhcp4: no
+            dhcp6: no
+            link-local: [ ipv4 ]
+            match:
+                    macaddress: ${macAddress}
+            set-name: eth0
+            addresses: [${ip}/24]
+            gateway4: ${gateay}
+            nameservers:
+                    addresses: [223.5.5.5]
+</code></pre>
+<p>设置生效：</p>
+<pre><code>sudo netplan apply -f
+</code></pre>
+<h2 id="替换国内源">替换国内源</h2>
+<p>修改 <code>/etc/apt/sources.list</code> 替换为阿里国内源</p>
+<pre><code>deb http://mirrors.aliyun.com/ubuntu/ jammy main restricted universe multiverse
+deb-src http://mirrors.aliyun.com/ubuntu/ jammy main restricted universe multiverse
+deb http://mirrors.aliyun.com/ubuntu/ jammy-security main restricted universe multiverse
+deb-src http://mirrors.aliyun.com/ubuntu/ jammy-security main restricted universe multiverse
+deb http://mirrors.aliyun.com/ubuntu/ jammy-updates main restricted universe multiverse
+deb-src http://mirrors.aliyun.com/ubuntu/ jammy-updates main restricted universe multiverse
+deb http://mirrors.aliyun.com/ubuntu/ jammy-proposed main restricted universe multiverse
+deb-src http://mirrors.aliyun.com/ubuntu/ jammy-proposed main restricted universe multiverse
+deb http://mirrors.aliyun.com/ubuntu/ jammy-backports main restricted universe multiverse
+deb-src http://mirrors.aliyun.com/ubuntu/ jammy-backports main restricted universe multiverse
+</code></pre>
+<p>执行</p>
+<pre><code>sudo apt update
+sudo apt upgrade
+</code></pre>
+<p>使配置生效。<br>
+配置虚拟机网路</p>
+<h2 id="配置-qemu-guest-agent">配置 qemu-guest-agent</h2>
+<p>安装：</p>
+<pre><code>apt install qemu-guest-agent
+</code></pre>
+<p>启动：</p>
+<pre><code>systemctl enable qemu-guest-agent
+</code></pre>
+<p>配置 <code>虚拟机/选项/QEMU Guest Agent</code> 为启用，然后关机重新启动。</p>
+<p>配置用户无需root密码</p>
+<p>配置 <code>/etc/sudo</code></p>
+<pre><code>shiyanlou ALL=(ALL) NOPASSWD: ALL
+Defaults:shiyanlou !requiretty
+</code></pre>
+<p>安装常用软件</p>
+<pre><code>apt install git zsh wireguard
+</code></pre>
+<h2 id="参考">参考</h2>
+<p>[1] <a href="https://pve.proxmox.com/wiki/Qemu/KVM_Virtual_Machines">Qemu/KVM Virtual Machines</a></p>
+]]></content>
+    </entry>
+</feed>

@@ -1,0 +1,121 @@
+<html>
+  <head>
+  <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>wireguard | Protream&#39;s Notes</title>
+<link rel="shortcut icon" href="https://protream.github.io/favicon.ico?v=1733235889358">
+<link href="https://cdn.jsdelivr.net/npm/remixicon@2.3.0/fonts/remixicon.css" rel="stylesheet">
+<link rel="stylesheet" href="https://protream.github.io/styles/main.css">
+<link rel="alternate" type="application/atom+xml" title="wireguard | Protream&#39;s Notes - Atom Feed" href="https://protream.github.io/atom.xml">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Droid+Serif:400,700">
+
+
+
+  <meta name="description" content="" />
+  </head>
+  <body>
+    <div class="main">
+      <div class="main-content">
+        <div class="site-header">
+  <a href="https://protream.github.io">
+  <img class="avatar" src="https://protream.github.io/images/avatar.png?v=1733235889358" alt="">
+  </a>
+  <h1 class="site-title">
+    Protream&#39;s Notes
+  </h1>
+  <p class="site-description">
+    
+  </p>
+  <div class="menu-container">
+    
+      
+        <a href="/" class="menu">
+          首页
+        </a>
+      
+    
+      
+        <a href="/archives" class="menu">
+          归档
+        </a>
+      
+    
+      
+        <a href="/tags" class="menu">
+          标签
+        </a>
+      
+    
+      
+        <a href="/post/about" class="menu">
+          关于
+        </a>
+      
+    
+  </div>
+  <div class="social-container">
+    
+      
+    
+      
+    
+      
+    
+      
+    
+      
+    
+  </div>
+</div>
+
+        <div class="current-tag-container">
+            <h2 class="title">
+                标签：# wireguard
+            </h2> 
+        </div>
+        <div class="post-container">
+  
+    <article class="post">
+      <a href="https://protream.github.io/post/jlVlyIZaC/">
+        <h2 class="post-title">wireguard 原理与基本使用</h2>
+      </a>
+      <div class="post-info">
+        <span>
+          2024-02-10
+        </span>
+        <span>
+          4 min read
+        </span>
+        
+          <a href="https://protream.github.io/tag/wireguard/" class="post-tag">
+            # wireguard
+          </a>
+        
+      </div>
+      
+      <div class="post-abstract">
+        <p>WireGuard 的核心是一个名为 Cryptokey Routing 的概念，它的工作原理是将公钥与隧道中允许的隧道 IP 地址列表相关联。每个网络接口（interface）都有一个私钥和一个 peer list。每个 peer 都有一个公钥。公钥既短又简单，被 peer 用来互相验证。它们可以通过任何带外方法在配置文件中传递，类似于将其 SSH 公钥发送给朋友以访问 shell 服务器。</p>
+<p>由于每个节点都有自己的公钥和私钥，实际上就建立了公钥和节点之间的一一映射。当 wg0 需要向外发送的包的时候，会查这个表来找到正确的公钥。当接收到一个外部的包的时候，会根据公钥来检查是否是合法的目标 IP。</p>
+<p>当一个 Peer 发过来一个包，并且通过了验证之后，路由表就会记录下对方的外部地址，这样当需要给对方发包的时候，就可以直接通过这个地址发送了。同时，如果对方切换了网络，那么路由表就会跟着新的包更新，也就是 WireGuard 支持“漫游”。</p>
+
+      </div>
+    </article>
+  
+</div>
+
+        <div class="pagination-container">
+  
+  
+</div>
+
+        <div class="site-footer">
+  Powered by <a href="https://github.com/getgridea/gridea" target="_blank">&nbsp;Gridea</a>
+  <a class="rss" href="https://protream.github.io/atom.xml" target="_blank">
+    <i class="ri-rss-line"></i> RSS
+  </a>
+</div>
+
+      </div>
+    </div>
+  </body>
+</html>
